@@ -131,6 +131,10 @@ export async function updateOwnerInstitutionProfileAction(
     revalidatePath("/owner");
     revalidatePath("/owner/profile");
     revalidatePath(`/institutions/${result.institution.slug}`);
+    revalidatePath("/admin");
+    revalidatePath("/admin/published");
+    revalidatePath("/admin/review");
+    revalidatePath("/admin/acquisition");
 
     return {
       ok: true,

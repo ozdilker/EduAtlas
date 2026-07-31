@@ -13,6 +13,7 @@ import {
 } from "@eduatlas/domain";
 import { InstitutionNotFoundError } from "../institutions/errors";
 import type { InstitutionRepository } from "../institutions/institution-repository";
+import { withRecalculatedInstitutionQuality } from "../institution-quality/with-recalculated-institution-quality";
 import { MediaValidationError } from "./errors";
 import type { MediaRepository } from "./media-repository";
 import type { ObjectStorage } from "./object-storage";
@@ -184,5 +185,5 @@ export async function syncInstitutionMediaUrls(
     updatedByUserId: updatedBy ?? institution.updatedByUserId,
   });
 
-  await deps.institutionRepository.update(next);
+  await deps.institutionRepository.update(withRecalculatedInstitutionQuality(next, now));
 }

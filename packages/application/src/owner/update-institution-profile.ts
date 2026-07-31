@@ -12,6 +12,7 @@ import {
   InstitutionProfileValidationError,
 } from "../institutions/errors";
 import type { InstitutionRepository } from "../institutions/institution-repository";
+import { withRecalculatedInstitutionQuality } from "../institution-quality/with-recalculated-institution-quality";
 import { emitProfileUpdated } from "../notifications/emit-notification-events";
 import type { NotificationService } from "../notifications/notification-service";
 
@@ -116,6 +117,8 @@ export async function updateInstitutionProfile(
       error instanceof Error ? error.message : "Unable to apply institution profile update.",
     );
   }
+
+  next = withRecalculatedInstitutionQuality(next, update.updatedAt);
 
   const saved = await deps.institutionRepository.update(next);
 

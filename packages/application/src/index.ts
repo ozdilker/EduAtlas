@@ -178,7 +178,12 @@ export type {
   CalculateInstitutionQualityInput,
   CalculateInstitutionQualityResult,
 } from "./institution-quality";
-export { calculateInstitutionQuality } from "./institution-quality";
+export {
+  calculateInstitutionQuality,
+  toCreateInstitutionInput,
+  withRecalculatedInstitutionQuality,
+} from "./institution-quality";
+
 export {
   type GetInstitutionReviewQueueDependencies,
   type GetInstitutionReviewQueueInput,

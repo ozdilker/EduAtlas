@@ -1,4 +1,4 @@
-import { InstitutionSort } from "@eduatlas/application";
+import { calculateInstitutionQuality, InstitutionSort } from "@eduatlas/application";
 import {
   cityIdAsString,
   InstitutionStatus,
@@ -160,6 +160,7 @@ export async function getAdminPublishedInstitutionsView(
   const rows = listed.items.map((item) => {
     const geo = resolveGeoLabels(item.location.cityId, item.location.districtId);
     const id = institutionIdAsString(item.id);
+    const qualityScore = calculateInstitutionQuality({ institution: item }).quality.score;
     return {
       id,
       name: item.name,
@@ -170,7 +171,7 @@ export async function getAdminPublishedInstitutionsView(
       districtId: item.location.districtId,
       districtLabel: geo.districtName,
       statusLabel: "Yayında",
-      qualityScore: item.qualityScore,
+      qualityScore,
       publishedAtLabel: formatPublishedAt(item.publishedAt),
       publicHref: `/institutions/${item.slug}`,
       profileHref: `/admin/review?queue=published&selected=${encodeURIComponent(id)}`,

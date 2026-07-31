@@ -75,6 +75,7 @@ describe("updateInstitutionProfile", () => {
     expect(result.institution.updatedAt).toBe("2026-07-14T21:00:00.000Z");
     expect(result.institution.updatedByUserId).toBe("owner_demo");
     expect(result.update.updatedBy).toBe("owner_demo");
+    expect(result.institution.qualityScore).toBeGreaterThan(published().qualityScore);
   });
 
   it("persists contact details including WhatsApp, address, and maps link", async () => {

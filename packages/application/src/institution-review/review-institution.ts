@@ -6,6 +6,7 @@ import {
   institutionIdAsString,
   validateInstitutionForPublish,
 } from "@eduatlas/domain";
+import { withRecalculatedInstitutionQuality } from "../institution-quality/with-recalculated-institution-quality";
 import { InstitutionNotFoundError } from "../institutions/errors";
 import type { InstitutionRepository } from "../institutions/institution-repository";
 
@@ -124,7 +125,9 @@ export async function reviewInstitution(
     updatedByUserId: input.reviewedBy ?? existing.updatedByUserId,
   });
 
-  const saved = await deps.institutionRepository.update(updated);
+  const saved = await deps.institutionRepository.update(
+    withRecalculatedInstitutionQuality(updated, now),
+  );
 
   return Object.freeze({ institution: saved, action: input.action });
 }

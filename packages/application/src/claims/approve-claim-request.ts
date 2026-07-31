@@ -12,6 +12,7 @@ import {
 import { generateTemporaryOwnerPassword } from "../identity/generate-temporary-password";
 import type { OwnerAccountProvisioner } from "../identity/owner-account-provisioner";
 import type { OwnerBindingRepository } from "../identity/owner-binding-repository";
+import { withRecalculatedInstitutionQuality } from "../institution-quality/with-recalculated-institution-quality";
 import { InstitutionNotFoundError } from "../institutions/errors";
 import type { InstitutionRepository } from "../institutions/institution-repository";
 import type { EmailService } from "../notifications/email-service";
@@ -87,38 +88,41 @@ export async function approveClaimRequest(
   );
 
   const verifiedInstitution = await deps.institutionRepository.update(
-    createInstitution({
-      id: institutionIdAsString(institution.id),
-      name: institution.name,
-      slug: institution.slug,
-      primaryType: institution.primaryType,
-      status: institution.status,
-      verification: InstitutionVerification.Verified,
-      location: institution.location,
-      contact: institution.contact,
-      socialLinks: institution.socialLinks,
-      shortDescription: institution.shortDescription,
-      longDescription: institution.longDescription,
-      programsSummary: institution.programsSummary,
-      ageOrLevelFocus: institution.ageOrLevelFocus,
-      logoUrl: institution.logoUrl,
-      coverImageUrl: institution.coverImageUrl,
-      galleryImages: institution.galleryImages,
-      workingHours: institution.workingHours,
-      promoVideoUrl: institution.promoVideoUrl,
-      brochurePdfUrl: institution.brochurePdfUrl,
-      amenities: institution.amenities,
-      educationPrograms: institution.educationPrograms,
-      faqs: institution.faqs,
-      highlights: institution.highlights,
-      isPremium: institution.isPremium,
-      qualityScore: institution.qualityScore,
-      publishedAt: institution.publishedAt,
-      createdAt: institution.createdAt,
-      updatedAt: now,
-      updatedByUserId: input.reviewedBy ?? institution.updatedByUserId,
-      leadCounters: institution.leadCounters,
-    }),
+    withRecalculatedInstitutionQuality(
+      createInstitution({
+        id: institutionIdAsString(institution.id),
+        name: institution.name,
+        slug: institution.slug,
+        primaryType: institution.primaryType,
+        status: institution.status,
+        verification: InstitutionVerification.Verified,
+        location: institution.location,
+        contact: institution.contact,
+        socialLinks: institution.socialLinks,
+        shortDescription: institution.shortDescription,
+        longDescription: institution.longDescription,
+        programsSummary: institution.programsSummary,
+        ageOrLevelFocus: institution.ageOrLevelFocus,
+        logoUrl: institution.logoUrl,
+        coverImageUrl: institution.coverImageUrl,
+        galleryImages: institution.galleryImages,
+        workingHours: institution.workingHours,
+        promoVideoUrl: institution.promoVideoUrl,
+        brochurePdfUrl: institution.brochurePdfUrl,
+        amenities: institution.amenities,
+        educationPrograms: institution.educationPrograms,
+        faqs: institution.faqs,
+        highlights: institution.highlights,
+        isPremium: institution.isPremium,
+        qualityScore: institution.qualityScore,
+        publishedAt: institution.publishedAt,
+        createdAt: institution.createdAt,
+        updatedAt: now,
+        updatedByUserId: input.reviewedBy ?? institution.updatedByUserId,
+        leadCounters: institution.leadCounters,
+      }),
+      now,
+    ),
   );
 
   const binding = await deps.ownerBindingRepository.save(

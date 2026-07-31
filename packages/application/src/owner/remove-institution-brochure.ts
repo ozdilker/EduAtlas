@@ -4,6 +4,7 @@ import {
   type Institution,
   institutionIdAsString,
 } from "@eduatlas/domain";
+import { withRecalculatedInstitutionQuality } from "../institution-quality/with-recalculated-institution-quality";
 import {
   InstitutionNotFoundError,
   InstitutionProfileValidationError,
@@ -79,5 +80,5 @@ export async function removeInstitutionBrochure(
     updatedByUserId: input.updatedBy,
   });
 
-  return deps.institutionRepository.update(next);
+  return deps.institutionRepository.update(withRecalculatedInstitutionQuality(next, now));
 }
