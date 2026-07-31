@@ -96,4 +96,44 @@ describe("institution quality engine", () => {
     expect(quality.qualityLevel).toBe(QualityLevel.Excellent);
     expect(quality.missingFields).toHaveLength(0);
   });
+
+  it("accepts owner educationPrograms and googleMapsUrl like profile completeness", () => {
+    const institution = createPublishedInstitution({
+      id: "inst_owner_fields",
+      name: "Sahip Alanları Koleji",
+      slug: "sahip-alanlari-koleji",
+      primaryType: InstitutionType.PrivateSchool,
+      verification: InstitutionVerification.Verified,
+      location: {
+        cityId: "city_ist",
+        districtId: "dist_avcilar",
+        address: "Avcılar Mah. Örnek Cad. No:1",
+        googleMapsUrl: "https://maps.app.goo.gl/example",
+      },
+      contact: {
+        phone: "+90 212 000 00 00",
+        email: "info@example.com",
+      },
+      socialLinks: {
+        websiteUrl: "https://example.com",
+        instagramUrl: "https://instagram.com/example",
+      },
+      shortDescription: "Aileler için kapsamlı okul profili örneği.",
+      longDescription:
+        "Uzun açıklama metni burada yer alır ve en az seksen karakter olacak şekilde yazılmıştır; ebeveynler için güven verici içerik.",
+      educationPrograms: ["lgs", "tyt"],
+      logoUrl: "https://example.com/logo.png",
+      coverImageUrl: "https://example.com/cover.jpg",
+      qualityScore: 0,
+      publishedAt: "2026-07-15T11:00:00.000Z",
+      ...timestamps,
+    });
+
+    const quality = evaluateInstitutionQuality({ institution });
+    expect(quality.missingFields).not.toContain("programsSummary");
+    expect(quality.missingFields).not.toContain("ageOrLevelFocus");
+    expect(quality.missingFields).not.toContain("categories");
+    expect(quality.missingFields).not.toContain("location.coordinates");
+    expect(quality.score).toBeGreaterThanOrEqual(90);
+  });
 });

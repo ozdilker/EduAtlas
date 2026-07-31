@@ -255,6 +255,7 @@ function evalLocation(institution: Institution): DimensionEval {
   }
 
   if (loc.latitude !== undefined && loc.longitude !== undefined) earned += 2;
+  else if (loc.googleMapsUrl?.trim()) earned += 2;
   else {
     missingFields.push("location.coordinates");
     issues.push(
@@ -262,7 +263,7 @@ function evalLocation(institution: Institution): DimensionEval {
         code: "missing_coordinates",
         dimension: QualityDimension.Location,
         severity: QualityIssueSeverity.Minor,
-        message: "Koordinat bilgisi eksik.",
+        message: "Koordinat veya harita bağlantısı eksik.",
         field: "location.coordinates",
       }),
     );
@@ -340,11 +341,25 @@ function evalGallery(institution: Institution): DimensionEval {
   return { earned: Math.min(max, earned), complete: earned === max, missingFields, issues };
 }
 
+function hasProgramsContent(institution: Institution): boolean {
+  return (
+    Boolean(institution.programsSummary?.trim()) ||
+    (institution.educationPrograms?.length ?? 0) > 0
+  );
+}
+
+function hasAgeOrLevelContent(institution: Institution): boolean {
+  return (
+    Boolean(institution.ageOrLevelFocus?.trim()) ||
+    (institution.educationPrograms?.length ?? 0) > 0
+  );
+}
+
 function evalPrograms(institution: Institution): DimensionEval {
   const max = QUALITY_DIMENSION_WEIGHTS[QualityDimension.Programs];
   const missingFields: string[] = [];
   const issues: QualityIssue[] = [];
-  const hasPrograms = Boolean(institution.programsSummary?.trim());
+  const hasPrograms = hasProgramsContent(institution);
   const earned = hasPrograms ? max : 0;
 
   if (!hasPrograms) {
@@ -354,7 +369,7 @@ function evalPrograms(institution: Institution): DimensionEval {
         code: "missing_programs",
         dimension: QualityDimension.Programs,
         severity: QualityIssueSeverity.Major,
-        message: "Program özeti eksik.",
+        message: "Program özeti veya eğitim programı seçimi eksik.",
         field: "programsSummary",
       }),
     );
@@ -425,8 +440,8 @@ function evalCategories(institution: Institution): DimensionEval {
   const missingFields: string[] = [];
   const issues: QualityIssue[] = [];
   let earned = 4; // primaryType always present on valid Institution
-  const hasAge = Boolean(institution.ageOrLevelFocus?.trim());
-  const hasPrograms = Boolean(institution.programsSummary?.trim());
+  const hasAge = hasAgeOrLevelContent(institution);
+  const hasPrograms = hasProgramsContent(institution);
 
   if (hasAge) earned += 2;
   else {
@@ -436,7 +451,7 @@ function evalCategories(institution: Institution): DimensionEval {
         code: "missing_age_focus",
         dimension: QualityDimension.Categories,
         severity: QualityIssueSeverity.Minor,
-        message: "Yaş / seviye odağı eksik.",
+        message: "Yaş / seviye odağı veya eğitim programı seçimi eksik.",
         field: "ageOrLevelFocus",
       }),
     );

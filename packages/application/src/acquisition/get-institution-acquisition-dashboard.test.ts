@@ -98,6 +98,30 @@ describe("buildInstitutionQualityIndicators", () => {
     expect(indicators.missingCategories).toBe(true);
     expect(indicators.missingCount).toBeGreaterThanOrEqual(4);
   });
+
+  it("does not flag maps URL or educationPrograms as missing", () => {
+    const institution = createDraftInstitution({
+      id: "inst_owner_ready",
+      name: "Tam Profil",
+      slug: "tam-profil",
+      primaryType: InstitutionType.PrivateSchool,
+      location: {
+        cityId: "city_ist",
+        districtId: "dist_avcilar",
+        address: "Adres",
+        googleMapsUrl: "https://maps.app.goo.gl/example",
+      },
+      contact: { phone: "+90 212 000 00 00" },
+      socialLinks: { websiteUrl: "https://example.com" },
+      shortDescription: "Kısa açıklama zorunlu.",
+      educationPrograms: ["lgs"],
+      ...timestamps,
+    });
+
+    const indicators = buildInstitutionQualityIndicators(institution);
+    expect(indicators.missingCoordinates).toBe(false);
+    expect(indicators.missingCategories).toBe(false);
+  });
 });
 
 describe("getInstitutionAcquisitionDashboard", () => {

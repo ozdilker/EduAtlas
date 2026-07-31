@@ -63,8 +63,11 @@ export function buildInstitutionQualityIndicators(
   const missingWebsite = !institution.socialLinks.websiteUrl?.trim();
   const missingDescription = !institution.shortDescription?.trim();
   const missingCoordinates =
-    institution.location.latitude === undefined || institution.location.longitude === undefined;
-  const missingCategories = !institution.programsSummary?.trim();
+    (institution.location.latitude === undefined ||
+      institution.location.longitude === undefined) &&
+    !institution.location.googleMapsUrl?.trim();
+  const missingCategories =
+    !institution.programsSummary?.trim() && (institution.educationPrograms?.length ?? 0) === 0;
   const flags = [
     missingPhone,
     missingWebsite,
