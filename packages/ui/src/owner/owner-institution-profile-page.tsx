@@ -4,6 +4,10 @@ import type {
   OwnerInstitutionProfileFormState,
   OwnerInstitutionProfilePageViewData,
 } from "./owner-institution-profile-content";
+import {
+  OwnerChangePasswordForm,
+  type OwnerChangePasswordFormState,
+} from "./owner-change-password-form";
 import { OwnerInstitutionProfileForm } from "./owner-institution-profile-form";
 import { OwnerPortalShell } from "./owner-portal-shell";
 
@@ -13,6 +17,10 @@ export type OwnerInstitutionProfilePageProps = {
     prevState: OwnerInstitutionProfileFormState,
     formData: FormData,
   ) => Promise<OwnerInstitutionProfileFormState>;
+  changePasswordAction?: (
+    prevState: OwnerChangePasswordFormState,
+    formData: FormData,
+  ) => Promise<OwnerChangePasswordFormState>;
   logoField?: ReactNode;
   coverField?: ReactNode;
   galleryField?: ReactNode;
@@ -26,6 +34,7 @@ export type OwnerInstitutionProfilePageProps = {
 export function OwnerInstitutionProfilePage({
   data,
   action,
+  changePasswordAction,
   logoField,
   coverField,
   galleryField,
@@ -57,6 +66,12 @@ export function OwnerInstitutionProfilePage({
           galleryField={galleryField}
           brochureField={brochureField}
         />
+
+        {changePasswordAction ? (
+          <section className="ea-owner-change-password-section" aria-label="Hesap şifresi">
+            <OwnerChangePasswordForm action={changePasswordAction} />
+          </section>
+        ) : null}
       </Container>
     </OwnerPortalShell>
   );

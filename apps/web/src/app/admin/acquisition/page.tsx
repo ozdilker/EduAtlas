@@ -1,4 +1,5 @@
 import { AdminAcquisitionDashboard } from "@eduatlas/ui";
+import { approveInstitutionClaimAction } from "@/server/admin/approve-institution-claim-action";
 import {
   type AcquisitionSearchParams,
   getAdminAcquisitionDashboardView,
@@ -16,5 +17,7 @@ type AdminAcquisitionPageProps = {
 export default async function AdminAcquisitionPage({ searchParams }: AdminAcquisitionPageProps) {
   const params = await searchParams;
   const data = await getAdminAcquisitionDashboardView(params);
-  return <AdminAcquisitionDashboard data={data} />;
+  return (
+    <AdminAcquisitionDashboard data={data} approveClaimAction={approveInstitutionClaimAction} />
+  );
 }

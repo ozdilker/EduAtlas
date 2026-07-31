@@ -36,6 +36,12 @@ export type AdminQualityIndicatorView = Readonly<{
   readonly labels: readonly string[];
 }>;
 
+export type AdminAcquisitionPendingClaimView = Readonly<{
+  readonly claimRequestId: string;
+  readonly applicantName: string;
+  readonly applicantEmail: string;
+}>;
+
 export type AdminAcquisitionRowView = Readonly<{
   readonly id: string;
   readonly name: string;
@@ -56,6 +62,8 @@ export type AdminAcquisitionRowView = Readonly<{
   readonly indicators: AdminQualityIndicatorView;
   readonly isDuplicateCandidate: boolean;
   readonly profileHref: string;
+  /** Latest pending claim for this institution, if any. */
+  readonly pendingClaim: AdminAcquisitionPendingClaimView | null;
 }>;
 
 export type AdminCountBucketView = Readonly<{

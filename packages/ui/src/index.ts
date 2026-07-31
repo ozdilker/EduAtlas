@@ -1,9 +1,13 @@
-export type { AdminAcquisitionBulkToolbarProps } from "./admin/admin-acquisition-bulk-toolbar";
+export type {
+  AdminAcquisitionBulkToolbarProps,
+  ApproveInstitutionClaimAction,
+} from "./admin/admin-acquisition-bulk-toolbar";
 export { AdminAcquisitionBulkToolbar } from "./admin/admin-acquisition-bulk-toolbar";
 export type {
   AdminAcquisitionDashboardViewData,
   AdminAcquisitionFilterOption,
   AdminAcquisitionPagination,
+  AdminAcquisitionPendingClaimView,
   AdminAcquisitionQualitySort,
   AdminAcquisitionQueueId,
   AdminAcquisitionQueueTab,
@@ -460,6 +464,11 @@ export type { OwnerInstitutionProfileFormProps } from "./owner/owner-institution
 export { OwnerInstitutionProfileForm } from "./owner/owner-institution-profile-form";
 export type { OwnerInstitutionProfilePageProps } from "./owner/owner-institution-profile-page";
 export { OwnerInstitutionProfilePage } from "./owner/owner-institution-profile-page";
+export type {
+  OwnerChangePasswordFormProps,
+  OwnerChangePasswordFormState,
+} from "./owner/owner-change-password-form";
+export { OwnerChangePasswordForm } from "./owner/owner-change-password-form";
 export type { OwnerWorkingHoursFieldsProps } from "./owner/owner-working-hours-fields";
 export { OwnerWorkingHoursFields } from "./owner/owner-working-hours-fields";
 export type { OwnerAmenityOption, OwnerAmenitiesFieldsProps } from "./owner/owner-amenities-fields";

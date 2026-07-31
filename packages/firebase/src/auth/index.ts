@@ -4,6 +4,11 @@ export {
   type DemoAuthUserSpec,
 } from "./demo-auth-users";
 export {
+  createFirebaseOwnerAccountProvisioner,
+  FirebaseOwnerAccountProvisioner,
+  type FirebaseOwnerAccountProvisionerOptions,
+} from "./firebase-owner-account-provisioner";
+export {
   createFirebaseAuthenticationService,
   FirebaseAuthenticationService,
   type FirebaseAuthenticationServiceOptions,

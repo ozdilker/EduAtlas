@@ -6,6 +6,9 @@ import {
   type InstitutionAcquisitionDashboard,
 } from "@eduatlas/application";
 import {
+  type ClaimRequest,
+  ClaimRequestStatus,
+  claimRequestIdAsString,
   type InstitutionStatus,
   type InstitutionType,
   type InstitutionVerification,
@@ -34,6 +37,7 @@ import {
   getAdminAcquisitionStatusLabel,
   getAdminAcquisitionVerificationLabel,
 } from "@eduatlas/ui";
+import { getClaimRequestRepository } from "../claims/claim-request-repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 
@@ -121,35 +125,59 @@ export async function getAdminAcquisitionDashboardView(
   const status =
     statusRaw && isInstitutionStatus(statusRaw) ? (statusRaw as InstitutionStatus) : undefined;
 
-  const institutionRepository = await getInstitutionRepository();
-  const dashboard = await getInstitutionAcquisitionDashboard(
-    {
-      queue: parseQueue(firstParam(searchParams.queue)?.trim()),
-      sort,
-      page,
-      pageSize: ADMIN_ACQUISITION_PAGE_SIZE,
-      ...(cityId ? { cityId } : {}),
-      ...(cityId && districtId ? { districtId } : {}),
-      ...(primaryType ? { primaryType } : {}),
-      ...(verification ? { verification } : {}),
-      ...(status ? { status } : {}),
-      ...(ownership ? { ownership } : {}),
-      ...(query ? { query } : {}),
-    },
-    {
-      institutionRepository,
-      resolveCityLabel: (id) => resolveGeoLabels(id, "dist_unknown").cityName,
-      resolveDistrictLabel: (cId, dId) => resolveGeoLabels(cId, dId).districtName,
-      resolveTypeLabel: getInstitutionTypeLabel,
-    },
-  );
+  const [institutionRepository, claimRequestRepository] = await Promise.all([
+    getInstitutionRepository(),
+    getClaimRequestRepository(),
+  ]);
+  const [dashboard, pendingClaims] = await Promise.all([
+    getInstitutionAcquisitionDashboard(
+      {
+        queue: parseQueue(firstParam(searchParams.queue)?.trim()),
+        sort,
+        page,
+        pageSize: ADMIN_ACQUISITION_PAGE_SIZE,
+        ...(cityId ? { cityId } : {}),
+        ...(cityId && districtId ? { districtId } : {}),
+        ...(primaryType ? { primaryType } : {}),
+        ...(verification ? { verification } : {}),
+        ...(status ? { status } : {}),
+        ...(ownership ? { ownership } : {}),
+        ...(query ? { query } : {}),
+      },
+      {
+        institutionRepository,
+        resolveCityLabel: (id) => resolveGeoLabels(id, "dist_unknown").cityName,
+        resolveDistrictLabel: (cId, dId) => resolveGeoLabels(cId, dId).districtName,
+        resolveTypeLabel: getInstitutionTypeLabel,
+      },
+    ),
+    claimRequestRepository.listRecent({
+      status: ClaimRequestStatus.Pending,
+      limit: 500,
+    }),
+  ]);
 
-  return toAdminAcquisitionDashboardViewData(dashboard);
+  return toAdminAcquisitionDashboardViewData(dashboard, pendingClaims);
+}
+
+function buildPendingClaimByInstitutionId(
+  pendingClaims: readonly ClaimRequest[],
+): ReadonlyMap<string, ClaimRequest> {
+  const map = new Map<string, ClaimRequest>();
+  for (const claim of pendingClaims) {
+    const institutionId = claim.institutionId.value;
+    if (!map.has(institutionId)) {
+      map.set(institutionId, claim);
+    }
+  }
+  return map;
 }
 
 function toAdminAcquisitionDashboardViewData(
   dashboard: InstitutionAcquisitionDashboard,
+  pendingClaims: readonly ClaimRequest[],
 ): AdminAcquisitionDashboardViewData {
+  const pendingByInstitution = buildPendingClaimByInstitutionId(pendingClaims);
   const filters = Object.freeze({
     cityId: dashboard.filters.cityId ?? "",
     districtId: dashboard.filters.districtId ?? "",
@@ -171,10 +199,12 @@ function toAdminAcquisitionDashboardViewData(
   const rows = Object.freeze(
     dashboard.rows.map((row) => {
       const institution = row.institution;
+      const institutionId = institutionIdAsString(institution.id);
       const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
       const labels = buildAdminQualityIndicatorLabels(row.qualityIndicators);
+      const pendingClaim = pendingByInstitution.get(institutionId);
       return Object.freeze({
-        id: institutionIdAsString(institution.id),
+        id: institutionId,
         name: institution.name,
         slug: institution.slug,
         typeLabel: getInstitutionTypeLabel(institution.primaryType),
@@ -196,6 +226,13 @@ function toAdminAcquisitionDashboardViewData(
         }),
         isDuplicateCandidate: Boolean(row.duplicateGroupKey),
         profileHref: `/institutions/${institution.slug}`,
+        pendingClaim: pendingClaim
+          ? Object.freeze({
+              claimRequestId: claimRequestIdAsString(pendingClaim.id),
+              applicantName: pendingClaim.applicantName,
+              applicantEmail: pendingClaim.email,
+            })
+          : null,
       });
     }),
   ) as AdminAcquisitionDashboardViewData["rows"];
@@ -289,6 +326,6 @@ function toAdminAcquisitionDashboardViewData(
       ),
     ),
     bulkActionsNote:
-      "Toplu işlemler bu sprintte yalnızca arayüz iskeletidir; onay, red, atama ve birleştirme henüz bağlanmamıştır.",
+      "Satırdaki Onayla ile bekleyen sahiplenme taleplerini onaylayabilirsiniz. Toplu onay, red, atama ve birleştirme henüz bağlı değildir.",
   });
 }

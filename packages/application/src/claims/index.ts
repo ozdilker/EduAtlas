@@ -22,6 +22,12 @@ export {
   resolveClaimInviteToken,
 } from "./resolve-claim-invite-token";
 export {
+  type ApproveClaimRequestDependencies,
+  type ApproveClaimRequestInput,
+  type ApproveClaimRequestResult,
+  approveClaimRequest,
+} from "./approve-claim-request";
+export {
   type SubmitClaimRequestDependencies,
   type SubmitClaimRequestInput,
   type SubmitClaimRequestResult,

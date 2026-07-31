@@ -305,6 +305,56 @@
   font-size: 0.85rem;
 }
 
+.ea-admin-bulk__feedback {
+  margin: 0 0 var(--ea-space-3);
+  color: var(--ea-color-text-ink);
+  font-size: 0.9rem;
+}
+
+.ea-admin-claim-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ea-admin-claim-dialog {
+  width: min(28rem, calc(100vw - 2rem));
+  margin: auto;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+  border-radius: var(--ea-radius-md);
+  background: var(--ea-color-surface);
+  color: var(--ea-color-text);
+  box-shadow: var(--ea-shadow-lg, 0 12px 40px rgb(15 23 42 / 18%));
+}
+
+.ea-admin-claim-dialog::backdrop {
+  background: color-mix(in srgb, #0f172a 45%, transparent);
+}
+
+.ea-admin-claim-dialog__panel {
+  padding: var(--ea-space-5);
+}
+
+.ea-admin-claim-dialog__title {
+  margin: 0 0 var(--ea-space-3);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.ea-admin-claim-dialog__body {
+  margin: 0 0 var(--ea-space-4);
+  color: var(--ea-color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.ea-admin-claim-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .ea-admin-table-wrap {
   overflow-x: auto;
   border: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);

@@ -1,6 +1,9 @@
 import { Button } from "../components/button";
 import { Input } from "../components/input";
-import { AdminAcquisitionBulkToolbar } from "./admin-acquisition-bulk-toolbar";
+import {
+  AdminAcquisitionBulkToolbar,
+  type ApproveInstitutionClaimAction,
+} from "./admin-acquisition-bulk-toolbar";
 import {
   type AdminAcquisitionDashboardViewData,
   buildAdminAcquisitionQueueHref,
@@ -10,12 +13,16 @@ import { AdminShell } from "./admin-shell";
 
 export type AdminAcquisitionDashboardProps = {
   data: AdminAcquisitionDashboardViewData;
+  approveClaimAction?: ApproveInstitutionClaimAction;
 };
 
 /**
  * Institution Acquisition Dashboard — operational foundation (read + UI-only bulk).
  */
-export function AdminAcquisitionDashboard({ data }: AdminAcquisitionDashboardProps) {
+export function AdminAcquisitionDashboard({
+  data,
+  approveClaimAction,
+}: AdminAcquisitionDashboardProps) {
   const stats = data.statistics;
   const { pagination } = data;
 
@@ -317,7 +324,11 @@ export function AdminAcquisitionDashboard({ data }: AdminAcquisitionDashboardPro
             </p>
           ) : null}
         </div>
-        <AdminAcquisitionBulkToolbar rows={data.rows} note={data.bulkActionsNote} />
+        <AdminAcquisitionBulkToolbar
+          rows={data.rows}
+          note={data.bulkActionsNote}
+          approveClaimAction={approveClaimAction}
+        />
         {pagination.totalPages > 1 ? (
           <nav className="ea-admin-published__pager" aria-label="Kurum edinimi sayfaları">
             {pagination.page <= 1 ? (

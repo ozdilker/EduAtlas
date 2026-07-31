@@ -1,6 +1,7 @@
 import { OwnerInstitutionProfilePage } from "@eduatlas/ui";
 import { redirect } from "next/navigation";
 import { appendOwnerInstitutionGalleryAction } from "@/server/owner/append-owner-institution-gallery-action";
+import { changeOwnerPasswordAction } from "@/server/owner/change-owner-password-action";
 import { getOwnerInstitutionProfileView } from "@/server/owner/get-owner-institution-profile";
 import { removeOwnerInstitutionBrochureAction } from "@/server/owner/remove-owner-institution-brochure-action";
 import { removeOwnerInstitutionGalleryImageAction } from "@/server/owner/remove-owner-institution-gallery-image-action";
@@ -32,6 +33,7 @@ export default async function OwnerProfilePage() {
     <OwnerInstitutionProfilePage
       data={data}
       action={updateOwnerInstitutionProfileAction}
+      changePasswordAction={changeOwnerPasswordAction}
       logoField={
         <OwnerInstitutionLogoUpload
           institutionName={data.form.institutionName}

@@ -1,6 +1,7 @@
 export {
   createEmptyOwnerBindingRepository,
   createFirebaseAuthenticationService,
+  createFirebaseOwnerAccountProvisioner,
   createFirestoreOwnerBindingRepository,
   createIdentityToolkitClient,
   DEMO_AUTH_USERS,
@@ -8,6 +9,8 @@ export {
   type DemoAuthUserSpec,
   FirebaseAuthenticationService,
   type FirebaseAuthenticationServiceOptions,
+  FirebaseOwnerAccountProvisioner,
+  type FirebaseOwnerAccountProvisionerOptions,
   type FirestoreInstitutionOwnerDocument,
   FirestoreOwnerBindingRepository,
   IdentityToolkitClient,

@@ -3105,6 +3105,47 @@
   background: color-mix(in srgb, #b91c1c 8%, transparent);
 }
 
+.ea-owner-change-password-section {
+  margin-top: var(--ea-space-8);
+  padding-top: var(--ea-space-6);
+  border-top: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+}
+
+.ea-owner-change-password__hint {
+  margin: 0 0 var(--ea-space-4);
+  color: var(--ea-color-text-muted);
+  font-size: var(--ea-font-size-small);
+  line-height: 1.5;
+}
+
+.ea-owner-change-password__fields {
+  display: grid;
+  gap: var(--ea-space-3);
+  margin-bottom: var(--ea-space-4);
+  max-width: 24rem;
+}
+
+.ea-owner-change-password__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.ea-owner-change-password__status {
+  margin: 0 0 var(--ea-space-3);
+  font-size: 0.9rem;
+}
+
+.ea-owner-change-password__status--success {
+  color: #047857;
+}
+
+.ea-owner-change-password__status--error {
+  color: #b91c1c;
+}
+
 @media (max-width: 700px) {
   .ea-owner-notifications__hero {
     flex-direction: column;

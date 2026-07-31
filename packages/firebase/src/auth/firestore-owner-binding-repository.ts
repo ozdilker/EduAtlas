@@ -13,8 +13,7 @@ export type FirestoreInstitutionOwnerDocument = {
 };
 
 /**
- * Read-only Firestore adapter for approved owner bindings.
- * Writes remain Admin claim-approval flows (separate from Identity Foundation login).
+ * Firestore adapter for approved owner bindings + Admin claim-approval writes.
  */
 export class FirestoreOwnerBindingRepository implements OwnerBindingRepository {
   constructor(private readonly firestore: Firestore) {}
@@ -59,6 +58,21 @@ export class FirestoreOwnerBindingRepository implements OwnerBindingRepository {
       .get();
 
     return Object.freeze(snapshot.docs.map((doc) => toOwnerBinding(doc)).filter(Boolean));
+  }
+
+  async save(binding: OwnerBinding): Promise<OwnerBinding> {
+    const docId = `${binding.userId}__${binding.institutionId}`.replace(/[/\\]/g, "_");
+    await this.firestore.collection(INSTITUTION_OWNERS_COLLECTION).doc(docId).set(
+      {
+        userId: binding.userId,
+        institutionId: binding.institutionId,
+        status: binding.status,
+        requestedAt: binding.requestedAt,
+        ...(binding.approvedAt ? { approvedAt: binding.approvedAt } : {}),
+      },
+      { merge: true },
+    );
+    return binding;
   }
 }
 

@@ -42,6 +42,13 @@ export {
   InMemoryOwnerBindingRepository,
 } from "./in-memory-owner-binding-repository";
 export type { OwnerBindingRepository } from "./owner-binding-repository";
+export type {
+  ChangeOwnerPasswordInput,
+  OwnerAccountProvisioner,
+  ProvisionOwnerAccountInput,
+  ProvisionOwnerAccountResult,
+} from "./owner-account-provisioner";
+export { generateTemporaryOwnerPassword } from "./generate-temporary-password";
 export {
   assertPasswordPolicy,
   isValidEmailFormat,

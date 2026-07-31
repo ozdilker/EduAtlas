@@ -8,7 +8,11 @@ import {
   InstitutionVerification,
 } from "@eduatlas/domain";
 import { describe, expect, it } from "vitest";
+import { createInMemoryOwnerBindingRepository } from "../identity/in-memory-owner-binding-repository";
+import type { OwnerAccountProvisioner } from "../identity/owner-account-provisioner";
 import type { InstitutionRepository } from "../institutions/institution-repository";
+import type { EmailService } from "../notifications/email-service";
+import { approveClaimRequest } from "./approve-claim-request";
 import type { ClaimRequestRepository } from "./claim-request-repository";
 import { ClaimSpamRejectedError, ClaimValidationError } from "./errors";
 import { submitClaimRequest } from "./submit-claim-request";
@@ -149,6 +153,116 @@ describe("submitClaimRequest application service", () => {
           message: "Merhaba",
         },
         deps,
+      ),
+    ).rejects.toBeInstanceOf(ClaimValidationError);
+  });
+});
+
+describe("approveClaimRequest application service", () => {
+  it("approves claim, verifies institution, binds owner, and emails credentials", async () => {
+    const claimRequestRepository = new InMemoryClaimRequestRepository();
+    const institutionRepository = new StubInstitutionRepository(
+      true,
+    ) as unknown as InstitutionRepository;
+    const ownerBindingRepository = createInMemoryOwnerBindingRepository();
+    const sent: Array<{ to: string; subject: string; text: string }> = [];
+    const emailService: EmailService = {
+      async send(input) {
+        sent.push({ to: input.to, subject: input.subject, text: input.text });
+        return { messageId: input.messageId ?? "msg_1", accepted: true };
+      },
+    };
+    const provisioner: OwnerAccountProvisioner = {
+      async provisionOwnerWithPassword(input) {
+        return { userId: "uid_owner_1", email: input.email, created: true };
+      },
+      async changePassword() {},
+    };
+
+    const submitted = await submitClaimRequest(
+      {
+        institutionId: "inst_1",
+        applicantName: "Ayşe Demir",
+        phone: "+90 532 111 22 33",
+        email: "ayse@example.com",
+        message: "Kurum sahibi olarak sahiplenmek istiyorum.",
+        role: "owner",
+        claimRequestId: "claim_approve_1",
+        now: "2026-07-31T10:00:00.000Z",
+      },
+      { claimRequestRepository, institutionRepository },
+    );
+
+    const result = await approveClaimRequest(
+      {
+        claimRequestId: claimRequestIdAsString(submitted.claimRequest.id),
+        institutionId: "inst_1",
+        reviewedBy: "admin_1",
+        siteBaseUrl: "https://eduatlas.com.tr",
+        now: "2026-07-31T12:00:00.000Z",
+      },
+      {
+        claimRequestRepository,
+        institutionRepository,
+        ownerBindingRepository,
+        ownerAccountProvisioner: provisioner,
+        emailService,
+      },
+    );
+
+    expect(result.claimRequest.status).toBe(ClaimRequestStatus.Approved);
+    expect(result.institution.verification).toBe(InstitutionVerification.Verified);
+    expect(result.binding.status).toBe("approved");
+    expect(result.binding.userId).toBe("uid_owner_1");
+    expect(result.ownerEmail).toBe("ayse@example.com");
+    expect(result.temporaryPassword.length).toBeGreaterThanOrEqual(10);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.to).toBe("ayse@example.com");
+    expect(sent[0]?.text).toContain(result.temporaryPassword);
+    expect(sent[0]?.text).toContain("https://eduatlas.com.tr/login");
+  });
+
+  it("rejects already processed claims", async () => {
+    const claimRequestRepository = new InMemoryClaimRequestRepository();
+    const institutionRepository = new StubInstitutionRepository(
+      true,
+    ) as unknown as InstitutionRepository;
+    const submitted = await submitClaimRequest(
+      {
+        institutionId: "inst_1",
+        applicantName: "Ayşe Demir",
+        phone: "+90 532 111 22 33",
+        email: "ayse@example.com",
+        message: "Kurum sahibi olarak sahiplenmek istiyorum.",
+        claimRequestId: "claim_approve_2",
+        now: "2026-07-31T10:00:00.000Z",
+      },
+      { claimRequestRepository, institutionRepository },
+    );
+    await claimRequestRepository.updateStatus(
+      submitted.claimRequest.id,
+      ClaimRequestStatus.Approved,
+    );
+
+    await expect(
+      approveClaimRequest(
+        { claimRequestId: claimRequestIdAsString(submitted.claimRequest.id) },
+        {
+          claimRequestRepository,
+          institutionRepository,
+          ownerBindingRepository: createInMemoryOwnerBindingRepository(),
+          ownerAccountProvisioner: {
+            async provisionOwnerWithPassword(input) {
+              return { userId: "uid", email: input.email, created: true };
+            },
+            async changePassword() {},
+          },
+          emailService: {
+            async send() {
+              return { messageId: "x", accepted: true };
+            },
+          },
+        },
       ),
     ).rejects.toBeInstanceOf(ClaimValidationError);
   });

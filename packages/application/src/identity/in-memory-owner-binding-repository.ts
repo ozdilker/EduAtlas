@@ -33,6 +33,19 @@ export class InMemoryOwnerBindingRepository implements OwnerBindingRepository {
     return Object.freeze(this.bindings.filter((binding) => binding.userId === key));
   }
 
+  async save(binding: OwnerBinding): Promise<OwnerBinding> {
+    const index = this.bindings.findIndex(
+      (item) =>
+        item.userId === binding.userId && item.institutionId === binding.institutionId,
+    );
+    if (index >= 0) {
+      this.bindings[index] = binding;
+    } else {
+      this.bindings.push(binding);
+    }
+    return binding;
+  }
+
   /** Test/admin helper — not used by login flows. */
   seed(binding: OwnerBinding): void {
     this.bindings.push(binding);
