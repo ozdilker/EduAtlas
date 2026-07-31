@@ -130,10 +130,7 @@ describe("institution quality engine", () => {
     });
 
     const quality = evaluateInstitutionQuality({ institution });
-    expect(quality.missingFields).not.toContain("programsSummary");
-    expect(quality.missingFields).not.toContain("ageOrLevelFocus");
-    expect(quality.missingFields).not.toContain("categories");
-    expect(quality.missingFields).not.toContain("location.coordinates");
-    expect(quality.score).toBeGreaterThanOrEqual(90);
+    expect(quality.missingFields).toEqual([]);
+    expect(quality.score).toBe(100);
   });
 });

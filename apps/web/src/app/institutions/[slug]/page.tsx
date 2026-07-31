@@ -1,4 +1,4 @@
-import { getInstitutionTypeSlug, institutionIdAsString } from "@eduatlas/domain";
+import { getInstitutionTypeSlug, InstitutionVerification, institutionIdAsString } from "@eduatlas/domain";
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import { buildInstitutionPageSeo } from "@eduatlas/seo";
 import {
@@ -128,7 +128,12 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
               profile={profile}
               institutionId={institutionIdAsString(institution.id)}
               leadAction={submitInstitutionLeadAction}
-              claimAction={submitInstitutionClaimAction}
+              claimAction={
+                institution.verification === InstitutionVerification.Verified ||
+                institution.verification === InstitutionVerification.Pending
+                  ? undefined
+                  : submitInstitutionClaimAction
+              }
             />
           </Container>
         </div>

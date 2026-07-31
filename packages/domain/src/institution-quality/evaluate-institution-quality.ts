@@ -153,7 +153,6 @@ function evalContact(institution: Institution): DimensionEval {
   let earned = 0;
   const hasPhone = Boolean(institution.contact.phone?.trim());
   const hasEmail = Boolean(institution.contact.email?.trim());
-  const hasWhatsapp = Boolean(institution.contact.whatsappNumber?.trim());
 
   if (hasPhone) earned += 7;
   else {
@@ -169,7 +168,7 @@ function evalContact(institution: Institution): DimensionEval {
     );
   }
 
-  if (hasEmail) earned += 3;
+  if (hasEmail) earned += 5;
   else {
     missingFields.push("contact.email");
     issues.push(
@@ -182,8 +181,6 @@ function evalContact(institution: Institution): DimensionEval {
       }),
     );
   }
-
-  if (hasWhatsapp) earned += 2;
 
   if (!hasPhone && !hasEmail) {
     issues.push(
@@ -521,8 +518,7 @@ function evalSocialLinks(institution: Institution): DimensionEval {
   const issues: QualityIssue[] = [];
   let earned = 0;
 
-  if (socialCount >= 2) earned = max;
-  else if (socialCount === 1) earned = 3;
+  if (socialCount >= 1) earned = max;
   else {
     missingFields.push("socialLinks");
     issues.push(
