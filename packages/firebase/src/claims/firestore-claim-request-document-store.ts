@@ -41,6 +41,16 @@ export class FirestoreClaimRequestDocumentStore implements ClaimRequestDocumentS
       .sort((left, right) => right.data.createdAt.localeCompare(left.data.createdAt));
   }
 
+  async listAll(): Promise<ClaimRequestDocumentRecord[]> {
+    const snapshot = await this.collection().get();
+    return snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        data: FirestoreClaimRequestMapper.parseDocument(doc.data()),
+      }))
+      .sort((left, right) => right.data.createdAt.localeCompare(left.data.createdAt));
+  }
+
   async create(id: string, data: FirestoreClaimRequestDocument): Promise<void> {
     const ref = this.collection().doc(id);
     const existing = await ref.get();

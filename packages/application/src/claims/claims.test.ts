@@ -24,6 +24,14 @@ class InMemoryClaimRequestRepository implements ClaimRequestRepository {
     return [...this.byId.values()].filter((claim) => claim.institutionId.value === institutionId);
   }
 
+  async listRecent(options: { status?: ClaimRequestStatus; limit?: number } = {}) {
+    let items = [...this.byId.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    if (options.status) {
+      items = items.filter((claim) => claim.status === options.status);
+    }
+    return items.slice(0, options.limit ?? 20);
+  }
+
   async save(claimRequest: ClaimRequest) {
     this.byId.set(claimRequestIdAsString(claimRequest.id), claimRequest);
     return claimRequest;
@@ -43,33 +51,47 @@ class InMemoryClaimRequestRepository implements ClaimRequestRepository {
   }
 }
 
-class StubInstitutionRepository implements Pick<InstitutionRepository, "getById"> {
-  constructor(private readonly exists: boolean) {}
+class StubInstitutionRepository implements Pick<InstitutionRepository, "getById" | "update"> {
+  private institution;
+
+  constructor(exists: boolean) {
+    this.institution = exists
+      ? createPublishedInstitution({
+          id: "inst_1",
+          name: "Test Kurum",
+          slug: "test-kurum",
+          primaryType: InstitutionType.Kindergarten,
+          verification: InstitutionVerification.Unclaimed,
+          location: {
+            cityId: "city_istanbul",
+            districtId: "dist_kadikoy",
+            address: "Test",
+          },
+          shortDescription: "Test açıklama",
+          publishedAt: "2026-07-14T10:00:00.000Z",
+          createdAt: "2026-07-14T10:00:00.000Z",
+          updatedAt: "2026-07-14T10:00:00.000Z",
+        })
+      : null;
+  }
 
   async getById(id: ReturnType<typeof createInstitutionId>) {
-    if (!this.exists) return null;
-    return createPublishedInstitution({
-      id: id.value,
-      name: "Test Kurum",
-      slug: "test-kurum",
-      primaryType: InstitutionType.Kindergarten,
-      verification: InstitutionVerification.Unclaimed,
-      location: {
-        cityId: "city_istanbul",
-        districtId: "dist_kadikoy",
-        address: "Test",
-      },
-      shortDescription: "Test açıklama",
-      publishedAt: "2026-07-14T10:00:00.000Z",
-      createdAt: "2026-07-14T10:00:00.000Z",
-      updatedAt: "2026-07-14T10:00:00.000Z",
-    });
+    if (!this.institution || this.institution.id.value !== id.value) return null;
+    return this.institution;
+  }
+
+  async update(institution: NonNullable<typeof this.institution>) {
+    this.institution = institution;
+    return institution;
   }
 }
 
 describe("submitClaimRequest application service", () => {
   it("stores a valid claim request as pending through the repository", async () => {
     const claimRequestRepository = new InMemoryClaimRequestRepository();
+    const institutionRepository = new StubInstitutionRepository(
+      true,
+    ) as unknown as InstitutionRepository;
     const result = await submitClaimRequest(
       {
         institutionId: "inst_1",
@@ -83,14 +105,16 @@ describe("submitClaimRequest application service", () => {
       },
       {
         claimRequestRepository,
-        institutionRepository: new StubInstitutionRepository(
-          true,
-        ) as unknown as InstitutionRepository,
+        institutionRepository,
       },
     );
 
     expect(result.claimRequest.status).toBe(ClaimRequestStatus.Pending);
     expect(await claimRequestRepository.getById(result.claimRequest.id)).not.toBeNull();
+    const updatedInstitution = await institutionRepository.getById(
+      result.claimRequest.institutionId,
+    );
+    expect(updatedInstitution?.verification).toBe(InstitutionVerification.Pending);
   });
 
   it("rejects honeypot spam and invalid payloads", async () => {

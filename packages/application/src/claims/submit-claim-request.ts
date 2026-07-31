@@ -3,7 +3,10 @@ import {
   type ClaimRequest,
   ClaimRequestStatus,
   createClaimRequest,
+  createInstitution,
   createInstitutionId,
+  InstitutionVerification,
+  institutionIdAsString,
 } from "@eduatlas/domain";
 import type { InstitutionRepository } from "../institutions/institution-repository";
 import { emitClaimSubmitted } from "../notifications/emit-notification-events";
@@ -51,6 +54,7 @@ export type SubmitClaimRequestDependencies = {
 
 /**
  * Application service: validate + store an institution ownership claim request.
+ * Marks unclaimed institutions as verification=pending so admin queues surface them.
  * Notifications are optional and never fail the claim write.
  */
 export async function submitClaimRequest(
@@ -108,6 +112,49 @@ export async function submitClaimRequest(
   }
 
   const saved = await deps.claimRequestRepository.save(claimRequest);
+
+  if (
+    institution.verification === InstitutionVerification.Unclaimed ||
+    institution.verification === InstitutionVerification.Revoked
+  ) {
+    try {
+      await deps.institutionRepository.update(
+        createInstitution({
+          id: institutionIdAsString(institution.id),
+          name: institution.name,
+          slug: institution.slug,
+          primaryType: institution.primaryType,
+          status: institution.status,
+          verification: InstitutionVerification.Pending,
+          location: institution.location,
+          contact: institution.contact,
+          socialLinks: institution.socialLinks,
+          shortDescription: institution.shortDescription,
+          longDescription: institution.longDescription,
+          programsSummary: institution.programsSummary,
+          ageOrLevelFocus: institution.ageOrLevelFocus,
+          logoUrl: institution.logoUrl,
+          coverImageUrl: institution.coverImageUrl,
+          galleryImages: institution.galleryImages,
+          workingHours: institution.workingHours,
+          promoVideoUrl: institution.promoVideoUrl,
+          brochurePdfUrl: institution.brochurePdfUrl,
+          amenities: institution.amenities,
+          educationPrograms: institution.educationPrograms,
+          faqs: institution.faqs,
+          isPremium: institution.isPremium,
+          qualityScore: institution.qualityScore,
+          publishedAt: institution.publishedAt,
+          createdAt: institution.createdAt,
+          updatedAt: now,
+          updatedByUserId: institution.updatedByUserId,
+          leadCounters: institution.leadCounters,
+        }),
+      );
+    } catch {
+      // Fail-open: claim request is the source of truth for the admin inbox.
+    }
+  }
 
   const inviteTokenId = input.claimInviteTokenId?.trim();
   if (inviteTokenId && deps.claimInviteTokenRepository) {

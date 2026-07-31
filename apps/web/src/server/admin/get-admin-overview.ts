@@ -5,8 +5,8 @@ import {
   summarizeAiWorkforceFoundation,
 } from "@eduatlas/application";
 import {
+  ClaimRequestStatus,
   InstitutionStatus,
-  InstitutionVerification,
   institutionIdAsString,
   RecommendationPriority,
   RecommendationType,
@@ -18,6 +18,7 @@ import {
   type AdminOverviewViewData,
   getAdminAcquisitionStatusLabel,
 } from "@eduatlas/ui";
+import { getClaimRequestRepository } from "../claims/claim-request-repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 
@@ -26,23 +27,29 @@ const AI_LIMIT = 8;
 
 /**
  * Admin Overview landing view — pure composition of existing acquisition,
- * review, and AI workforce foundation services. No new business rules,
- * no repository writes, no AI automation.
+ * review, claim_requests, and AI workforce foundation services.
  */
 export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
-  const institutionRepository = await getInstitutionRepository();
+  const [institutionRepository, claimRequestRepository] = await Promise.all([
+    getInstitutionRepository(),
+    getClaimRequestRepository(),
+  ]);
   const deps = {
     institutionRepository,
     resolveCityLabel: (id: string) => resolveGeoLabels(id, "dist_unknown").cityName,
     resolveDistrictLabel: (cId: string, dId: string) => resolveGeoLabels(cId, dId).districtName,
   };
 
-  const [acquisition, review] = await Promise.all([
+  const [acquisition, review, pendingClaims] = await Promise.all([
     getInstitutionAcquisitionDashboard(
       { queue: "all" },
       { ...deps, resolveTypeLabel: getInstitutionTypeLabel },
     ),
     getInstitutionReviewQueue({ queue: "draft" }, deps),
+    claimRequestRepository.listRecent({
+      status: ClaimRequestStatus.Pending,
+      limit: 200,
+    }),
   ]);
 
   const workforce = createAiWorkforceOrchestrator();
@@ -57,10 +64,30 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
   const total = acquisition.statistics.totalInstitutions;
   const queueCounts = acquisition.statistics.queueCounts;
   const quality = acquisition.statistics.qualityDistribution;
-  const claimsAwaitingReview = Math.max(0, queueCounts.claimed - queueCounts.verified);
+  const claimsAwaitingReview = Math.max(
+    pendingClaims.length,
+    Math.max(0, queueCounts.claimed - queueCounts.verified),
+  );
   const pendingReviewCount = review.queueCounts.needs_review;
 
   const institutions = acquisition.rows.map((row) => row.institution);
+  const institutionsById = new Map(
+    institutions.map((institution) => [institutionIdAsString(institution.id), institution]),
+  );
+
+  const latestPendingClaims = pendingClaims.slice(0, ACTIVITY_LIMIT);
+
+  // Fill names for claim rows that may sit outside the acquisition page slice.
+  await Promise.all(
+    latestPendingClaims.map(async (claim) => {
+      const id = claim.institutionId.value;
+      if (institutionsById.has(id)) return;
+      const institution = await institutionRepository.getById(claim.institutionId);
+      if (institution) {
+        institutionsById.set(id, institution);
+      }
+    }),
+  );
 
   const latestInstitutions = [...institutions]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
@@ -74,22 +101,16 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
       }),
     );
 
-  const latestClaims = institutions
-    .filter(
-      (institution) =>
-        institution.verification === InstitutionVerification.Pending ||
-        institution.verification === InstitutionVerification.Verified,
-    )
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .slice(0, ACTIVITY_LIMIT)
-    .map((institution) =>
-      Object.freeze({
-        id: `claim_${institutionIdAsString(institution.id)}`,
-        title: institution.name,
-        meta: `${institution.verification === InstitutionVerification.Pending ? "Doğrulama bekliyor" : "Doğrulanmış sahip"} · ${dateTimeFormat.format(new Date(institution.updatedAt))}`,
-        href: `/admin/acquisition?queue=claimed&q=${encodeURIComponent(institution.name)}`,
-      }),
-    );
+  const latestClaims = latestPendingClaims.map((claim) => {
+    const institution = institutionsById.get(claim.institutionId.value);
+    const institutionName = institution?.name ?? claim.institutionId.value;
+    return Object.freeze({
+      id: claim.id.value,
+      title: institutionName,
+      meta: `${claim.applicantName} · ${claim.email} · ${dateTimeFormat.format(new Date(claim.createdAt))}`,
+      href: `/admin/acquisition?queue=claimed&q=${encodeURIComponent(institutionName)}`,
+    });
+  });
 
   const latestImports = institutions
     .filter((institution) => institution.status === InstitutionStatus.Draft)
@@ -135,7 +156,7 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
       id: "claims",
       label: "Sahiplenme bekleyen",
       value: claimsAwaitingReview,
-      hint: "Doğrulama bekleyen sahiplenmeler",
+      hint: "Bekleyen sahiplenme talepleri",
       href: "/admin/acquisition?queue=claimed",
     }),
     Object.freeze({

@@ -1,4 +1,7 @@
-import type { ClaimRequestRepository } from "@eduatlas/application";
+import type {
+  ClaimRequestRepository,
+  ListRecentClaimRequestsOptions,
+} from "@eduatlas/application";
 import {
   type ClaimRequest,
   type ClaimRequestId,
@@ -41,6 +44,19 @@ export class FirestoreClaimRequestRepository implements ClaimRequestRepository {
     const records = await this.store.listByInstitutionId(institutionId);
     return Object.freeze(
       records.map((record) => FirestoreClaimRequestMapper.toDomain(record.id, record.data)),
+    );
+  }
+
+  async listRecent(options: ListRecentClaimRequestsOptions = {}): Promise<readonly ClaimRequest[]> {
+    const limit = Math.max(1, options.limit ?? 20);
+    const records = await this.store.listAll();
+    const filtered = options.status
+      ? records.filter((record) => record.data.status === options.status)
+      : records;
+    return Object.freeze(
+      filtered
+        .slice(0, limit)
+        .map((record) => FirestoreClaimRequestMapper.toDomain(record.id, record.data)),
     );
   }
 

@@ -3,7 +3,7 @@ export {
   isClaimSpamSubmission,
 } from "./abuse-guards";
 export type { ClaimInviteTokenRepository } from "./claim-invite-token-repository";
-export type { ClaimRequestRepository } from "./claim-request-repository";
+export type { ClaimRequestRepository, ListRecentClaimRequestsOptions } from "./claim-request-repository";
 export {
   createInMemoryClaimInviteTokenRepository,
   InMemoryClaimInviteTokenRepository,

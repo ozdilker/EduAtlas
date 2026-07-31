@@ -22,6 +22,12 @@ export class InMemoryClaimRequestDocumentStore implements ClaimRequestDocumentSt
       .sort((left, right) => right.data.createdAt.localeCompare(left.data.createdAt));
   }
 
+  async listAll(): Promise<ClaimRequestDocumentRecord[]> {
+    return [...this.docs.entries()]
+      .map(([id, data]) => ({ id, data }))
+      .sort((left, right) => right.data.createdAt.localeCompare(left.data.createdAt));
+  }
+
   async create(id: string, data: FirestoreClaimRequestDocument): Promise<void> {
     if (this.docs.has(id)) {
       throw new Error(`CLAIM_REQUEST_DOC_EXISTS:${id}`);

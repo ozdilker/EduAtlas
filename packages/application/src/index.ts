@@ -42,6 +42,7 @@ export {
   ClaimRateLimitedError,
   type ClaimInviteTokenRepository,
   type ClaimRequestRepository,
+  type ListRecentClaimRequestsOptions,
   ClaimSpamRejectedError,
   ClaimValidationError,
   createInMemoryClaimInviteTokenRepository,
