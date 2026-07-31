@@ -1008,6 +1008,62 @@
   gap: var(--ea-space-6);
 }
 
+.ea-owner-billing__period {
+  display: flex;
+  justify-content: center;
+}
+
+.ea-owner-billing__period-track {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: min(100%, 16rem);
+  padding: 0.25rem;
+  border: 1px solid var(--ea-color-border);
+  border-radius: var(--ea-radius-md);
+  background: color-mix(in srgb, var(--ea-color-neutral-25) 80%, var(--ea-color-surface));
+}
+
+.ea-owner-billing__period-thumb {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: calc(50% - 0.25rem);
+  border-radius: calc(var(--ea-radius-md) - 2px);
+  background: var(--ea-color-surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ea-color-text-ink) 12%, transparent);
+  transition: transform 180ms var(--ea-motion-ease);
+  pointer-events: none;
+}
+
+.ea-owner-billing__period-thumb--yearly {
+  transform: translateX(100%);
+}
+
+.ea-owner-billing__period-option {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--ea-color-text-muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.ea-owner-billing__period-option--active {
+  color: var(--ea-color-text-ink);
+}
+
+.ea-owner-billing__period-option:focus-visible {
+  outline: 2px solid var(--ea-color-focus);
+  outline-offset: 2px;
+}
+
 .ea-owner-billing__grid {
   display: grid;
   gap: var(--ea-space-4);
