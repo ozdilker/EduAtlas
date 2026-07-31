@@ -12,12 +12,13 @@ function keepLeadingLetters(namePart: string, keep = 1): string {
 export function maskPersonName(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return "*****";
-  const parts = trimmed.split(/\s+/);
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "*****";
   if (parts.length === 1) {
-    return keepLeadingLetters(parts[0], 2);
+    return keepLeadingLetters(parts[0] ?? "", 2);
   }
-  const first = parts[0];
-  const last = parts[parts.length - 1];
+  const first = parts[0] ?? "";
+  const last = parts[parts.length - 1] ?? "";
   const middle = parts.slice(1, -1).map((p) => keepLeadingLetters(p, 1));
   return [first, ...middle, keepLeadingLetters(last, 1)].join(" ");
 }
