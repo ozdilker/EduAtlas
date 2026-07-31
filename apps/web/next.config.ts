@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: workspaceRoot,
   },
+  // Keep Admin SDK outside the Turbopack graph; pair with jose@4 override
+  // so jwks-rsa can require() it on Vercel (jose@6 is ESM-only).
+  serverExternalPackages: ["firebase-admin", "jose", "jwks-rsa"],
   experimental: {
     // Owner profile uploads: logo 5MB, cover/gallery 10MB, brochure 20MB.
     serverActions: {

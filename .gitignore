@@ -50,3 +50,6 @@ apps/web/public/media/
 # ide
 .idea
 .vscode
+
+.vercel
+.env*
