@@ -78,16 +78,20 @@ export function OwnerInstitutionProfilePage({
           brochureField={brochureField}
         />
 
-        {changeEmailAction && accountEmail ? (
-          <section className="ea-owner-change-email-section" aria-label="Giriş e-postası">
-            <OwnerChangeEmailForm currentEmail={accountEmail} action={changeEmailAction} />
-          </section>
-        ) : null}
+        {(changeEmailAction && accountEmail) || changePasswordAction ? (
+          <div className="ea-owner-account-security">
+            {changeEmailAction && accountEmail ? (
+              <section className="ea-owner-account-security__card" aria-label="Giriş e-postası">
+                <OwnerChangeEmailForm currentEmail={accountEmail} action={changeEmailAction} />
+              </section>
+            ) : null}
 
-        {changePasswordAction ? (
-          <section className="ea-owner-change-password-section" aria-label="Hesap şifresi">
-            <OwnerChangePasswordForm action={changePasswordAction} />
-          </section>
+            {changePasswordAction ? (
+              <section className="ea-owner-account-security__card" aria-label="Hesap şifresi">
+                <OwnerChangePasswordForm action={changePasswordAction} />
+              </section>
+            ) : null}
+          </div>
         ) : null}
       </Container>
     </OwnerPortalShell>

@@ -3160,16 +3160,24 @@
   background: color-mix(in srgb, #b91c1c 8%, transparent);
 }
 
-.ea-owner-change-password-section {
+.ea-owner-account-security {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ea-space-4);
   margin-top: var(--ea-space-8);
-  padding-top: var(--ea-space-6);
-  border-top: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+  align-items: start;
 }
 
-.ea-owner-change-email-section {
-  margin-top: var(--ea-space-8);
-  padding-top: var(--ea-space-6);
-  border-top: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+.ea-owner-account-security__card {
+  padding: var(--ea-space-5);
+  border: 1px solid var(--ea-color-border);
+  border-radius: var(--ea-radius-md);
+  background: var(--ea-color-surface);
+  min-width: 0;
+}
+
+.ea-owner-account-security__card:focus-within {
+  border-color: var(--ea-color-primary-100);
 }
 
 .ea-owner-change-password__hint,
@@ -3192,7 +3200,7 @@
   display: grid;
   gap: var(--ea-space-3);
   margin-bottom: var(--ea-space-4);
-  max-width: 24rem;
+  max-width: none;
 }
 
 .ea-owner-change-password__field,
@@ -3218,6 +3226,12 @@
 .ea-owner-change-password__status--error,
 .ea-owner-change-email__status--error {
   color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .ea-owner-account-security {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 700px) {

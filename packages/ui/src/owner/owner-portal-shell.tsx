@@ -118,9 +118,6 @@ export function OwnerPortalShell({
           ) : null}
 
           <nav className="ea-owner-shell__nav" aria-label="Kurum paneli yardımcı bağlantılar">
-            <a href="/" className="ea-owner-shell__nav-link" onClick={() => setMenuOpen(false)}>
-              Siteye dön
-            </a>
             {logoutSlot ?? (
               <form action="/logout" method="post" className="ea-owner-shell__logout">
                 <button
