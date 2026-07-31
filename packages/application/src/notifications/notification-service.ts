@@ -15,6 +15,7 @@ import type { EmailService } from "./email-service";
 import { renderNotificationEmail } from "./email-templates";
 import { buildNotificationCopy, type NotificationEventPayload } from "./notification-copy";
 import type { NotificationRepository } from "./notification-repository";
+import { resolveEmailCtaHref } from "./resolve-email-cta-href";
 
 export type EmitNotificationInput = NotificationEventPayload & {
   userId: string;
@@ -34,6 +35,8 @@ export type EmitNotificationResult = Readonly<{
 export type NotificationServiceDependencies = {
   notificationRepository: NotificationRepository;
   emailService: EmailService;
+  /** Public site origin for absolute email CTA links (e.g. https://eduatlas.com.tr). */
+  siteBaseUrl?: string;
 };
 
 /**
@@ -113,7 +116,7 @@ export class NotificationService {
         type: input.type,
         title: copy.title,
         body: copy.body,
-        href: copy.href,
+        href: resolveEmailCtaHref(copy.href, this.deps.siteBaseUrl),
       });
       const result = await this.deps.emailService.send({
         to: input.email.trim().toLowerCase(),

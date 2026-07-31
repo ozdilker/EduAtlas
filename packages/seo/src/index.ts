@@ -24,7 +24,7 @@ export {
   type CategorySeoContent,
   type InstitutionPageSeoContent,
 } from "./pages";
-export { createSeoSiteConfig, DEFAULT_SEO_SITE_URL } from "./site";
+export { createSeoSiteConfig, DEFAULT_SEO_SITE_URL, resolveSiteOrigin } from "./site";
 export { buildTitle } from "./title";
 export { buildTwitterCard } from "./twitter";
 export type {

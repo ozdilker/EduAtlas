@@ -56,7 +56,17 @@ export async function sendInstitutionClaimInviteEmail(
   const leadId = leadIdAsString(input.lead.id);
   const to = input.institution.contact.email?.trim();
   const from = (input.mailFrom?.trim() || EDUATLAS_MAIL_FROM_DEFAULT).toLowerCase();
-  const siteBaseUrl = (input.siteBaseUrl?.trim() || "https://eduatlas.com").replace(/\/+$/, "");
+  const siteBaseUrl = (input.siteBaseUrl?.trim() || "https://eduatlas.com.tr").replace(/\/+$/, "");
+  let origin = siteBaseUrl;
+  try {
+    const parsed = new URL(siteBaseUrl.includes("://") ? siteBaseUrl : `https://${siteBaseUrl}`);
+    origin = parsed.hostname ? `${parsed.protocol}//${parsed.host}` : "https://eduatlas.com.tr";
+  } catch {
+    origin = "https://eduatlas.com.tr";
+  }
+  if (!origin || origin === "http:" || origin === "https:" || origin.endsWith("://")) {
+    origin = "https://eduatlas.com.tr";
+  }
   const provider = deps.emailService.providerName?.trim() || "unknown";
 
   const persistLog = async (
@@ -111,7 +121,7 @@ export async function sendInstitutionClaimInviteEmail(
     });
     await deps.claimInviteTokenRepository.save(token);
 
-    const claimHref = `${siteBaseUrl}/claim?token=${encodeURIComponent(rawToken)}`;
+    const claimHref = `${origin}/claim?token=${encodeURIComponent(rawToken)}`;
     const rendered = renderEmailTemplate({
       title: "EduAtlas — Kurumunuz için yeni bilgi talebi",
       preview: "Veliler kurumunuzu EduAtlas üzerinden arıyor. Profilinizi ücretsiz sahiplenin.",

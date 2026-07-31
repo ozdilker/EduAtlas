@@ -98,3 +98,19 @@ describe("email templates", () => {
     expect(rendered.subject).toContain("Sahiplenme");
   });
 });
+
+describe("resolveEmailCtaHref", () => {
+  it("joins relative paths to a valid origin", async () => {
+    const { resolveEmailCtaHref } = await import("./resolve-email-cta-href");
+    expect(resolveEmailCtaHref("/owner/onboarding", "https://eduatlas.com.tr")).toBe(
+      "https://eduatlas.com.tr/owner/onboarding",
+    );
+  });
+
+  it("falls back when site base is malformed like http://", async () => {
+    const { resolveEmailCtaHref } = await import("./resolve-email-cta-href");
+    expect(resolveEmailCtaHref("/owner/onboarding", "http://")).toBe(
+      "https://eduatlas.com.tr/owner/onboarding",
+    );
+  });
+});

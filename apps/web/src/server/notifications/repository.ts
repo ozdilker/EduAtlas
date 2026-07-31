@@ -15,6 +15,7 @@ import {
   createFirestoreNotificationRepository,
   getAdminFirestore,
 } from "@eduatlas/firebase/server";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 import { tryCreateSmtpEmailServiceFromEnv } from "./smtp-email-service";
 
 let notificationRepositoryPromise: Promise<NotificationRepository> | undefined;
@@ -78,6 +79,7 @@ export async function getNotificationService(): Promise<NotificationService> {
       createNotificationService({
         notificationRepository: await getNotificationRepository(),
         emailService: await getEmailService(),
+        siteBaseUrl: getSeoSiteConfig().siteUrl,
       }))();
   }
   return notificationServicePromise;

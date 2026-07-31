@@ -1,6 +1,29 @@
 import type { SeoSiteConfig } from "./types";
 
-export const DEFAULT_SEO_SITE_URL = "https://eduatlas.com";
+export const DEFAULT_SEO_SITE_URL = "https://eduatlas.com.tr";
+
+/**
+ * Returns a usable https origin, or null when the value has no host (e.g. "http://").
+ */
+export function resolveSiteOrigin(siteUrl: string | undefined): string | null {
+  const trimmed = siteUrl?.trim().replace(/\/+$/, "") ?? "";
+  if (!trimmed || trimmed === "http:" || trimmed === "https:") {
+    return null;
+  }
+
+  try {
+    const withProtocol = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+      ? trimmed
+      : `https://${trimmed}`;
+    const url = new URL(withProtocol);
+    if (!url.hostname || url.hostname === "http" || url.hostname === "https") {
+      return null;
+    }
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Static demo site defaults for reusable SEO builders.
@@ -13,7 +36,7 @@ export function createSeoSiteConfig(
   },
 ): SeoSiteConfig {
   const siteName = overrides?.siteName?.trim() || "EduAtlas";
-  const siteUrl = (overrides?.siteUrl?.trim() || DEFAULT_SEO_SITE_URL).replace(/\/+$/, "");
+  const siteUrl = resolveSiteOrigin(overrides?.siteUrl) ?? DEFAULT_SEO_SITE_URL;
 
   return {
     siteName,

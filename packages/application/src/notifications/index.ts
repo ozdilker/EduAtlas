@@ -38,6 +38,7 @@ export {
   type NotificationCopy,
   type NotificationEventPayload,
 } from "./notification-copy";
+export { resolveEmailCtaHref } from "./resolve-email-cta-href";
 export type {
   ListNotificationsOptions,
   NotificationRepository,
