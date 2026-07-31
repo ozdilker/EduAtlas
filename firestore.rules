@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /institutions/{institutionId} {
+      allow read: if resource.data.lifecycleStatus == 'published';
+      allow write: if false;
+    }
+
+    // Public geography reference — published cities/districts only.
+    match /cities/{cityId} {
+      allow read: if resource.data.lifecycleStatus == 'published';
+      allow write: if false;
+    }
+
+    match /districts/{districtId} {
+      allow read: if resource.data.lifecycleStatus == 'published';
+      allow write: if false;
+    }
+
+    // Public education taxonomy catalogs — published items only.
+    match /institution_types/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+    match /programs/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+    match /educational_approaches/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+    match /languages/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+    match /age_groups/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+    match /exam_types/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+    match /course_categories/{itemId} {
+      allow read: if resource.data.status == 'published';
+      allow write: if false;
+    }
+
+    // Leads are PII — create/read only via Admin SDK / trusted server paths.
+    match /leads/{leadId} {
+      allow read, write: if false;
+    }
+
+    // Claim requests are sensitive — Admin SDK / trusted server paths only.
+    match /claim_requests/{claimRequestId} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

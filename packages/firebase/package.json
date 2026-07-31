@@ -1,0 +1,40 @@
+{
+  "name": "@eduatlas/firebase",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./server": "./src/server/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./institutions": "./src/institutions/index.ts",
+    "./leads": "./src/leads/index.ts",
+    "./claims": "./src/claims/index.ts",
+    "./education-catalog": "./src/education-catalog/index.ts",
+    "./geography": "./src/geography/index.ts",
+    "./media": "./src/media/index.ts",
+    "./storage": "./src/storage/index.ts",
+    "./notifications": "./src/notifications/index.ts",
+    "./site": "./src/site/index.ts",
+    "./seeds": "./src/seeds/index.ts",
+    "./monitoring": "./src/monitoring/index.ts",
+    "./cache": "./src/cache/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@eduatlas/application": "*",
+    "@eduatlas/config": "*",
+    "@eduatlas/domain": "*",
+    "firebase": "^12.16.0",
+    "firebase-admin": "^14.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

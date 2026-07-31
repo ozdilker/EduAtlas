@@ -1,0 +1,18 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--ea-color-background);
+  --color-foreground: var(--ea-color-text);
+  --color-ink: var(--ea-color-text-ink);
+  --color-primary: var(--ea-color-primary-600);
+  --color-primary-strong: var(--ea-color-primary-700);
+  --color-surface: var(--ea-color-surface);
+  --color-border: var(--ea-color-border);
+  --font-sans: var(--font-plus-jakarta-sans), var(--ea-font-sans);
+  --font-display: var(--font-fraunces), var(--ea-font-display);
+}
+
+:root {
+  --ea-font-sans: var(--font-plus-jakarta-sans), "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  --ea-font-display: var(--font-fraunces), "Fraunces", "Plus Jakarta Sans", Georgia, serif;
+}

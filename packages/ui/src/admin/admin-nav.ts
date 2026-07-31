@@ -1,0 +1,38 @@
+import type { AdminShellNavItem } from "./admin-shell";
+
+export type AdminNavBadges = Readonly<{
+  readonly review?: number;
+  readonly acquisition?: number;
+  readonly published?: number;
+}>;
+
+/**
+ * Shared admin sidebar — Overview is the landing destination for `/admin`.
+ */
+export function buildAdminNavItems(badges: AdminNavBadges = {}): readonly AdminShellNavItem[] {
+  return Object.freeze([
+    { id: "overview", label: "Genel bakış", href: "/admin" },
+    { id: "operations", label: "Operasyon", href: "/admin/operations" },
+    {
+      id: "acquisition",
+      label: "Kurum edinimi",
+      href: "/admin/acquisition",
+      ...(typeof badges.acquisition === "number" ? { badge: badges.acquisition } : {}),
+    },
+    { id: "import", label: "İçe aktarma", href: "/admin/import" },
+    {
+      id: "published",
+      label: "Yayındaki kurumlar",
+      href: "/admin/published",
+      ...(typeof badges.published === "number" ? { badge: badges.published } : {}),
+    },
+    { id: "visuals", label: "Site görselleri", href: "/admin/visuals" },
+    {
+      id: "review",
+      label: "İnceleme kuyruğu",
+      href: "/admin/review",
+      ...(typeof badges.review === "number" ? { badge: badges.review } : {}),
+    },
+    { id: "site", label: "Ana siteye dön", href: "/" },
+  ]);
+}

@@ -1,0 +1,132 @@
+@import "./tokens.css";
+@import "./brand.css";
+@import "./logo.css";
+@import "./components.css";
+@import "./layout.css";
+@import "./polish.css";
+@import "./identity.css";
+@import "./search.css";
+@import "./institution-card.css";
+@import "./search-results.css";
+@import "./institution-profile.css";
+@import "./city-landing.css";
+@import "./category-landing.css";
+@import "./home.css";
+@import "./owner-portal.css";
+@import "./admin.css";
+@import "./auth.css";
+@import "./parent-profile.css";
+
+.ea-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--ea-color-background);
+  color: var(--ea-color-text);
+  font-family: var(--ea-font-sans);
+  font-size: var(--ea-font-size-body);
+  line-height: var(--ea-line-height-body);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--ea-color-text-ink);
+  font-weight: var(--ea-font-weight-heading);
+  letter-spacing: var(--ea-letter-tight);
+}
+
+a {
+  color: var(--ea-color-link);
+  transition: color var(--ea-motion-hover-duration) var(--ea-motion-ease);
+}
+
+a:hover {
+  color: var(--ea-color-primary-700);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ea-color-focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ea-color-primary-100) 80%, transparent);
+  color: var(--ea-color-text-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .ea-button,
+  .ea-input,
+  .ea-card,
+  .ea-card--interactive,
+  .ea-chip,
+  .ea-hub-index__card,
+  .ea-header__nav-link,
+  .ea-header__logo,
+  .ea-institution-card__surface.ea-card,
+  .ea-institution-card__img,
+  .ea-owner-widget,
+  .ea-owner-lead-list__item,
+  .ea-owner-portal-tabs__tab,
+  .ea-owner-leads-tabs__tab,
+  .ea-owner-shell__nav-link,
+  .ea-owner-pipeline__card,
+  .ea-owner-pipeline__column,
+  .ea-owner-portal__drawer-dialog,
+  .ea-owner-portal__drawer-dialog::backdrop,
+  .ea-home-hero__content,
+  .ea-home-stats__item,
+  .ea-search-hero,
+  .ea-city-landing__header,
+  .ea-category-landing__header,
+  .ea-owner-portal,
+  .ea-status-block__spinner,
+  .ea-search-status__spinner,
+  .ea-admin-shell__nav-link {
+    transition: none;
+    animation: none;
+  }
+
+  .ea-owner-pipeline__card--dragging,
+  .ea-card--interactive:hover,
+  .ea-institution-card__surface.ea-card:hover,
+  .ea-hub-index__card:hover,
+  .ea-institution-card:hover .ea-institution-card__img {
+    transform: none;
+  }
+
+  .ea-owner-placeholder-chart::after,
+  .ea-institution-card--skeleton .ea-institution-card__skeleton-block,
+  .ea-institution-card--skeleton .ea-institution-card__skeleton-line {
+    animation: none;
+  }
+}

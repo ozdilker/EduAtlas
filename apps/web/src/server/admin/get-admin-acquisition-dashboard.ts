@@ -1,0 +1,270 @@
+import {
+  type AcquisitionOwnershipFilter,
+  type AcquisitionQualitySort,
+  type AcquisitionQueueId,
+  getInstitutionAcquisitionDashboard,
+  type InstitutionAcquisitionDashboard,
+} from "@eduatlas/application";
+import {
+  type InstitutionStatus,
+  type InstitutionType,
+  type InstitutionVerification,
+  institutionIdAsString,
+  isInstitutionStatus,
+  isInstitutionType,
+  isInstitutionVerification,
+} from "@eduatlas/domain";
+import { resolveGeoLabels } from "@eduatlas/firebase/server";
+import {
+  ADMIN_ACQUISITION_OWNERSHIP_OPTIONS,
+  ADMIN_ACQUISITION_SORT_OPTIONS,
+  ADMIN_ACQUISITION_STATUS_OPTIONS,
+  ADMIN_ACQUISITION_TYPE_OPTIONS,
+  ADMIN_ACQUISITION_VERIFICATION_OPTIONS,
+  type AdminAcquisitionDashboardViewData,
+  type AdminAcquisitionQualitySort,
+  type AdminAcquisitionQueueId,
+  buildAdminAcquisitionQueueTabs,
+  buildAdminQualityIndicatorLabels,
+  getAdminAcquisitionOwnershipLabel,
+  getAdminAcquisitionQualityBandLabel,
+  getAdminAcquisitionQualityLevelLabel,
+  getAdminAcquisitionStatusLabel,
+  getAdminAcquisitionVerificationLabel,
+} from "@eduatlas/ui";
+import { getInstitutionRepository } from "../institutions/repository";
+import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
+
+export type AcquisitionSearchParams = {
+  queue?: string | string[];
+  cityId?: string | string[];
+  districtId?: string | string[];
+  primaryType?: string | string[];
+  verification?: string | string[];
+  ownership?: string | string[];
+  status?: string | string[];
+  sort?: string | string[];
+  q?: string | string[];
+};
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+  return value;
+}
+
+const QUEUE_IDS = new Set<AdminAcquisitionQueueId>([
+  "all",
+  "import",
+  "pending",
+  "verified",
+  "claimed",
+  "duplicates",
+]);
+
+const SORT_IDS = new Set<AdminAcquisitionQualitySort>(["highest", "lowest", "missing_fields"]);
+
+function parseQueue(raw: string | undefined): AcquisitionQueueId {
+  if (raw && QUEUE_IDS.has(raw as AdminAcquisitionQueueId)) {
+    return raw as AcquisitionQueueId;
+  }
+  return "all";
+}
+
+function parseSort(raw: string | undefined): AcquisitionQualitySort {
+  if (raw && SORT_IDS.has(raw as AdminAcquisitionQualitySort)) {
+    return raw as AcquisitionQualitySort;
+  }
+  return "highest";
+}
+
+function parseOwnership(raw: string | undefined): AcquisitionOwnershipFilter | undefined {
+  if (raw === "claimed" || raw === "unclaimed") {
+    return raw;
+  }
+  return undefined;
+}
+
+/**
+ * Loads Institution Acquisition Dashboard view data via repository + application service.
+ */
+export async function getAdminAcquisitionDashboardView(
+  searchParams: AcquisitionSearchParams = {},
+): Promise<AdminAcquisitionDashboardViewData> {
+  const cityId = firstParam(searchParams.cityId)?.trim();
+  const districtId = firstParam(searchParams.districtId)?.trim();
+  const primaryTypeRaw = firstParam(searchParams.primaryType)?.trim();
+  const verificationRaw = firstParam(searchParams.verification)?.trim();
+  const statusRaw = firstParam(searchParams.status)?.trim();
+  const query = firstParam(searchParams.q)?.trim();
+  const ownership = parseOwnership(firstParam(searchParams.ownership)?.trim());
+  const sort = parseSort(firstParam(searchParams.sort)?.trim());
+
+  const primaryType =
+    primaryTypeRaw && isInstitutionType(primaryTypeRaw)
+      ? (primaryTypeRaw as InstitutionType)
+      : undefined;
+  const verification =
+    verificationRaw && isInstitutionVerification(verificationRaw)
+      ? (verificationRaw as InstitutionVerification)
+      : undefined;
+  const status =
+    statusRaw && isInstitutionStatus(statusRaw) ? (statusRaw as InstitutionStatus) : undefined;
+
+  const institutionRepository = await getInstitutionRepository();
+  const dashboard = await getInstitutionAcquisitionDashboard(
+    {
+      queue: parseQueue(firstParam(searchParams.queue)?.trim()),
+      sort,
+      ...(cityId ? { cityId } : {}),
+      ...(cityId && districtId ? { districtId } : {}),
+      ...(primaryType ? { primaryType } : {}),
+      ...(verification ? { verification } : {}),
+      ...(status ? { status } : {}),
+      ...(ownership ? { ownership } : {}),
+      ...(query ? { query } : {}),
+    },
+    {
+      institutionRepository,
+      resolveCityLabel: (id) => resolveGeoLabels(id, "dist_unknown").cityName,
+      resolveDistrictLabel: (cId, dId) => resolveGeoLabels(cId, dId).districtName,
+      resolveTypeLabel: getInstitutionTypeLabel,
+    },
+  );
+
+  return toAdminAcquisitionDashboardViewData(dashboard);
+}
+
+function toAdminAcquisitionDashboardViewData(
+  dashboard: InstitutionAcquisitionDashboard,
+): AdminAcquisitionDashboardViewData {
+  const filters = Object.freeze({
+    cityId: dashboard.filters.cityId ?? "",
+    districtId: dashboard.filters.districtId ?? "",
+    primaryType: dashboard.filters.primaryType ?? "",
+    verification: dashboard.filters.verification ?? "",
+    ownership: dashboard.filters.ownership ?? "",
+    status: dashboard.filters.status ?? "",
+  });
+  const searchQuery = dashboard.filters.query ?? "";
+  const queueCounts = dashboard.statistics.queueCounts;
+  const progressPercent =
+    queueCounts.all === 0
+      ? 0
+      : Math.min(
+          100,
+          Math.round(((queueCounts.verified + queueCounts.claimed) / (queueCounts.all * 2)) * 100),
+        );
+
+  const rows = Object.freeze(
+    dashboard.rows.map((row) => {
+      const institution = row.institution;
+      const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
+      const labels = buildAdminQualityIndicatorLabels(row.qualityIndicators);
+      return Object.freeze({
+        id: institutionIdAsString(institution.id),
+        name: institution.name,
+        slug: institution.slug,
+        typeLabel: getInstitutionTypeLabel(institution.primaryType),
+        cityLabel: geo.cityName,
+        districtLabel: geo.districtName,
+        statusLabel: getAdminAcquisitionStatusLabel(institution.status),
+        verificationLabel: getAdminAcquisitionVerificationLabel(institution.verification),
+        ownershipLabel: getAdminAcquisitionOwnershipLabel(institution.verification),
+        qualityScore: row.quality.score,
+        qualityGrade: row.quality.grade,
+        qualityLevelLabel: getAdminAcquisitionQualityLevelLabel(row.quality.qualityLevel),
+        qualityBandLabel: getAdminAcquisitionQualityBandLabel(row.quality.score),
+        missingFields: row.quality.missingFields,
+        qualityIssueMessages: row.quality.qualityIssues.map((issue) => issue.message),
+        recommendationTitles: row.recommendations.map((item) => item.title),
+        indicators: Object.freeze({
+          ...row.qualityIndicators,
+          labels,
+        }),
+        isDuplicateCandidate: Boolean(row.duplicateGroupKey),
+        profileHref: `/institutions/${institution.slug}`,
+      });
+    }),
+  ) as AdminAcquisitionDashboardViewData["rows"];
+
+  return Object.freeze({
+    title: "Kurum edinimi",
+    subtitle:
+      "Ulusal katalog operasyonları için kuyruk, iç kalite skoru ve sahiplik görünümü. Growth Score değildir.",
+    generatedAtLabel: new Intl.DateTimeFormat("tr-TR", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(dashboard.generatedAt)),
+    activeQueue: dashboard.queue,
+    activeSort: dashboard.sort,
+    queueTabs: buildAdminAcquisitionQueueTabs({
+      activeQueue: dashboard.queue,
+      queueCounts,
+      filters,
+      searchQuery,
+      sort: dashboard.sort,
+    }),
+    sortOptions: ADMIN_ACQUISITION_SORT_OPTIONS,
+    searchQuery,
+    filters,
+    cityOptions: Object.freeze(
+      dashboard.availableCities.map((item) =>
+        Object.freeze({ value: item.id, label: `${item.label} (${item.count})` }),
+      ),
+    ),
+    districtOptions: Object.freeze(
+      dashboard.availableDistricts
+        .filter((item) => !filters.cityId || item.id.startsWith(`${filters.cityId}::`))
+        .map((item) => {
+          const districtId = item.id.includes("::") ? (item.id.split("::")[1] ?? item.id) : item.id;
+          return Object.freeze({
+            value: districtId,
+            label: `${item.label} (${item.count})`,
+          });
+        }),
+    ),
+    typeOptions: ADMIN_ACQUISITION_TYPE_OPTIONS,
+    verificationOptions: ADMIN_ACQUISITION_VERIFICATION_OPTIONS,
+    ownershipOptions: ADMIN_ACQUISITION_OWNERSHIP_OPTIONS,
+    statusOptions: ADMIN_ACQUISITION_STATUS_OPTIONS,
+    statistics: Object.freeze({
+      totalInstitutions: dashboard.statistics.totalInstitutions,
+      claimRatePercent: dashboard.statistics.claimRatePercent,
+      verificationRatePercent: dashboard.statistics.verificationRatePercent,
+      averageQualityScore: dashboard.statistics.qualityDistribution.averageScore,
+      byCity: dashboard.statistics.byCity,
+      byType: Object.freeze(
+        dashboard.statistics.byType.map((item) =>
+          Object.freeze({
+            id: item.id,
+            label: isInstitutionType(item.id) ? getInstitutionTypeLabel(item.id) : item.label,
+            count: item.count,
+          }),
+        ),
+      ),
+      qualityDistribution: Object.freeze({
+        low: dashboard.statistics.qualityDistribution.low,
+        medium: dashboard.statistics.qualityDistribution.medium,
+        healthy: dashboard.statistics.qualityDistribution.healthy,
+        excellent: dashboard.statistics.qualityDistribution.excellent,
+        byGrade: dashboard.statistics.qualityDistribution.byGrade,
+        byLevel: dashboard.statistics.qualityDistribution.byLevel,
+      }),
+      progressPercent,
+    }),
+    rows,
+    duplicateCandidates: Object.freeze(
+      dashboard.duplicateCandidates.map((item) =>
+        Object.freeze({
+          id: item.groupKey,
+          label: item.label,
+          count: item.count,
+        }),
+      ),
+    ),
+    bulkActionsNote:
+      "Toplu işlemler bu sprintte yalnızca arayüz iskeletidir; onay, red, atama ve birleştirme henüz bağlanmamıştır.",
+  });
+}

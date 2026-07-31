@@ -1,0 +1,188 @@
+:root,
+[data-theme="light"] {
+  /* Master Visual Reference — EduAtlas Red */
+  --ea-color-brand-50: #fde8ec;
+  --ea-color-brand-100: #f9c5ce;
+  --ea-color-brand-500: #ef4a63;
+  --ea-color-brand-600: #e62846;
+  --ea-color-brand-700: #c41f3a;
+  --ea-color-brand-800: #9e1830;
+
+  /* Master Visual Reference — EduAtlas Turquoise */
+  --ea-color-primary-50: #e6f9fb;
+  --ea-color-primary-100: #b8eff3;
+  --ea-color-primary-600: #00bec7;
+  --ea-color-primary-700: #009aa2;
+  --ea-color-primary-800: #007780;
+
+  /* Dark Navy — ink / deep UI */
+  --ea-color-navy: #0f172a;
+  --ea-color-secondary-50: #eef2f7;
+  --ea-color-secondary-600: #1e3a5f;
+
+  /* Warm White + Soft Stone (master board) */
+  --ea-color-warm-white: #fafaf8;
+  --ea-color-stone-25: #fafaf8;
+  --ea-color-stone-50: #f2f2f0;
+  --ea-color-stone-100: #e8e8e4;
+
+  /* Neutral */
+  --ea-color-neutral-0: #ffffff;
+  --ea-color-neutral-25: var(--ea-color-stone-25);
+  --ea-color-neutral-50: var(--ea-color-stone-50);
+  --ea-color-neutral-100: var(--ea-color-stone-100);
+  --ea-color-neutral-300: #cbd5e1;
+  --ea-color-neutral-500: #64748b;
+  --ea-color-neutral-700: #334155;
+  --ea-color-neutral-900: var(--ea-color-navy);
+
+  /* Semantic status */
+  --ea-color-success-50: #ecfdf5;
+  --ea-color-success-600: #059669;
+  --ea-color-warning-50: #fffbeb;
+  --ea-color-warning-600: #d97706;
+  --ea-color-error-50: #fef2f2;
+  --ea-color-error-600: #e62846;
+  --ea-color-info-50: #eff6ff;
+  --ea-color-info-600: #2563eb;
+
+  /* Semantic roles */
+  --ea-color-background: var(--ea-color-stone-50);
+  --ea-color-surface: var(--ea-color-neutral-0);
+  --ea-color-border: var(--ea-color-neutral-100);
+  --ea-color-border-strong: var(--ea-color-neutral-300);
+  --ea-color-text: var(--ea-color-neutral-700);
+  --ea-color-text-muted: var(--ea-color-neutral-500);
+  --ea-color-text-ink: var(--ea-color-navy);
+  --ea-color-text-inverse: var(--ea-color-neutral-0);
+  --ea-color-focus: var(--ea-color-brand-600);
+  --ea-color-link: var(--ea-color-brand-700);
+
+  /* Atmosphere */
+  --ea-atmosphere-wash: linear-gradient(
+    180deg,
+    #e8f7f9 0%,
+    #f7f0f2 42%,
+    var(--ea-color-stone-50) 100%
+  );
+  --ea-atmosphere-atlas:
+    radial-gradient(
+      ellipse 70% 50% at 85% 20%,
+      color-mix(in srgb, var(--ea-color-brand-100) 40%, transparent),
+      transparent 55%
+    ),
+    radial-gradient(
+      ellipse 55% 45% at 10% 0%,
+      color-mix(in srgb, var(--ea-color-primary-100) 45%, transparent),
+      transparent 50%
+    );
+
+  /* Typography — Master Visual Reference */
+  --ea-font-sans: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+  --ea-font-display: "Fraunces", "Plus Jakarta Sans", Georgia, serif;
+  --ea-font-size-display: 3rem;
+  --ea-font-size-h1: 2.25rem;
+  --ea-font-size-h2: 1.625rem;
+  --ea-font-size-h3: 1.25rem;
+  --ea-font-size-body: 1rem;
+  --ea-font-size-small: 0.875rem;
+  --ea-font-size-caption: 0.8125rem;
+  --ea-font-weight-display: 700;
+  --ea-font-weight-heading: 700;
+  --ea-font-weight-semibold: 600;
+  --ea-line-height-display: 1.1;
+  --ea-line-height-heading: 1.2;
+  --ea-line-height-body: 1.55;
+  --ea-letter-tight: -0.02em;
+  --ea-letter-display: -0.03em;
+
+  /* Spacing (4px grid) */
+  --ea-space-0: 0px;
+  --ea-space-1: 4px;
+  --ea-space-2: 8px;
+  --ea-space-3: 12px;
+  --ea-space-4: 16px;
+  --ea-space-5: 20px;
+  --ea-space-6: 24px;
+  --ea-space-7: 28px;
+  --ea-space-8: 32px;
+  --ea-space-10: 40px;
+  --ea-space-12: 48px;
+  --ea-space-14: 56px;
+  --ea-space-16: 64px;
+  --ea-space-20: 80px;
+  --ea-space-24: 96px;
+
+  /* Radius — soft rounded (master board ~8–16px) */
+  --ea-radius-sm: 8px;
+  --ea-radius-md: 12px;
+  --ea-radius-lg: 16px;
+  --ea-radius-xl: 20px;
+  --ea-radius-full: 9999px;
+
+  /* Elevation 1–5 (master board soft diffused shadows) */
+  --ea-shadow-none: none;
+  --ea-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.04);
+  --ea-shadow-md: 0 4px 16px rgba(15, 23, 42, 0.06), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --ea-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --ea-shadow-xl: 0 20px 48px rgba(15, 23, 42, 0.1), 0 8px 16px rgba(15, 23, 42, 0.05);
+  --ea-shadow-card: 0 2px 4px rgba(15, 23, 42, 0.03), 0 10px 24px rgba(15, 23, 42, 0.06);
+
+  /* Containers */
+  --ea-container-sm: 640px;
+  --ea-container-md: 768px;
+  --ea-container-lg: 1024px;
+  --ea-container-xl: 1200px;
+  --ea-container-2xl: 1440px;
+
+  /* Motion */
+  --ea-motion-hover-duration: 140ms;
+  --ea-motion-fade-duration: 200ms;
+  --ea-motion-enter-duration: 280ms;
+  --ea-motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ea-motion-ease: ease;
+  --ea-motion-ease-soft: cubic-bezier(0.33, 1, 0.68, 1);
+
+  /* Density */
+  --ea-density-control-sm: 36px;
+  --ea-density-control-md: 44px;
+  --ea-density-control-lg: 52px;
+
+  --ea-touch-target: 44px;
+  --ea-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ea-color-brand-100) 92%, transparent);
+  --ea-z-header: 50;
+  --ea-z-overlay: 100;
+
+  /* Layout rhythm */
+  --ea-hero-pad-y: clamp(3rem, 7vw, 5.5rem);
+  --ea-section-pad-y: clamp(2.5rem, 5vw, 4.5rem);
+  --ea-page-pad-y-start: var(--ea-space-6);
+  --ea-page-pad-y-end: var(--ea-space-12);
+  --ea-section-gap: var(--ea-space-10);
+}
+
+[data-surface="owner"] {
+  --ea-color-background: #fafaf8;
+  --ea-atmosphere-atlas: none;
+  --ea-color-focus: var(--ea-color-primary-600);
+}
+
+[data-surface="admin"] {
+  --ea-color-background: #f2f2f0;
+  --ea-color-surface: #ffffff;
+  --ea-atmosphere-atlas: none;
+  --ea-color-focus: var(--ea-color-primary-600);
+}
+
+[data-density="compact"] {
+  --ea-density-control-sm: 32px;
+  --ea-density-control-md: 40px;
+  --ea-density-control-lg: 48px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --ea-font-size-display: 2.25rem;
+    --ea-font-size-h1: 1.875rem;
+  }
+}

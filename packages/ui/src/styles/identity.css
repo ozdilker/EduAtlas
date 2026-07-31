@@ -1,0 +1,247 @@
+/**
+ * Release-001 visual identity — atmosphere, states, micro-interactions.
+ * No business logic; token-driven brand expression only.
+ */
+
+/* ——— Page / section rhythm ——— */
+.ea-content-page,
+.ea-search-page,
+.ea-city-landing,
+.ea-category-landing,
+.ea-profile-page {
+  padding-block-start: var(--ea-page-pad-y-start, var(--ea-space-6));
+  padding-block-end: var(--ea-page-pad-y-end, var(--ea-space-16));
+}
+
+.ea-content-page__title,
+.ea-search-results__title,
+.ea-city-landing__title,
+.ea-category-landing__title,
+.ea-profile-hero__name {
+  color: var(--ea-color-text-ink);
+  letter-spacing: var(--ea-letter-tight);
+  line-height: var(--ea-line-height-heading);
+  font-weight: var(--ea-font-weight-heading);
+}
+
+.ea-content-page__description,
+.ea-search-results__subtitle,
+.ea-city-landing__intro,
+.ea-category-landing__intro {
+  max-width: 42rem;
+  color: var(--ea-color-text);
+  line-height: var(--ea-line-height-body);
+}
+
+/* Soft atlas wash for public marketing hubs (not portals) */
+.ea-home-page,
+.ea-city-landing,
+.ea-category-landing {
+  background-image: var(--ea-atmosphere-atlas);
+  background-color: var(--ea-color-background);
+  background-repeat: no-repeat;
+}
+
+/* ——— Interactive card hierarchy ——— */
+.ea-card--interactive,
+.ea-institution-card__surface.ea-card,
+.ea-hub-index__card {
+  transition:
+    border-color var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    background-color var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    box-shadow var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    transform var(--ea-motion-hover-duration) var(--ea-motion-ease-soft);
+}
+
+.ea-card--interactive:hover,
+.ea-institution-card__surface.ea-card:hover,
+.ea-hub-index__card:hover {
+  border-color: color-mix(in srgb, var(--ea-color-primary-100) 80%, var(--ea-color-border));
+  background: var(--ea-color-neutral-0);
+  box-shadow: var(--ea-shadow-sm);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .ea-card--interactive:hover,
+  .ea-institution-card__surface.ea-card:hover,
+  .ea-hub-index__card:hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* ——— Status / empty / loading / success / error ——— */
+.ea-status-block {
+  position: relative;
+  overflow: hidden;
+}
+
+.ea-status-block::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--ea-color-border-strong);
+}
+
+.ea-status-block--loading::before {
+  background: var(--ea-color-primary-600);
+}
+
+.ea-status-block--empty::before {
+  background: var(--ea-color-neutral-300);
+}
+
+.ea-status-block--error::before {
+  background: var(--ea-color-error-600);
+}
+
+.ea-status-block--neutral::before {
+  background: var(--ea-color-secondary-600);
+}
+
+.ea-status-block__title {
+  color: var(--ea-color-text-ink);
+  font-weight: 700;
+  letter-spacing: var(--ea-letter-tight);
+}
+
+.ea-status-block__message {
+  color: var(--ea-color-text);
+  line-height: var(--ea-line-height-body);
+}
+
+.ea-status-block__spinner {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--ea-color-primary-100);
+  border-top-color: var(--ea-color-primary-600);
+  border-radius: 50%;
+  animation: ea-spin 0.7s linear infinite;
+}
+
+@keyframes ea-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ea-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ea-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* Empty-state mark — abstract atlas/geometry, not mascot */
+.ea-owner-leads-empty__mark,
+.ea-empty-mark {
+  display: inline-block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1.5px solid var(--ea-color-primary-600);
+  border-radius: var(--ea-radius-md);
+  background:
+    linear-gradient(
+      135deg,
+      transparent 46%,
+      var(--ea-color-primary-100) 46%,
+      var(--ea-color-primary-100) 54%,
+      transparent 54%
+    ),
+    var(--ea-color-primary-50);
+  opacity: 0.95;
+}
+
+/* Form success / error banners (shared tone) */
+.ea-form-banner,
+.ea-owner-profile-form__status,
+.ea-owner-notif-settings__status,
+.ea-auth-form__status,
+.ea-auth-page__notice {
+  border-radius: var(--ea-radius-md);
+  transition: background-color var(--ea-motion-fade-duration) var(--ea-motion-ease-out);
+}
+
+.ea-form-banner--success,
+.ea-owner-profile-form__status--success,
+.ea-owner-notif-settings__status--success,
+.ea-auth-form__status--success {
+  border-left: 3px solid var(--ea-color-success-600);
+}
+
+.ea-form-banner--error,
+.ea-owner-profile-form__status--error,
+.ea-owner-notif-settings__status--error,
+.ea-auth-form__status--error {
+  border-left: 3px solid var(--ea-color-error-600);
+}
+
+/* Skeleton shimmer */
+.ea-institution-card--skeleton .ea-institution-card__skeleton-block,
+.ea-institution-card--skeleton .ea-institution-card__skeleton-line {
+  background: linear-gradient(
+    90deg,
+    var(--ea-color-neutral-50) 0%,
+    var(--ea-color-neutral-100) 45%,
+    var(--ea-color-neutral-50) 90%
+  );
+  background-size: 200% 100%;
+  animation: ea-shimmer 1.4s linear infinite;
+}
+
+/* ——— Subtle enter for key marketing regions ——— */
+.ea-home-hero__content,
+.ea-search-hero,
+.ea-city-landing__header,
+.ea-category-landing__header {
+  animation: ea-fade-up var(--ea-motion-enter-duration) var(--ea-motion-ease-out);
+}
+
+/* Button primary — quiet lift on hover (no glow) */
+.ea-button--primary:hover:not(:disabled) {
+  box-shadow: var(--ea-shadow-sm);
+}
+
+.ea-button--primary:active:not(:disabled) {
+  box-shadow: none;
+}
+
+/* Input focus refinement */
+.ea-input:focus,
+.ea-input:focus-visible,
+textarea.ea-input:focus,
+textarea.ea-input:focus-visible {
+  border-color: var(--ea-color-primary-600);
+  box-shadow: var(--ea-focus-ring);
+  outline: none;
+}
+
+.ea-input[aria-invalid="true"],
+.ea-input--error {
+  border-color: var(--ea-color-error-600);
+}
+
+.ea-input[aria-invalid="true"]:focus-visible,
+.ea-input--error:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ea-color-error-50) 90%, transparent);
+}
+
+/* Tabular nums for ops */
+.ea-admin-table,
+.ea-owner-insights__metrics,
+.ea-owner-widget__metric {
+  font-variant-numeric: tabular-nums;
+}

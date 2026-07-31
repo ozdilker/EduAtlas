@@ -1,0 +1,269 @@
+/* Base UI component styles — token-driven, app-agnostic */
+
+.ea-container {
+  width: 100%;
+  margin-inline: auto;
+  padding-inline: var(--ea-space-4);
+}
+
+@media (min-width: 1024px) {
+  .ea-container {
+    padding-inline: var(--ea-space-6);
+  }
+}
+
+.ea-container--sm {
+  max-width: var(--ea-container-sm);
+}
+
+.ea-container--md {
+  max-width: var(--ea-container-md);
+}
+
+.ea-container--lg {
+  max-width: var(--ea-container-lg);
+}
+
+.ea-container--xl {
+  max-width: var(--ea-container-xl);
+}
+
+.ea-container--2xl {
+  max-width: var(--ea-container-2xl);
+}
+
+.ea-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ea-space-2);
+  border: 1px solid transparent;
+  border-radius: var(--ea-radius-md);
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    border-color var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    color var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    opacity var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    filter var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    box-shadow var(--ea-motion-hover-duration) var(--ea-motion-ease);
+}
+
+.ea-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ea-button--sm {
+  min-height: var(--ea-density-control-sm);
+  padding-inline: var(--ea-space-3);
+  font-size: var(--ea-font-size-small);
+}
+
+.ea-button--md {
+  min-height: var(--ea-density-control-md);
+  padding-inline: var(--ea-space-4);
+  font-size: var(--ea-font-size-body);
+}
+
+.ea-button--lg {
+  min-height: var(--ea-density-control-lg);
+  padding-inline: var(--ea-space-5);
+  font-size: var(--ea-font-size-body);
+}
+
+.ea-button--primary {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--ea-color-primary-600) 96%, #fff) 0%,
+    var(--ea-color-primary-600) 100%
+  );
+  color: var(--ea-color-text-inverse);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ea-color-primary-800) 25%, transparent);
+}
+
+.ea-button--primary:hover:not(:disabled) {
+  background: var(--ea-color-primary-700);
+}
+
+.ea-button--primary:active:not(:disabled) {
+  background: var(--ea-color-primary-700);
+  filter: brightness(0.96);
+}
+
+.ea-button--secondary {
+  background: var(--ea-color-surface);
+  border-color: var(--ea-color-primary-600);
+  color: var(--ea-color-primary-700);
+}
+
+.ea-button--secondary:hover:not(:disabled) {
+  background: var(--ea-color-primary-50);
+  border-color: var(--ea-color-primary-600);
+  color: var(--ea-color-primary-700);
+}
+
+.ea-button--tertiary {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ea-color-text-ink);
+}
+
+.ea-button--tertiary:hover:not(:disabled) {
+  background: var(--ea-color-neutral-50);
+  border-color: var(--ea-color-neutral-50);
+}
+
+.ea-button--destructive {
+  background: var(--ea-color-error-600);
+  color: var(--ea-color-text-inverse);
+}
+
+.ea-button--destructive:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.ea-button--link {
+  background: transparent;
+  color: var(--ea-color-link);
+  min-height: auto;
+  padding-inline: 0;
+  border-radius: var(--ea-radius-sm);
+  font-weight: 600;
+}
+
+.ea-button--link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.ea-card--interactive:focus-visible {
+  outline: 2px solid var(--ea-color-focus);
+  outline-offset: 2px;
+  border-color: var(--ea-color-primary-100);
+}
+
+.ea-input {
+  display: block;
+  width: 100%;
+  min-height: var(--ea-density-control-md);
+  padding-inline: var(--ea-space-3);
+  border: 1px solid var(--ea-color-border);
+  border-radius: var(--ea-radius-sm);
+  background: var(--ea-color-surface);
+  color: var(--ea-color-text);
+  font-family: inherit;
+  font-size: var(--ea-font-size-body);
+  line-height: 1.45;
+  transition:
+    border-color var(--ea-motion-hover-duration) ease,
+    box-shadow var(--ea-motion-hover-duration) ease;
+}
+
+.ea-input::placeholder {
+  color: var(--ea-color-text-muted);
+}
+
+.ea-input:hover:not(:disabled):not(:focus-visible) {
+  border-color: var(--ea-color-neutral-300);
+}
+
+.ea-input:focus-visible {
+  border-color: var(--ea-color-primary-600);
+  box-shadow: 0 0 0 3px var(--ea-color-primary-100);
+  outline: none;
+}
+
+.ea-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: var(--ea-color-neutral-50);
+}
+
+.ea-input--error {
+  border-color: var(--ea-color-error-600);
+  background: var(--ea-color-error-50);
+}
+
+.ea-input--error:focus-visible {
+  border-color: var(--ea-color-error-600);
+  box-shadow: 0 0 0 3px var(--ea-color-error-50);
+}
+
+.ea-card {
+  background: var(--ea-color-surface);
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 92%, transparent);
+  border-radius: var(--ea-radius-lg);
+  padding: var(--ea-space-5);
+  box-shadow: var(--ea-shadow-sm);
+}
+
+.ea-card--comfortable {
+  padding: var(--ea-space-6);
+}
+
+.ea-card--interactive {
+  cursor: pointer;
+  transition:
+    border-color var(--ea-motion-hover-duration) var(--ea-motion-ease),
+    background-color var(--ea-motion-hover-duration) var(--ea-motion-ease);
+}
+
+.ea-card--interactive:hover {
+  border-color: var(--ea-color-primary-100);
+  background: var(--ea-color-neutral-25);
+}
+
+.ea-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ea-space-1);
+  max-width: 100%;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--ea-radius-full);
+  font-size: var(--ea-font-size-caption);
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.ea-badge--neutral {
+  background: var(--ea-color-neutral-50);
+  color: var(--ea-color-neutral-700);
+}
+
+.ea-badge--primary {
+  background: var(--ea-color-primary-50);
+  color: var(--ea-color-primary-700);
+}
+
+.ea-badge--secondary {
+  background: var(--ea-color-secondary-50);
+  color: var(--ea-color-secondary-600);
+}
+
+.ea-badge--success {
+  /* Doğrulanmış — turquoise */
+  background: var(--ea-color-primary-50);
+  color: var(--ea-color-primary-700);
+}
+
+.ea-badge--warning {
+  /* Premium — gold */
+  background: #fff7e8;
+  color: #b45309;
+}
+
+.ea-badge--error {
+  background: var(--ea-color-error-50);
+  color: var(--ea-color-error-600);
+}
+
+.ea-badge--info {
+  /* Öne çıkan — brand red wash */
+  background: var(--ea-color-brand-50);
+  color: var(--ea-color-brand-700);
+}

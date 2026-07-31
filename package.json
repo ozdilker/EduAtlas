@@ -1,0 +1,32 @@
+{
+  "name": "eduatlas",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @eduatlas/web",
+    "build": "npm run build -w @eduatlas/web",
+    "start": "npm run start -w @eduatlas/web",
+    "lint": "npm run lint:eslint && npm run lint:biome",
+    "lint:eslint": "npm run lint -w @eduatlas/web",
+    "lint:biome": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "npm run typecheck -w @eduatlas/web && npm run typecheck -w @eduatlas/config && npm run typecheck -w @eduatlas/utils && npm run typecheck -w @eduatlas/types && npm run typecheck -w @eduatlas/domain && npm run typecheck -w @eduatlas/application && npm run typecheck -w @eduatlas/ui && npm run typecheck -w @eduatlas/validation && npm run typecheck -w @eduatlas/firebase && npm run typecheck -w @eduatlas/seo",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "seed:demo-auth": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/seed-demo-auth.ts",
+    "verify:demo-auth": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/verify-demo-auth.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.3",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

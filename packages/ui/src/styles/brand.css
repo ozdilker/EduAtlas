@@ -1,0 +1,214 @@
+/**
+ * Release-001A — Brand visual language
+ * Illustrations, marketing typography, logo treatments (presentation only).
+ */
+
+/* ——— Marketing display typography ——— */
+.ea-display,
+.ea-home-hero__brand,
+.ea-home-hero__title,
+.ea-home-section-title,
+.ea-city-hero__title,
+.ea-category-hero__title,
+.ea-search-results__title,
+.ea-content-page__title,
+.ea-hub-index__title,
+.ea-profile-hero__name,
+.ea-footer__brand-name {
+  font-family: var(--ea-font-display);
+  letter-spacing: var(--ea-letter-display, var(--ea-letter-tight));
+}
+
+.ea-home-hero__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ea-space-2);
+  color: var(--ea-color-brand-700);
+}
+
+.ea-home-hero__brand::before {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 2.25rem;
+  border-radius: var(--ea-radius-full);
+  background: linear-gradient(
+    180deg,
+    var(--ea-color-brand-600) 0%,
+    var(--ea-color-brand-600) 42%,
+    var(--ea-color-primary-600) 42%,
+    var(--ea-color-primary-700) 100%
+  );
+}
+
+/* ——— Logo mark — dual brand (red + teal) ——— */
+.ea-header__logo-mark,
+.ea-owner-shell__logo-mark,
+.ea-admin-shell__logo-mark {
+  display: none;
+}
+
+.ea-header__logo-text,
+.ea-owner-shell__logo,
+.ea-admin-shell__logo {
+  font-family: var(--ea-font-sans);
+  letter-spacing: var(--ea-letter-tight);
+  font-weight: 700;
+}
+
+/* ——— Brand illustration system ——— */
+.ea-brand-illustration {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 28rem;
+  margin-inline: auto;
+  aspect-ratio: 5 / 4;
+  border-radius: var(--ea-radius-xl);
+  background:
+    radial-gradient(
+      ellipse 80% 70% at 50% 100%,
+      color-mix(in srgb, var(--ea-color-primary-50) 80%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(
+      165deg,
+      var(--ea-color-warm-white) 0%,
+      color-mix(in srgb, var(--ea-color-stone-50) 70%, var(--ea-color-primary-50)) 100%
+    );
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 85%, transparent);
+  box-shadow: var(--ea-shadow-card);
+  overflow: hidden;
+}
+
+.ea-brand-illustration::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 18% 22%,
+      color-mix(in srgb, var(--ea-color-brand-100) 55%, transparent) 0%,
+      transparent 42%
+    ),
+    radial-gradient(
+      circle at 82% 18%,
+      color-mix(in srgb, var(--ea-color-primary-100) 50%, transparent) 0%,
+      transparent 38%
+    );
+  pointer-events: none;
+}
+
+.ea-brand-illustration__svg {
+  position: relative;
+  z-index: 1;
+  width: 88%;
+  height: auto;
+  max-height: 88%;
+}
+
+.ea-brand-illustration--compact {
+  max-width: 14rem;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--ea-radius-lg);
+}
+
+.ea-brand-illustration--empty {
+  max-width: 12rem;
+  aspect-ratio: 1 / 1;
+  box-shadow: var(--ea-shadow-sm);
+}
+
+/* ——— Public marketing section rhythm ——— */
+.ea-marketing-section {
+  padding-block: var(--ea-section-pad-y);
+}
+
+.ea-marketing-eyebrow {
+  margin: 0 0 var(--ea-space-2);
+  color: var(--ea-color-brand-700);
+  font-size: var(--ea-font-size-caption);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ——— Premium card surface (public) ——— */
+.ea-surface-card {
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 90%, transparent);
+  border-radius: var(--ea-radius-lg);
+  background: var(--ea-color-surface);
+  box-shadow: var(--ea-shadow-card);
+}
+
+/* ——— Decorative atlas grid (subtle, ≤3% opacity) ——— */
+.ea-atlas-grid {
+  background-image:
+    linear-gradient(
+      color-mix(in srgb, var(--ea-color-primary-600) 4%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ea-color-primary-600) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 24px 24px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ea-brand-illustration {
+    box-shadow: var(--ea-shadow-sm);
+  }
+}
+
+/* ——— Public surface: Master Visual Reference CTAs ——— */
+[data-surface="public"] .ea-button--primary {
+  background: var(--ea-color-brand-600);
+  color: var(--ea-color-text-inverse);
+  border-color: var(--ea-color-brand-600);
+  box-shadow: var(--ea-shadow-sm);
+}
+
+[data-surface="public"] .ea-button--primary:hover:not(:disabled) {
+  background: var(--ea-color-brand-700);
+  border-color: var(--ea-color-brand-700);
+}
+
+[data-surface="public"] .ea-button--primary:active:not(:disabled) {
+  background: var(--ea-color-brand-700);
+  filter: brightness(0.96);
+}
+
+[data-surface="public"] .ea-button--secondary {
+  background: var(--ea-color-surface);
+  border-color: var(--ea-color-primary-600);
+  color: var(--ea-color-primary-700);
+}
+
+[data-surface="public"] .ea-button--secondary:hover:not(:disabled) {
+  background: var(--ea-color-primary-50);
+  border-color: var(--ea-color-primary-600);
+  color: var(--ea-color-primary-700);
+}
+
+[data-surface="public"] .ea-header__cta--outline {
+  border-color: var(--ea-color-primary-600);
+  color: var(--ea-color-primary-700);
+}
+
+[data-surface="public"] .ea-header__cta--outline:hover {
+  background: var(--ea-color-primary-50);
+}
+
+[data-surface="public"] .ea-color-focus,
+[data-surface="public"] :focus-visible {
+  outline-color: var(--ea-color-brand-600);
+}
+
+[data-surface="public"] .ea-input:focus-visible {
+  border-color: var(--ea-color-brand-600);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ea-color-brand-100) 90%, transparent);
+}

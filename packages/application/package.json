@@ -1,0 +1,35 @@
+{
+  "name": "@eduatlas/application",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./ai-workforce": "./src/ai-workforce/index.ts",
+    "./acquisition": "./src/acquisition/index.ts",
+    "./education-catalog": "./src/education-catalog/index.ts",
+    "./geography": "./src/geography/index.ts",
+    "./institution-import": "./src/institution-import/index.ts",
+    "./institution-quality": "./src/institution-quality/index.ts",
+    "./institution-review": "./src/institution-review/index.ts",
+    "./identity": "./src/identity/index.ts",
+    "./institutions": "./src/institutions/index.ts",
+    "./leads": "./src/leads/index.ts",
+    "./media": "./src/media/index.ts",
+    "./notifications": "./src/notifications/index.ts",
+    "./site": "./src/site/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@eduatlas/domain": "*",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}

@@ -1,0 +1,128 @@
+/* Official EduAtlas logo — brand mark image + wordmark */
+
+.ea-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--ea-color-navy);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.ea-logo--column {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.45rem;
+}
+
+.ea-logo__mark {
+  display: block;
+  flex-shrink: 0;
+  width: auto;
+  height: 2.15rem;
+  object-fit: contain;
+}
+
+.ea-logo--full .ea-logo__mark {
+  height: calc(2.35rem + 15px);
+}
+
+.ea-logo--mark .ea-logo__mark,
+.ea-logo--mono .ea-logo__mark {
+  height: 1.9rem;
+}
+
+.ea-logo--small .ea-logo__mark {
+  height: calc(1.45rem + 15px);
+}
+
+.ea-logo--stacked .ea-logo__mark {
+  height: 3.25rem;
+}
+
+.ea-logo--app .ea-logo__mark {
+  width: 100%;
+  height: 100%;
+}
+
+.ea-logo__mark--mono {
+  filter: grayscale(1) contrast(1.05);
+  opacity: 0.85;
+}
+
+.ea-logo__text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+}
+
+.ea-logo--column .ea-logo__text {
+  align-items: center;
+}
+
+.ea-logo__wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-family: var(--ea-font-sans);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.ea-logo--stacked .ea-logo__wordmark {
+  font-size: 1.35rem;
+}
+
+.ea-logo__edu {
+  color: var(--ea-color-navy);
+}
+
+.ea-logo__atlas {
+  color: var(--ea-color-brand-600);
+}
+
+.ea-logo--mono {
+  color: currentColor;
+}
+
+.ea-logo--mono .ea-logo__edu,
+.ea-logo--mono .ea-logo__atlas {
+  color: currentColor;
+}
+
+.ea-logo__tagline {
+  display: block;
+  color: var(--ea-color-text-muted);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.ea-logo-app-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  padding: 0.35rem;
+  border-radius: 1.1rem;
+  background: #0b0b0b;
+  box-shadow: var(--ea-shadow-md);
+}
+
+.ea-logo-app-tile--teal {
+  background: linear-gradient(145deg, var(--ea-color-primary-600), var(--ea-color-primary-800));
+}
+
+.ea-logo-app-tile--navy {
+  background: linear-gradient(145deg, #1e293b, var(--ea-color-navy));
+}
+
+.ea-logo-app-tile .ea-logo__mark {
+  width: auto;
+  height: 2.6rem;
+  filter: none;
+}
