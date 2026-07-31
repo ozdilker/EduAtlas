@@ -59,6 +59,12 @@ export type FirestoreInstitutionDocument = {
     question: string;
     answer: string;
   }>;
+  /** Ordered highlight cards for the public profile. */
+  highlights?: Array<{
+    id: string;
+    title: string;
+    description: string;
+  }>;
   isPremium: boolean;
   qualityScore: number;
   /** Turkish-folded name for Firestore fallback keyword search. */

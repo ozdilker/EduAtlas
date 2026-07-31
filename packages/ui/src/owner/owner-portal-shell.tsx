@@ -75,7 +75,7 @@ export function OwnerPortalShell({
       <aside className="ea-owner-shell__sidebar" aria-label="Kurum paneli">
         <div className="ea-owner-shell__top">
           <div className="ea-owner-shell__brand">
-            <a href="/owner" className="ea-owner-shell__logo">
+            <a href="/owner" className="ea-owner-shell__logo" aria-label="Kurum paneli ana sayfa">
               {logoUrl ? (
                 <img
                   src={logoUrl}
@@ -83,9 +83,8 @@ export function OwnerPortalShell({
                   className="ea-owner-shell__institution-logo"
                 />
               ) : (
-                <EduAtlasLogo variant="small" title="EduAtlas Owner" />
+                <EduAtlasLogo variant="small" title="EduAtlas" />
               )}
-              <span>Owner</span>
             </a>
             <p className="ea-owner-shell__institution">{institutionName}</p>
           </div>

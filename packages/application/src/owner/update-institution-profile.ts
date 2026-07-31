@@ -35,6 +35,7 @@ export type UpdateInstitutionProfileInput = {
   amenities?: readonly string[];
   educationPrograms?: readonly string[];
   faqs?: readonly { id?: string; question: string; answer: string }[];
+  highlights?: readonly { id?: string; title: string; description: string }[];
   updatedBy: string;
   updatedAt?: string;
 };
@@ -86,6 +87,7 @@ export async function updateInstitutionProfile(
       amenities: input.amenities,
       educationPrograms: input.educationPrograms,
       faqs: input.faqs,
+      highlights: input.highlights,
       updatedAt: input.updatedAt ?? new Date().toISOString(),
       updatedBy: input.updatedBy,
     });

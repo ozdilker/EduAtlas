@@ -260,6 +260,7 @@ export class FirestoreInstitutionRepository
       amenities: institution.amenities,
       educationPrograms: institution.educationPrograms,
       faqs: institution.faqs,
+      highlights: institution.highlights,
       isPremium: institution.isPremium,
       qualityScore: institution.qualityScore,
       publishedAt: institution.publishedAt,

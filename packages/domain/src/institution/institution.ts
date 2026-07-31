@@ -32,6 +32,10 @@ import {
   type InstitutionEducationPrograms,
 } from "./institution-education-programs";
 import { createInstitutionFaqs, type InstitutionFaqs } from "./institution-faqs";
+import {
+  createInstitutionHighlights,
+  type InstitutionHighlights,
+} from "./institution-highlights";
 import { assertValidInstitutionSlug, normalizeInstitutionSlug } from "./validation";
 import type { InstitutionLeadCounters } from "./institution-lead-counters";
 
@@ -68,6 +72,8 @@ export type Institution = Readonly<{
   readonly educationPrograms?: InstitutionEducationPrograms;
   /** Owner-managed FAQ list (ordered). */
   readonly faqs?: InstitutionFaqs;
+  /** Owner-managed highlight cards for the public profile (ordered). */
+  readonly highlights?: InstitutionHighlights;
   readonly isPremium: boolean;
   readonly qualityScore: number;
   readonly publishedAt?: string;
@@ -104,6 +110,7 @@ export type CreateInstitutionInput = {
   amenities?: readonly string[];
   educationPrograms?: readonly string[];
   faqs?: readonly { id?: string; question: string; answer: string }[];
+  highlights?: readonly { id?: string; title: string; description: string }[];
   isPremium?: boolean;
   qualityScore?: number;
   publishedAt?: string;
@@ -136,6 +143,7 @@ export function createInstitution(input: CreateInstitutionInput): Institution {
     ? createInstitutionEducationPrograms(input.educationPrograms)
     : undefined;
   const faqs = input.faqs ? createInstitutionFaqs(input.faqs) : undefined;
+  const highlights = input.highlights ? createInstitutionHighlights(input.highlights) : undefined;
   const updatedByUserId = input.updatedByUserId?.trim();
   const leadCounters = input.leadCounters;
   const status = input.status ?? InstitutionStatus.Draft;
@@ -208,6 +216,7 @@ export function createInstitution(input: CreateInstitutionInput): Institution {
     ...(amenities && amenities.length > 0 ? { amenities } : {}),
     ...(educationPrograms && educationPrograms.length > 0 ? { educationPrograms } : {}),
     ...(faqs && faqs.length > 0 ? { faqs } : {}),
+    ...(highlights && highlights.length > 0 ? { highlights } : {}),
     isPremium: Boolean(input.isPremium),
     qualityScore,
     ...(input.publishedAt ? { publishedAt: input.publishedAt } : {}),

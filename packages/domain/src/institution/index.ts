@@ -92,6 +92,15 @@ export {
   type InstitutionFaqs,
 } from "./institution-faqs";
 export {
+  createInstitutionHighlights,
+  INSTITUTION_HIGHLIGHT_DESCRIPTION_MAX_LENGTH,
+  INSTITUTION_HIGHLIGHT_MAX_ITEMS,
+  INSTITUTION_HIGHLIGHT_TITLE_MAX_LENGTH,
+  type CreateInstitutionHighlightItemInput,
+  type InstitutionHighlightItem,
+  type InstitutionHighlights,
+} from "./institution-highlights";
+export {
   type CreateDayWorkingHoursInput,
   type CreateInstitutionWorkingHoursInput,
   createDayWorkingHours,

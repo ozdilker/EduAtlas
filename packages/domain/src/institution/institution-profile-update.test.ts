@@ -146,6 +146,9 @@ describe("InstitutionProfileUpdate", () => {
       faqs: [
         { id: "faq_1", question: "Nasıl kayıt olunur?", answer: "Online başvuru ile." },
       ],
+      highlights: [
+        { id: "hl_1", title: "Güvenli kampüs", description: "Kontrollü giriş ve kapalı bahçe." },
+      ],
       updatedAt: NOW,
       updatedBy: "owner_demo",
     });
@@ -165,6 +168,9 @@ describe("InstitutionProfileUpdate", () => {
     expect(next.educationPrograms).toEqual(["lgs", "tyt"]);
     expect(next.faqs).toEqual([
       { id: "faq_1", question: "Nasıl kayıt olunur?", answer: "Online başvuru ile." },
+    ]);
+    expect(next.highlights).toEqual([
+      { id: "hl_1", title: "Güvenli kampüs", description: "Kontrollü giriş ve kapalı bahçe." },
     ]);
     expect(next.socialLinks.websiteUrl).toBe("https://guncel.example.com/");
     expect(next.socialLinks.facebookUrl).toBeUndefined();

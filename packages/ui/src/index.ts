@@ -308,6 +308,8 @@ export type { InstitutionHeroProps } from "./institution-profile/institution-her
 export { InstitutionHero } from "./institution-profile/institution-hero";
 export type { InstitutionHighlightsProps } from "./institution-profile/institution-highlights";
 export { InstitutionHighlights } from "./institution-profile/institution-highlights";
+export type { InstitutionAboutProps } from "./institution-profile/institution-about";
+export { InstitutionAbout } from "./institution-profile/institution-about";
 export type {
   InstitutionLeadCTAProps,
   LeadFormActionState,
@@ -497,6 +499,11 @@ export type {
 export { OwnerEducationProgramsFields } from "./owner/owner-education-programs-fields";
 export type { OwnerFaqFieldsProps, OwnerFaqFormItem } from "./owner/owner-faq-fields";
 export { OwnerFaqFields } from "./owner/owner-faq-fields";
+export type {
+  OwnerHighlightFieldsProps,
+  OwnerHighlightFormItem,
+} from "./owner/owner-highlight-fields";
+export { OwnerHighlightFields } from "./owner/owner-highlight-fields";
 export type { OwnerInstitutionBrochureFieldProps } from "./owner/owner-institution-brochure-field";
 export { OwnerInstitutionBrochureField } from "./owner/owner-institution-brochure-field";
 export type { OwnerPromoVideoFieldProps } from "./owner/owner-promo-video-field";

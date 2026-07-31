@@ -7,6 +7,7 @@ import {
 } from "@eduatlas/application";
 import {
   type CreateInstitutionFaqItemInput,
+  type CreateInstitutionHighlightItemInput,
   type CreateInstitutionWorkingHoursInput,
   WEEKDAYS,
   type Weekday,
@@ -58,6 +59,22 @@ function parseFaqsFromForm(formData: FormData): CreateInstitutionFaqItemInput[] 
   return faqs;
 }
 
+function parseHighlightsFromForm(formData: FormData): CreateInstitutionHighlightItemInput[] {
+  const highlights: CreateInstitutionHighlightItemInput[] = [];
+  for (let index = 0; ; index += 1) {
+    const titleKey = `highlights.${index}.title`;
+    if (!formData.has(titleKey)) {
+      break;
+    }
+    highlights.push({
+      id: String(formData.get(`highlights.${index}.id`) ?? "").trim(),
+      title: String(formData.get(titleKey) ?? ""),
+      description: String(formData.get(`highlights.${index}.description`) ?? ""),
+    });
+  }
+  return highlights;
+}
+
 /**
  * Server action: owner profile form → updateInstitutionProfile application service.
  */
@@ -101,6 +118,7 @@ export async function updateOwnerInstitutionProfileAction(
         amenities: formData.getAll("amenities").map((value) => String(value)),
         educationPrograms: formData.getAll("educationPrograms").map((value) => String(value)),
         faqs: parseFaqsFromForm(formData),
+        highlights: parseHighlightsFromForm(formData),
         updatedBy: user.uid,
       },
       {

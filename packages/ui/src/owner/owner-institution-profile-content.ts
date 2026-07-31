@@ -20,6 +20,7 @@ export type OwnerInstitutionProfileFormValues = {
   amenityOptions: readonly { id: string; label: string; selected: boolean }[];
   educationProgramOptions: readonly { id: string; label: string; selected: boolean }[];
   faqs: readonly { id: string; question: string; answer: string }[];
+  highlights: readonly { id: string; title: string; description: string }[];
   workingHours: OwnerWorkingHoursFormValue;
   shortDescription: string;
   longDescription: string;

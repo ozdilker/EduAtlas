@@ -72,6 +72,11 @@ export async function getOwnerInstitutionProfileView(
         question: item.question,
         answer: item.answer,
       })),
+      highlights: (institution.highlights ?? []).map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+      })),
       workingHours: toWorkingHoursFormValue(institution.workingHours),
       shortDescription: institution.shortDescription,
       longDescription: institution.longDescription ?? "",

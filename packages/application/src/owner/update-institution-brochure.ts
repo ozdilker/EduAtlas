@@ -67,6 +67,7 @@ export async function updateInstitutionBrochure(
     amenities: existing.amenities,
     educationPrograms: existing.educationPrograms,
     faqs: existing.faqs,
+    highlights: existing.highlights,
     isPremium: existing.isPremium,
     qualityScore: existing.qualityScore,
     publishedAt: existing.publishedAt,

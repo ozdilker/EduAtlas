@@ -261,6 +261,30 @@ describe("updateInstitutionProfile", () => {
     ]);
   });
 
+  it("persists highlight list order", async () => {
+    const repo = new StubInstitutionRepository(published());
+    const result = await updateInstitutionProfile(
+      {
+        institutionId: "seed_inst_ist_kolej_1",
+        shortDescription: "Yeni kısa açıklama",
+        phone: "+90 216 999 88 77",
+        address: "Caferağa Mah. Moda Cad. No:42",
+        highlights: [
+          { id: "hl_campus", title: "Kampüs", description: "Geniş bahçe." },
+          { id: "hl_staff", title: "Kadromuz", description: "Deneyimli öğretmenler." },
+        ],
+        updatedBy: "owner_demo",
+        updatedAt: "2026-07-14T21:00:00.000Z",
+      },
+      { institutionRepository: repo as unknown as InstitutionRepository },
+    );
+
+    expect(result.institution.highlights).toEqual([
+      { id: "hl_campus", title: "Kampüs", description: "Geniş bahçe." },
+      { id: "hl_staff", title: "Kadromuz", description: "Deneyimli öğretmenler." },
+    ]);
+  });
+
   it("persists weekly working hours", async () => {
     const repo = new StubInstitutionRepository(published());
     const result = await updateInstitutionProfile(

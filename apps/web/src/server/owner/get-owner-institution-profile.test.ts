@@ -31,6 +31,7 @@ describe("owner institution profile", () => {
     expect(view?.form.educationProgramOptions.length).toBeGreaterThan(0);
     expect(view?.form.educationProgramOptions.every((item) => item.id && item.label)).toBe(true);
     expect(Array.isArray(view?.form.faqs)).toBe(true);
+    expect(Array.isArray(view?.form.highlights)).toBe(true);
   });
 
   it("updates allowlisted fields through the application service", async () => {

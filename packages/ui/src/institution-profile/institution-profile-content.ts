@@ -72,6 +72,8 @@ export type InstitutionProfileViewData = {
   premium: boolean;
   featured: boolean;
   summary: string;
+  /** Optional long-form description shown in its own section above highlights. */
+  longDescription?: string;
   address: string;
   /** Google Maps link from owner profile (optional). */
   googleMapsUrl?: string;
@@ -115,6 +117,8 @@ export function getStaticInstitutionProfile(slug = "ornek-anaokulu"): Institutio
     featured: false,
     summary:
       "Aileler için hazırlanmış statik kurum profili. Bu sayfa yalnızca arayüz yer tutucusudur; canlı veri veya form gönderimi yoktur.",
+    longDescription:
+      "Okul öncesi eğitimde dengeli gelişimi destekleyen programlar, güvenli kampüs ve aile ile yakın iletişim bu kurumun temel yaklaşımıdır.",
     address: "Caferağa Mah. Örnek Sok. No:1, Kadıköy / İstanbul",
     breadcrumbs: [
       { id: "home", label: "Ana sayfa", href: "/" },

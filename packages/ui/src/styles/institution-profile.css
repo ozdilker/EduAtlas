@@ -304,6 +304,20 @@
   line-height: 1.55;
 }
 
+.ea-profile-about__body {
+  padding: var(--ea-space-4);
+  border: 1px solid var(--ea-color-border);
+  border-radius: var(--ea-radius-md);
+  background: var(--ea-color-neutral-25);
+}
+
+.ea-profile-about__text {
+  margin: 0;
+  color: var(--ea-color-text);
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
 .ea-profile-programs__list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));

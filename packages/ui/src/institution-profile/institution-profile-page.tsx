@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Container } from "../components/container";
 import { PublicNextSteps } from "../layout/public-next-steps";
 import { cn } from "../lib/cn";
+import { InstitutionAbout } from "./institution-about";
 import { InstitutionAmenities } from "./institution-amenities";
 import { InstitutionBreadcrumb } from "./institution-breadcrumb";
 import { InstitutionClaimCTA, type InstitutionClaimCTAProps } from "./institution-claim-cta";
@@ -58,6 +59,7 @@ export function InstitutionProfilePage({
         <div className="ea-profile-page__main">
           <InstitutionTrustStrip profile={profile} />
           <InstitutionQuickInfo facts={profile.quickFacts} />
+          <InstitutionAbout description={profile.longDescription} />
           <InstitutionHighlights highlights={profile.highlights} />
           <InstitutionPrograms programs={profile.programs} />
           <InstitutionAmenities items={profile.amenities} />

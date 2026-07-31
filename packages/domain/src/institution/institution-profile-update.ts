@@ -18,6 +18,11 @@ import {
   type InstitutionFaqs,
 } from "./institution-faqs";
 import {
+  createInstitutionHighlights,
+  type CreateInstitutionHighlightItemInput,
+  type InstitutionHighlights,
+} from "./institution-highlights";
+import {
   createInstitutionWorkingHours,
   type CreateInstitutionWorkingHoursInput,
   type InstitutionWorkingHours,
@@ -48,6 +53,7 @@ export type InstitutionProfileUpdate = Readonly<{
   readonly amenities: InstitutionAmenities;
   readonly educationPrograms: InstitutionEducationPrograms;
   readonly faqs: InstitutionFaqs;
+  readonly highlights: InstitutionHighlights;
   readonly updatedAt: string;
   readonly updatedBy: string;
 }>;
@@ -72,6 +78,7 @@ export type CreateInstitutionProfileUpdateInput = {
   amenities?: readonly string[];
   educationPrograms?: readonly string[];
   faqs?: readonly CreateInstitutionFaqItemInput[];
+  highlights?: readonly CreateInstitutionHighlightItemInput[];
   updatedAt: string;
   updatedBy: string;
 };
@@ -149,6 +156,7 @@ export function createInstitutionProfileUpdate(
   const amenities = createInstitutionAmenities(input.amenities);
   const educationPrograms = createInstitutionEducationPrograms(input.educationPrograms);
   const faqs = createInstitutionFaqs(input.faqs);
+  const highlights = createInstitutionHighlights(input.highlights);
 
   return Object.freeze({
     institutionId,
@@ -170,6 +178,7 @@ export function createInstitutionProfileUpdate(
     amenities,
     educationPrograms,
     faqs,
+    highlights,
     updatedAt: input.updatedAt,
     updatedBy,
   });
@@ -250,6 +259,7 @@ export function applyInstitutionProfileUpdate(
     amenities: update.amenities,
     educationPrograms: update.educationPrograms,
     faqs: update.faqs,
+    highlights: update.highlights,
     isPremium: institution.isPremium,
     qualityScore: institution.qualityScore,
     publishedAt: institution.publishedAt,

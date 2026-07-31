@@ -80,6 +80,7 @@ export class FirestoreInstitutionMapper {
       amenities: data.amenities,
       educationPrograms: data.educationPrograms,
       faqs: data.faqs,
+      highlights: data.highlights,
       isPremium: Boolean(data.isPremium),
       qualityScore: data.qualityScore ?? 0,
       publishedAt: normalizeTimestamp(data.publishedAt),
@@ -217,6 +218,15 @@ export class FirestoreInstitutionMapper {
         answer: item.answer,
       }));
     }
+    if (institution.highlights && institution.highlights.length > 0) {
+      document.highlights = institution.highlights.map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+      }));
+    } else {
+      document.highlights = [];
+    }
     if (institution.publishedAt) {
       document.publishedAt = institution.publishedAt;
     }
@@ -285,6 +295,7 @@ export class FirestoreInstitutionMapper {
         return programs.length > 0 ? programs : undefined;
       })(),
       faqs: readFaqs(data),
+      highlights: readHighlights(data),
       isPremium: Boolean(data.isPremium),
       qualityScore: typeof data.qualityScore === "number" ? data.qualityScore : 0,
       nameFolded:
@@ -550,4 +561,33 @@ function readFaqs(
   }
 
   return faqs.length > 0 ? faqs : undefined;
+}
+
+function readHighlights(
+  data: Record<string, unknown>,
+): FirestoreInstitutionDocument["highlights"] {
+  const value = data.highlights;
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!Array.isArray(value)) {
+    throw new Error('Firestore institution field "highlights" must be an array.');
+  }
+
+  const highlights: NonNullable<FirestoreInstitutionDocument["highlights"]> = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      continue;
+    }
+    const row = entry as Record<string, unknown>;
+    const id = typeof row.id === "string" ? row.id.trim() : "";
+    const title = typeof row.title === "string" ? row.title.trim() : "";
+    const description = typeof row.description === "string" ? row.description.trim() : "";
+    if (!id || !title || !description) {
+      continue;
+    }
+    highlights.push({ id, title, description });
+  }
+
+  return highlights.length > 0 ? highlights : undefined;
 }

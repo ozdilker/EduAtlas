@@ -3,6 +3,7 @@ import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import { buildInstitutionPageSeo } from "@eduatlas/seo";
 import {
   Container,
+  InstitutionAbout,
   InstitutionAmenities,
   InstitutionBreadcrumb,
   InstitutionGallery,
@@ -110,6 +111,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
             <div className="ea-profile-page__main">
               <InstitutionTrustStrip profile={profile} />
               <InstitutionQuickInfo facts={profile.quickFacts} />
+              <InstitutionAbout description={profile.longDescription} />
               <InstitutionHighlights highlights={profile.highlights} />
               <InstitutionPrograms programs={profile.programs} />
               <InstitutionAmenities items={profile.amenities} />

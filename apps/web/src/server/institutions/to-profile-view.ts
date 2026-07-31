@@ -83,6 +83,7 @@ export function toInstitutionProfileView(
       { id: "current", label: institution.name },
     ],
     quickFacts: buildQuickFacts(institution, typeLabel),
+    ...(institution.longDescription ? { longDescription: institution.longDescription } : {}),
     highlights: buildHighlights(institution),
     programs: buildPrograms(institution),
     amenities: buildAmenities(institution),
@@ -157,39 +158,11 @@ function buildQuickFacts(institution: Institution, typeLabel: string) {
 }
 
 function buildHighlights(institution: Institution) {
-  const highlights = [
-    {
-      id: "summary",
-      title: "Kurum özeti",
-      description: institution.shortDescription,
-    },
-  ];
-
-  if (institution.programsSummary) {
-    highlights.push({
-      id: "programs",
-      title: "Programlar",
-      description: institution.programsSummary,
-    });
-  }
-
-  if (institution.longDescription) {
-    highlights.push({
-      id: "long-description",
-      title: "Detaylı açıklama",
-      description: institution.longDescription,
-    });
-  }
-
-  if (institution.location.locationNotes) {
-    highlights.push({
-      id: "location-notes",
-      title: "Konum notu",
-      description: institution.location.locationNotes,
-    });
-  }
-
-  return highlights;
+  return (institution.highlights ?? []).map((item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+  }));
 }
 
 function buildPrograms(institution: Institution): InstitutionProfileViewData["programs"] {

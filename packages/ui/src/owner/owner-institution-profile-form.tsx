@@ -15,6 +15,7 @@ import { OwnerPromoVideoField } from "./owner-promo-video-field";
 import { OwnerAmenitiesFields } from "./owner-amenities-fields";
 import { OwnerEducationProgramsFields } from "./owner-education-programs-fields";
 import { OwnerFaqFields } from "./owner-faq-fields";
+import { OwnerHighlightFields } from "./owner-highlight-fields";
 
 export type OwnerInstitutionProfileFormProps = {
   values: OwnerInstitutionProfileFormValues;
@@ -378,6 +379,20 @@ export function OwnerInstitutionProfileForm({
               Eğitim programları
             </h2>
             <OwnerEducationProgramsFields options={values.educationProgramOptions} />
+          </section>
+
+          <section
+            id="owner-profile-highlights"
+            className="ea-owner-profile-form__section"
+            aria-labelledby="owner-profile-highlights-heading"
+          >
+            <h2
+              id="owner-profile-highlights-heading"
+              className="ea-owner-profile-form__section-title"
+            >
+              Öne çıkan özellikler
+            </h2>
+            <OwnerHighlightFields value={values.highlights} />
           </section>
 
           <section
