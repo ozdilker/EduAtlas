@@ -26,6 +26,7 @@ import {
 } from "@/server/institutions/get-public-institution-profile";
 import { getInstitutionTypeLabel } from "@/server/institutions/to-profile-view";
 import { getInstitutionRepository } from "@/server/institutions/repository";
+import { submitInstitutionClaimAction } from "@/server/claims/submit-institution-claim-action";
 import { submitInstitutionLeadAction } from "@/server/leads/submit-institution-lead-action";
 import { InstitutionProfileSidebarLeadDialog } from "./institution-profile-sidebar-lead-dialog";
 import { Suspense } from "react";
@@ -123,6 +124,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
               profile={profile}
               institutionId={institutionIdAsString(institution.id)}
               leadAction={submitInstitutionLeadAction}
+              claimAction={submitInstitutionClaimAction}
             />
           </Container>
         </div>

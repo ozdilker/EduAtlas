@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import type { InstitutionLeadCTAProps, InstitutionProfileViewData } from "@eduatlas/ui";
+import type {
+  InstitutionClaimCTAProps,
+  InstitutionLeadCTAProps,
+  InstitutionProfileViewData,
+} from "@eduatlas/ui";
 import {
+  InstitutionClaimCTA,
   InstitutionLeadCTA,
   InstitutionProfileDialog,
   InstitutionSidebar,
@@ -12,24 +17,28 @@ export type InstitutionProfileSidebarLeadDialogProps = {
   profile: InstitutionProfileViewData;
   institutionId: string;
   leadAction?: InstitutionLeadCTAProps["action"];
+  claimAction?: InstitutionClaimCTAProps["action"];
 };
 
 /**
- * Client-only wrapper that keeps the lead dialog open/close state.
- * Sidebar + dialog are rendered outside the Suspense deferred sections.
+ * Client-only wrapper that keeps lead/claim dialog open/close state.
+ * Sidebar + dialogs are rendered outside the Suspense deferred sections.
  */
 export function InstitutionProfileSidebarLeadDialog({
   profile,
   institutionId,
   leadAction,
+  claimAction,
 }: InstitutionProfileSidebarLeadDialogProps) {
   const [leadOpen, setLeadOpen] = useState(false);
+  const [claimOpen, setClaimOpen] = useState(false);
 
   return (
     <>
       <InstitutionSidebar
         profile={profile}
         onLeadClick={leadAction ? () => setLeadOpen(true) : undefined}
+        onClaimClick={claimAction ? () => setClaimOpen(true) : undefined}
       />
 
       {leadAction ? (
@@ -46,7 +55,21 @@ export function InstitutionProfileSidebarLeadDialog({
           />
         </InstitutionProfileDialog>
       ) : null}
+
+      {claimAction ? (
+        <InstitutionProfileDialog
+          open={claimOpen}
+          onClose={() => setClaimOpen(false)}
+          title="Kurumu sahiplen"
+        >
+          <InstitutionClaimCTA
+            institutionName={profile.name}
+            institutionId={institutionId}
+            action={claimAction}
+            variant="panel"
+          />
+        </InstitutionProfileDialog>
+      ) : null}
     </>
   );
 }
-

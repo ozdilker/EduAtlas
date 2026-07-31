@@ -6,6 +6,7 @@ import { PublicNextSteps } from "../layout/public-next-steps";
 import { cn } from "../lib/cn";
 import { InstitutionAmenities } from "./institution-amenities";
 import { InstitutionBreadcrumb } from "./institution-breadcrumb";
+import { InstitutionClaimCTA, type InstitutionClaimCTAProps } from "./institution-claim-cta";
 import { InstitutionGallery } from "./institution-gallery";
 import { InstitutionHero } from "./institution-hero";
 import { InstitutionHighlights } from "./institution-highlights";
@@ -28,20 +29,23 @@ export type InstitutionProfilePageProps = {
   profile?: InstitutionProfileViewData;
   institutionId?: string;
   leadAction?: InstitutionLeadCTAProps["action"];
+  claimAction?: InstitutionClaimCTAProps["action"];
   className?: string;
 };
 
 /**
- * Institution profile page — lead form opens from the sidebar as a popup.
+ * Institution profile page — lead/claim forms open from the sidebar as popups.
  */
 export function InstitutionProfilePage({
   slug = "ornek-anaokulu",
   profile = getStaticInstitutionProfile(slug),
   institutionId = profile.id,
   leadAction,
+  claimAction,
   className,
 }: InstitutionProfilePageProps) {
   const [leadOpen, setLeadOpen] = useState(false);
+  const [claimOpen, setClaimOpen] = useState(false);
 
   return (
     <div className={cn("ea-profile-page", className)}>
@@ -82,6 +86,7 @@ export function InstitutionProfilePage({
         <InstitutionSidebar
           profile={profile}
           onLeadClick={leadAction ? () => setLeadOpen(true) : undefined}
+          onClaimClick={claimAction ? () => setClaimOpen(true) : undefined}
         />
       </Container>
 
@@ -95,6 +100,21 @@ export function InstitutionProfilePage({
             institutionName={profile.name}
             institutionId={institutionId}
             action={leadAction}
+            variant="panel"
+          />
+        </InstitutionProfileDialog>
+      ) : null}
+
+      {claimAction ? (
+        <InstitutionProfileDialog
+          open={claimOpen}
+          onClose={() => setClaimOpen(false)}
+          title="Kurumu sahiplen"
+        >
+          <InstitutionClaimCTA
+            institutionName={profile.name}
+            institutionId={institutionId}
+            action={claimAction}
             variant="panel"
           />
         </InstitutionProfileDialog>

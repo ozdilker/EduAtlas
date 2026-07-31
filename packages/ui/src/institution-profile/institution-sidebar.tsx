@@ -17,6 +17,7 @@ import { InstitutionSocialLinks } from "./institution-social-links";
 export type InstitutionSidebarProps = {
   profile: InstitutionProfileViewData;
   onLeadClick?: () => void;
+  onClaimClick?: () => void;
   className?: string;
 };
 
@@ -48,6 +49,7 @@ function toFavoriteCard(profile: InstitutionProfileViewData): InstitutionCardVie
 export function InstitutionSidebar({
   profile,
   onLeadClick,
+  onClaimClick,
   className,
 }: InstitutionSidebarProps) {
   const phoneHref = profile.contact.find((item) => item.id === "phone")?.href;
@@ -132,6 +134,11 @@ export function InstitutionSidebar({
           {onLeadClick ? (
             <Button type="button" variant="primary" size="md" onClick={onLeadClick}>
               Bilgi Al
+            </Button>
+          ) : null}
+          {onClaimClick ? (
+            <Button type="button" variant="secondary" size="md" onClick={onClaimClick}>
+              Kurumu sahiplen
             </Button>
           ) : null}
           <Button
