@@ -62,14 +62,14 @@ export class FirebaseAdminObjectStorage implements ObjectStorage {
     return this.buildUrl(path);
   }
 
-  private buildUrl(path: string, downloadToken?: string): string {
+  private buildUrl(path: string, _downloadToken?: string): string {
     const bucket = this.bucket();
-    if (downloadToken) {
-      const encoded = encodeURIComponent(path);
-      return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encoded}?alt=media&token=${downloadToken}`;
-    }
-
-    const encoded = encodeURIComponent(path).replaceAll("%2F", "/");
+    // Prefer GCS public URL. Firebase download-token URLs return 412 on
+    // custom buckets that are not the project's default *.firebasestorage.app.
+    const encoded = path
+      .split("/")
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
     return `https://storage.googleapis.com/${bucket.name}/${encoded}`;
   }
 }

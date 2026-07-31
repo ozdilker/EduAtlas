@@ -8,6 +8,12 @@ service firebase.storage {
       allow write: if false;
     }
 
+    // Public marketing assets (homepage hero + city cards).
+    match /marketing/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }
