@@ -136,6 +136,17 @@ export function InstitutionSidebar({
               Bilgi Al
             </Button>
           ) : null}
+          {profile.brochurePdfUrl ? (
+            <a
+              href={profile.brochurePdfUrl}
+              className={cn(getButtonClassName({ variant: "secondary", size: "md" }))}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+            >
+              Broşür indir
+            </a>
+          ) : null}
           {onClaimClick ? (
             <Button type="button" variant="secondary" size="md" onClick={onClaimClick}>
               Kurumu sahiplen
