@@ -3,6 +3,7 @@ export { AdminAcquisitionBulkToolbar } from "./admin/admin-acquisition-bulk-tool
 export type {
   AdminAcquisitionDashboardViewData,
   AdminAcquisitionFilterOption,
+  AdminAcquisitionPagination,
   AdminAcquisitionQualitySort,
   AdminAcquisitionQueueId,
   AdminAcquisitionQueueTab,
@@ -14,10 +15,12 @@ export type {
 } from "./admin/admin-acquisition-content";
 export {
   ADMIN_ACQUISITION_OWNERSHIP_OPTIONS,
+  ADMIN_ACQUISITION_PAGE_SIZE,
   ADMIN_ACQUISITION_SORT_OPTIONS,
   ADMIN_ACQUISITION_STATUS_OPTIONS,
   ADMIN_ACQUISITION_TYPE_OPTIONS,
   ADMIN_ACQUISITION_VERIFICATION_OPTIONS,
+  buildAdminAcquisitionPageNumbers,
   buildAdminAcquisitionQueueHref,
   buildAdminAcquisitionQueueTabs,
   buildAdminQualityIndicatorLabels,
@@ -71,6 +74,11 @@ export type {
   UpdateAdminHomepageVisualState,
 } from "./admin/admin-visuals-page";
 export { AdminVisualsPage } from "./admin/admin-visuals-page";
+export type {
+  AdminBillingPageProps,
+  AdminBillingPlanRow,
+} from "./admin/admin-billing-page";
+export { AdminBillingPage } from "./admin/admin-billing-page";
 export type {
   AdminOperationsActivityView,
   AdminOperationsBucketView,
@@ -326,6 +334,13 @@ export type { InstitutionTrustStripProps } from "./institution-profile/instituti
 export { InstitutionTrustStrip } from "./institution-profile/institution-trust-strip";
 export type { AuthPlaceholderPageProps, ContentPageViewProps } from "./layout/content-page-view";
 export { AuthPlaceholderPage, ContentPageView } from "./layout/content-page-view";
+export type { LegalDocumentProps, LegalSection } from "./layout/legal-document";
+export {
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_PAGE_NEXT_STEPS,
+  LEGAL_UPDATED_AT_LABEL,
+  LegalDocument,
+} from "./layout/legal-document";
 export type { HubPlaceholderPageProps } from "./layout/hub-placeholder-page";
 export { HubPlaceholderPage } from "./layout/hub-placeholder-page";
 export type {
@@ -417,6 +432,12 @@ export type {
 } from "./owner/owner-insights-content";
 export type { OwnerInsightsPageProps } from "./owner/owner-insights-page";
 export { OwnerInsightsPage } from "./owner/owner-insights-page";
+export type {
+  OwnerBillingPageData,
+  OwnerBillingPageProps,
+  OwnerBillingPlanCardView,
+} from "./owner/owner-billing-page";
+export { OwnerBillingPage } from "./owner/owner-billing-page";
 export type { OwnerInsightsWidgetProps } from "./owner/owner-insights-widget";
 export { OwnerInsightsWidget } from "./owner/owner-insights-widget";
 export type {

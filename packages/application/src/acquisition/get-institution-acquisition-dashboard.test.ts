@@ -36,12 +36,18 @@ class InMemoryInstitutionRepository implements InstitutionRepository {
     return [...this.byId.values()].find((item) => item.slug === slug) ?? null;
   }
 
-  async list() {
+  async list(options?: {
+    page?: number;
+    pageSize?: number;
+  }) {
     const items = [...this.byId.values()];
+    const page = options?.page ?? 1;
+    const pageSize = options?.pageSize ?? Math.max(items.length, 1);
+    const start = (page - 1) * pageSize;
     return createInstitutionPage({
-      items,
-      page: 1,
-      pageSize: Math.max(items.length, 1),
+      items: items.slice(start, start + pageSize),
+      page,
+      pageSize,
       totalItems: items.length,
     });
   }
@@ -220,5 +226,50 @@ describe("getInstitutionAcquisitionDashboard", () => {
     expect(duplicates.rows).toHaveLength(2);
     expect(dashboard.statistics.qualityDistribution.averageScore).toBeGreaterThanOrEqual(0);
     expect(dashboard.statistics.qualityDistribution.byGrade).toBeTruthy();
+  });
+
+  it("paginates matched rows and reports full filtered count", async () => {
+    const repo = new InMemoryInstitutionRepository();
+    for (let index = 0; index < 5; index += 1) {
+      await repo.save(
+        createDraftInstitution({
+          id: `inst_page_${index}`,
+          name: `Sayfa Kurum ${index}`,
+          slug: `sayfa-kurum-${index}`,
+          primaryType: InstitutionType.Kindergarten,
+          location: {
+            cityId: "city_ist",
+            districtId: "dist_kadikoy",
+            address: "Adres",
+          },
+          shortDescription: "Sayfalama testi.",
+          ...timestamps,
+        }),
+      );
+    }
+
+    const firstPage = await getInstitutionAcquisitionDashboard(
+      { queue: "all", page: 1, pageSize: 2 },
+      { institutionRepository: repo },
+    );
+    expect(firstPage.matchedCount).toBe(5);
+    expect(firstPage.rows).toHaveLength(2);
+    expect(firstPage.pagination).toMatchObject({
+      page: 1,
+      pageSize: 2,
+      totalPages: 3,
+      totalItems: 5,
+      from: 1,
+      to: 2,
+    });
+
+    const secondPage = await getInstitutionAcquisitionDashboard(
+      { queue: "all", page: 2, pageSize: 2 },
+      { institutionRepository: repo },
+    );
+    expect(secondPage.matchedCount).toBe(5);
+    expect(secondPage.rows).toHaveLength(2);
+    expect(secondPage.pagination.from).toBe(3);
+    expect(secondPage.pagination.to).toBe(4);
   });
 });

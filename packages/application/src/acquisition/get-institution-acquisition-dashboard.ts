@@ -35,7 +35,9 @@ export type GetInstitutionAcquisitionDashboardInput = {
   ownership?: AcquisitionOwnershipFilter;
   query?: string;
   sort?: AcquisitionQualitySort;
-  /** Caps list load for national-scale safety; repository still used as source of truth. */
+  /** 1-based UI page for the queue-filtered list. */
+  page?: number;
+  /** Rows per UI page (default 50). */
   pageSize?: number;
   now?: string;
 };
@@ -47,7 +49,9 @@ export type GetInstitutionAcquisitionDashboardDependencies = {
   resolveTypeLabel?: (type: InstitutionType) => string;
 };
 
-const DEFAULT_PAGE_SIZE = 500;
+const DEFAULT_LIST_PAGE_SIZE = 50;
+/** Repository fetch cap — Firestore adapter already loads the filtered set in memory. */
+const REPOSITORY_FETCH_PAGE_SIZE = 50_000;
 
 /**
  * Builds quality gap flags for acquisition moderation (presentation helpers).
@@ -186,7 +190,8 @@ export async function getInstitutionAcquisitionDashboard(
 ): Promise<InstitutionAcquisitionDashboard> {
   const queue: AcquisitionQueueId = input.queue ?? "all";
   const sort: AcquisitionQualitySort = input.sort ?? "highest";
-  const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
+  const listPageSize = Math.max(1, input.pageSize ?? DEFAULT_LIST_PAGE_SIZE);
+  const requestedPage = Math.max(1, input.page ?? 1);
   const now = input.now ?? new Date().toISOString();
   const filters = createInstitutionFilters({
     cityId: input.cityId,
@@ -197,13 +202,13 @@ export async function getInstitutionAcquisitionDashboard(
     query: input.query,
   });
 
-  const page = await deps.institutionRepository.list({
+  const listed = await deps.institutionRepository.list({
     filters,
     page: 1,
-    pageSize,
+    pageSize: REPOSITORY_FETCH_PAGE_SIZE,
   });
 
-  const ownershipFiltered = page.items.filter((institution) => {
+  const ownershipFiltered = listed.items.filter((institution) => {
     if (!input.ownership) {
       return true;
     }
@@ -270,9 +275,15 @@ export async function getInstitutionAcquisitionDashboard(
       });
     });
 
-  const rows = Object.freeze(
-    sortAcquisitionRows(unsortedRows, sort),
-  ) as readonly AcquisitionInstitutionRow[];
+  const sortedRows = sortAcquisitionRows(unsortedRows, sort);
+  const matchedCount = sortedRows.length;
+  const totalPages = Math.max(1, Math.ceil(matchedCount / listPageSize));
+  const page = Math.min(requestedPage, totalPages);
+  const start = (page - 1) * listPageSize;
+  const pageRows = sortedRows.slice(start, start + listPageSize);
+  const rows = Object.freeze(pageRows) as readonly AcquisitionInstitutionRow[];
+  const from = matchedCount === 0 ? 0 : start + 1;
+  const to = matchedCount === 0 ? 0 : Math.min(start + listPageSize, matchedCount);
 
   const cityCounts = new Map<string, { label: string; count: number }>();
   const districtCounts = new Map<string, { label: string; count: number }>();
@@ -372,6 +383,15 @@ export async function getInstitutionAcquisitionDashboard(
       ...(filters.query ? { query: filters.query } : {}),
     }),
     statistics,
+    matchedCount,
+    pagination: Object.freeze({
+      page,
+      pageSize: listPageSize,
+      totalPages,
+      totalItems: matchedCount,
+      from,
+      to,
+    }),
     rows,
     duplicateCandidates,
     availableCities: toBuckets(cityCounts),

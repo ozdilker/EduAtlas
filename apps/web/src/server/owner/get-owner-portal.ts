@@ -1,5 +1,12 @@
 import type { InstitutionRepository, LeadRepository } from "@eduatlas/application";
-import { getOwnerDashboard, getOwnerLeadPipeline } from "@eduatlas/application";
+import {
+  getOwnerDashboard,
+  getOwnerLeadPipeline,
+  ownerLeadUpgradeMessage,
+  presentOwnerLeads,
+  resolveInstitutionBillingAccess,
+  type PresentedOwnerLead,
+} from "@eduatlas/application";
 import {
   createLeadId,
   InstitutionVerification,
@@ -20,6 +27,11 @@ import {
   type OwnerPipelineStatusView,
   type OwnerPortalViewData,
 } from "@eduatlas/ui";
+import {
+  ensureDefaultBillingPlansSeeded,
+  getBillingPlanRepository,
+  getInstitutionSubscriptionRepository,
+} from "../billing/repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 import { getLeadRepository } from "./lead-repository";
@@ -65,7 +77,8 @@ export async function getOwnerPortalSnapshot(
     return null;
   }
 
-  const data = toOwnerPortalViewData(dashboard);
+  const presentedById = await buildPresentedLeadMap(institutionId, leadRepository);
+  const data = toOwnerPortalViewData(dashboard, presentedById);
   let selectedLead: OwnerLeadDetailView | undefined;
 
   if (options.selectedLeadId) {
@@ -77,7 +90,7 @@ export async function getOwnerPortalSnapshot(
       null;
 
     if (lead && institutionIdAsString(lead.institutionId) === institutionId) {
-      selectedLead = toDetail(lead);
+      selectedLead = toDetail(lead, presentedById);
     }
   }
 
@@ -112,6 +125,7 @@ export async function getOwnerLeadPipelineView(
   }
 
   const pipeline = await getOwnerLeadPipeline({ institutionId }, { leadRepository });
+  const presentedById = await buildPresentedLeadMap(institutionId, leadRepository);
 
   return {
     institutionId,
@@ -122,7 +136,7 @@ export async function getOwnerLeadPipelineView(
       status: column.status as OwnerPipelineStatusView,
       title: getPipelineStatusLabel(column.status as OwnerPipelineStatusView),
       count: column.count,
-      leads: column.leads.map(toListItem),
+      leads: column.leads.map((lead) => toListItem(lead, presentedById)),
     })),
   };
 }
@@ -151,6 +165,7 @@ export async function getOwnerLeadsWorkspaceView(
   }
 
   const pipeline = await getOwnerLeadPipeline({ institutionId }, { leadRepository });
+  const presentedById = await buildPresentedLeadMap(institutionId, leadRepository);
   const pipelineView: OwnerLeadPipelineViewData = {
     institutionId,
     institutionName: dashboard.institutionSummary.institution.name,
@@ -160,7 +175,7 @@ export async function getOwnerLeadsWorkspaceView(
       status: column.status as OwnerPipelineStatusView,
       title: getPipelineStatusLabel(column.status as OwnerPipelineStatusView),
       count: column.count,
-      leads: column.leads.map(toListItem),
+      leads: column.leads.map((lead) => toListItem(lead, presentedById)),
     })),
   };
 
@@ -176,15 +191,15 @@ export async function getOwnerLeadsWorkspaceView(
 
   const leadDetailsById: Record<string, OwnerLeadDetailView> = {};
   for (const [id, lead] of detailSource) {
-    leadDetailsById[id] = toDetail(lead);
+    leadDetailsById[id] = toDetail(lead, presentedById);
   }
 
   return {
     institutionId,
     institutionName: dashboard.institutionSummary.institution.name,
     institutionLogoUrl: dashboard.institutionSummary.institution.logoUrl,
-    pendingLeads: dashboard.pendingLeads.map(toListItem),
-    recentLeads: dashboard.recentLeads.map(toListItem),
+    pendingLeads: dashboard.pendingLeads.map((lead) => toListItem(lead, presentedById)),
+    recentLeads: dashboard.recentLeads.map((lead) => toListItem(lead, presentedById)),
     pipeline: pipelineView,
     leadDetailsById,
   };
@@ -209,8 +224,94 @@ export async function getOwnerLeadDetail(
   };
 }
 
+async function buildPresentedLeadMap(
+  institutionId: string,
+  leadRepository: LeadRepository,
+): Promise<Map<string, PresentedOwnerLead>> {
+  try {
+    await ensureDefaultBillingPlansSeeded();
+  } catch {
+    // Seed best-effort; FREE fallback still works via defaultFreePlan.
+  }
+
+  const [allLeads, billingPlanRepository, subscriptionRepository] = await Promise.all([
+    leadRepository.listByInstitutionId(institutionId),
+    getBillingPlanRepository(),
+    getInstitutionSubscriptionRepository(),
+  ]);
+
+  const access = await resolveInstitutionBillingAccess(institutionId, {
+    billingPlanRepository,
+    subscriptionRepository,
+  });
+  const presented = presentOwnerLeads(allLeads, access);
+  return new Map(presented.map((item) => [item.lead.id.value, item]));
+}
+
+function toListItem(
+  lead: Lead,
+  presentedById?: Map<string, PresentedOwnerLead>,
+): OwnerLeadListItemView {
+  const id = leadIdAsString(lead.id);
+  const status = lead.status as OwnerLeadStatusView;
+  const presented = presentedById?.get(id);
+  const parentName = presented?.parentName ?? lead.parentName;
+  const phone = presented?.phone ?? lead.phone;
+  const message = presented?.message ?? lead.message;
+
+  return {
+    id,
+    parentName,
+    phone,
+    messagePreview: truncate(message, 120),
+    status,
+    statusLabel: getLeadStatusLabel(status),
+    createdAtLabel: formatDateTime(lead.createdAt),
+    href: `/owner/leads/${id}`,
+    interestLabel: ROLE_LABELS[lead.role],
+    ...(presented?.locked ? { locked: true } : {}),
+  };
+}
+
+function toDetail(
+  lead: Lead,
+  presentedById?: Map<string, PresentedOwnerLead>,
+): OwnerLeadDetailView {
+  const status = lead.status as OwnerLeadStatusView;
+  const id = leadIdAsString(lead.id);
+  const presented = presentedById?.get(id);
+  const locked = presented?.locked === true;
+
+  return {
+    id,
+    parentName: presented?.parentName ?? lead.parentName,
+    phone: presented?.phone ?? lead.phone,
+    ...((presented?.email ?? lead.email)
+      ? { email: presented?.email ?? lead.email }
+      : {}),
+    roleLabel: ROLE_LABELS[lead.role],
+    message: presented?.message ?? lead.message,
+    status,
+    statusLabel: getLeadStatusLabel(status),
+    ...(lead.preferredContactTime && !locked
+      ? { preferredContactTime: lead.preferredContactTime }
+      : {}),
+    createdAtLabel: formatDateTime(lead.createdAt),
+    consentAcceptedAtLabel: formatDateTime(lead.consentAcceptedAt),
+    ...(locked
+      ? {
+          locked: true,
+          upgradeMessage: ownerLeadUpgradeMessage(),
+          upgradeHref: "/owner/billing",
+          upgradeCtaLabel: "Ödeme yakında",
+        }
+      : {}),
+  };
+}
+
 function toOwnerPortalViewData(
   dashboard: NonNullable<Awaited<ReturnType<typeof getOwnerDashboard>>>,
+  presentedById?: Map<string, PresentedOwnerLead>,
 ): OwnerPortalViewData {
   const institution = dashboard.institutionSummary.institution;
   const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
@@ -245,8 +346,8 @@ function toOwnerPortalViewData(
       closedCount: dashboard.leadSummary.byStatus.closed,
       spamCount: dashboard.leadSummary.byStatus.spam,
     },
-    pendingLeads: dashboard.pendingLeads.map(toListItem),
-    recentLeads: dashboard.recentLeads.map(toListItem),
+    pendingLeads: dashboard.pendingLeads.map((lead) => toListItem(lead, presentedById)),
+    recentLeads: dashboard.recentLeads.map((lead) => toListItem(lead, presentedById)),
     leadTrend: {
       title: dashboard.leadTrend.title,
       description: dashboard.leadTrend.description,
@@ -293,41 +394,6 @@ function recommendationPriorityLabel(priority: "high" | "medium" | "low"): strin
     default:
       return "Düşük";
   }
-}
-
-function toListItem(lead: Lead): OwnerLeadListItemView {
-  const id = leadIdAsString(lead.id);
-  const status = lead.status as OwnerLeadStatusView;
-
-  return {
-    id,
-    parentName: lead.parentName,
-    phone: lead.phone,
-    messagePreview: truncate(lead.message, 120),
-    status,
-    statusLabel: getLeadStatusLabel(status),
-    createdAtLabel: formatDateTime(lead.createdAt),
-    href: `/owner/leads/${id}`,
-    interestLabel: ROLE_LABELS[lead.role],
-  };
-}
-
-function toDetail(lead: Lead): OwnerLeadDetailView {
-  const status = lead.status as OwnerLeadStatusView;
-
-  return {
-    id: leadIdAsString(lead.id),
-    parentName: lead.parentName,
-    phone: lead.phone,
-    ...(lead.email ? { email: lead.email } : {}),
-    roleLabel: ROLE_LABELS[lead.role],
-    message: lead.message,
-    status,
-    statusLabel: getLeadStatusLabel(status),
-    ...(lead.preferredContactTime ? { preferredContactTime: lead.preferredContactTime } : {}),
-    createdAtLabel: formatDateTime(lead.createdAt),
-    consentAcceptedAtLabel: formatDateTime(lead.consentAcceptedAt),
-  };
 }
 
 function verificationLabel(verification: InstitutionVerification): string {

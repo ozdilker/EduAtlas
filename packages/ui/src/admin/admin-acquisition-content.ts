@@ -66,6 +66,16 @@ export type AdminCountBucketView = Readonly<{
 
 export type AdminAcquisitionQualitySort = "highest" | "lowest" | "missing_fields";
 
+export type AdminAcquisitionPagination = Readonly<{
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalPages: number;
+  readonly totalItems: number;
+  readonly from: number;
+  readonly to: number;
+  readonly pageNumbers: readonly number[];
+}>;
+
 export type AdminAcquisitionDashboardViewData = Readonly<{
   readonly title: string;
   readonly subtitle: string;
@@ -106,10 +116,15 @@ export type AdminAcquisitionDashboardViewData = Readonly<{
     }>;
     readonly progressPercent: number;
   }>;
+  /** Institutions matching current queue + filters (full set, not page slice). */
+  readonly filteredCount: number;
+  readonly pagination: AdminAcquisitionPagination;
   readonly rows: readonly AdminAcquisitionRowView[];
   readonly duplicateCandidates: readonly AdminCountBucketView[];
   readonly bulkActionsNote: string;
 }>;
+
+export const ADMIN_ACQUISITION_PAGE_SIZE = 50;
 
 const QUEUE_LABELS: Readonly<Record<AdminAcquisitionQueueId, string>> = Object.freeze({
   all: "Tümü",
@@ -248,6 +263,7 @@ export function buildAdminAcquisitionQueueHref(
   filters: AdminAcquisitionDashboardViewData["filters"],
   searchQuery: string,
   sort: AdminAcquisitionQualitySort = "highest",
+  page = 1,
 ): string {
   const params = new URLSearchParams();
   if (queue !== "all") params.set("queue", queue);
@@ -259,8 +275,27 @@ export function buildAdminAcquisitionQueueHref(
   if (filters.ownership) params.set("ownership", filters.ownership);
   if (filters.status) params.set("status", filters.status);
   if (searchQuery) params.set("q", searchQuery);
+  if (page > 1) params.set("page", String(page));
   const qs = params.toString();
   return qs ? `/admin/acquisition?${qs}` : "/admin/acquisition";
+}
+
+/**
+ * Builds a compact page-number window around the current page.
+ */
+export function buildAdminAcquisitionPageNumbers(
+  page: number,
+  totalPages: number,
+  windowSize = 5,
+): readonly number[] {
+  if (totalPages <= 1) {
+    return Object.freeze([1]);
+  }
+  const half = Math.floor(windowSize / 2);
+  let start = Math.max(1, page - half);
+  const end = Math.min(totalPages, start + windowSize - 1);
+  start = Math.max(1, end - windowSize + 1);
+  return Object.freeze(Array.from({ length: end - start + 1 }, (_, index) => start + index));
 }
 
 export type BuildAdminAcquisitionQueueTabsInput = {

@@ -17,6 +17,7 @@ import {
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import {
   ADMIN_ACQUISITION_OWNERSHIP_OPTIONS,
+  ADMIN_ACQUISITION_PAGE_SIZE,
   ADMIN_ACQUISITION_SORT_OPTIONS,
   ADMIN_ACQUISITION_STATUS_OPTIONS,
   ADMIN_ACQUISITION_TYPE_OPTIONS,
@@ -24,6 +25,7 @@ import {
   type AdminAcquisitionDashboardViewData,
   type AdminAcquisitionQualitySort,
   type AdminAcquisitionQueueId,
+  buildAdminAcquisitionPageNumbers,
   buildAdminAcquisitionQueueTabs,
   buildAdminQualityIndicatorLabels,
   getAdminAcquisitionOwnershipLabel,
@@ -45,6 +47,7 @@ export type AcquisitionSearchParams = {
   status?: string | string[];
   sort?: string | string[];
   q?: string | string[];
+  page?: string | string[];
 };
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -86,6 +89,11 @@ function parseOwnership(raw: string | undefined): AcquisitionOwnershipFilter | u
   return undefined;
 }
 
+function parsePage(raw: string | undefined): number {
+  const value = Number.parseInt(raw || "1", 10);
+  return Number.isFinite(value) && value > 0 ? value : 1;
+}
+
 /**
  * Loads Institution Acquisition Dashboard view data via repository + application service.
  */
@@ -100,6 +108,7 @@ export async function getAdminAcquisitionDashboardView(
   const query = firstParam(searchParams.q)?.trim();
   const ownership = parseOwnership(firstParam(searchParams.ownership)?.trim());
   const sort = parseSort(firstParam(searchParams.sort)?.trim());
+  const page = parsePage(firstParam(searchParams.page)?.trim());
 
   const primaryType =
     primaryTypeRaw && isInstitutionType(primaryTypeRaw)
@@ -117,6 +126,8 @@ export async function getAdminAcquisitionDashboardView(
     {
       queue: parseQueue(firstParam(searchParams.queue)?.trim()),
       sort,
+      page,
+      pageSize: ADMIN_ACQUISITION_PAGE_SIZE,
       ...(cityId ? { cityId } : {}),
       ...(cityId && districtId ? { districtId } : {}),
       ...(primaryType ? { primaryType } : {}),
@@ -253,6 +264,19 @@ function toAdminAcquisitionDashboardViewData(
         byLevel: dashboard.statistics.qualityDistribution.byLevel,
       }),
       progressPercent,
+    }),
+    filteredCount: dashboard.matchedCount,
+    pagination: Object.freeze({
+      page: dashboard.pagination.page,
+      pageSize: dashboard.pagination.pageSize,
+      totalPages: dashboard.pagination.totalPages,
+      totalItems: dashboard.pagination.totalItems,
+      from: dashboard.pagination.from,
+      to: dashboard.pagination.to,
+      pageNumbers: buildAdminAcquisitionPageNumbers(
+        dashboard.pagination.page,
+        dashboard.pagination.totalPages,
+      ),
     }),
     rows,
     duplicateCandidates: Object.freeze(

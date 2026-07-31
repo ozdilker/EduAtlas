@@ -428,6 +428,59 @@
   margin: 0;
 }
 
+.ea-legal-doc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-6);
+}
+
+.ea-legal-doc__meta {
+  margin: 0;
+  color: var(--ea-color-text-muted, var(--ea-color-text));
+  font-size: var(--ea-font-size-sm, 0.875rem);
+}
+
+.ea-legal-doc__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-3);
+}
+
+.ea-legal-doc__heading {
+  margin: 0;
+  color: var(--ea-color-text-ink);
+  font-size: var(--ea-font-size-h3, 1.25rem);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ea-legal-doc__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-3);
+}
+
+.ea-legal-doc__content p,
+.ea-legal-doc__content ul {
+  margin: 0;
+}
+
+.ea-legal-doc__content ul {
+  padding-inline-start: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-2);
+}
+
+.ea-legal-doc__content a {
+  color: var(--ea-color-primary);
+  text-underline-offset: 0.15em;
+}
+
+.ea-contact-email {
+  font-weight: 600;
+}
+
 .ea-hub-index__header,
 .ea-hub-placeholder__header {
   display: flex;

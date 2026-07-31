@@ -61,9 +61,19 @@ export function OwnerLeadList({
             >
               <div className="ea-owner-lead-list__top">
                 <span className="ea-owner-lead-list__name">{lead.parentName}</span>
-                <Badge tone={lead.status === "new" ? "info" : "neutral"}>{lead.statusLabel}</Badge>
+                <span className="ea-owner-lead-list__badges">
+                  {lead.locked ? <Badge tone="warning">Kilitli</Badge> : null}
+                  <Badge tone={lead.status === "new" ? "info" : "neutral"}>{lead.statusLabel}</Badge>
+                </span>
               </div>
-              <p className="ea-owner-lead-list__preview">{lead.messagePreview}</p>
+              <p
+                className={cn(
+                  "ea-owner-lead-list__preview",
+                  lead.locked && "ea-owner-lead-list__preview--locked",
+                )}
+              >
+                {lead.messagePreview}
+              </p>
               <div className="ea-owner-lead-list__meta">
                 <span>{lead.phone}</span>
                 <time dateTime={lead.createdAtLabel}>{lead.createdAtLabel}</time>

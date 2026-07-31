@@ -286,6 +286,17 @@ export {
   updateHomepageVisual,
 } from "./site";
 export {
+  type BillingPlanRepository,
+  defaultFreePlan,
+  type InstitutionBillingAccess,
+  type InstitutionSubscriptionRepository,
+  ownerLeadUpgradeMessage,
+  type PresentedOwnerLead,
+  presentOwnerLeads,
+  type ResolveInstitutionBillingAccessDependencies,
+  resolveInstitutionBillingAccess,
+} from "./billing";
+export {
   buildNotificationCopy,
   ConsoleEmailService,
   createConsoleEmailService,

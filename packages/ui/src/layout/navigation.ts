@@ -111,8 +111,10 @@ export function getFooterSections(): FooterSection[] {
       id: "legal",
       title: "Yasal",
       links: [
-        { id: "privacy", label: "Gizlilik", href: "/privacy" },
+        { id: "privacy", label: "Gizlilik Politikası", href: "/privacy" },
         { id: "terms", label: "Kullanım Koşulları", href: "/terms" },
+        { id: "kvkk", label: "KVKK", href: "/kvkk" },
+        { id: "cookies", label: "Çerez Politikası", href: "/cookies" },
       ],
     },
   ];

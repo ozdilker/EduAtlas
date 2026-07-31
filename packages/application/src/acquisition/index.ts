@@ -11,6 +11,7 @@ export type {
   AcquisitionCountBucket,
   AcquisitionDuplicateCandidate,
   AcquisitionInstitutionRow,
+  AcquisitionListPagination,
   AcquisitionQualityDistribution,
   AcquisitionQualitySort,
   AcquisitionQueueId,

@@ -1,7 +1,10 @@
 import { Button } from "../components/button";
 import { Input } from "../components/input";
 import { AdminAcquisitionBulkToolbar } from "./admin-acquisition-bulk-toolbar";
-import type { AdminAcquisitionDashboardViewData } from "./admin-acquisition-content";
+import {
+  type AdminAcquisitionDashboardViewData,
+  buildAdminAcquisitionQueueHref,
+} from "./admin-acquisition-content";
 import { buildAdminNavItems } from "./admin-nav";
 import { AdminShell } from "./admin-shell";
 
@@ -14,6 +17,7 @@ export type AdminAcquisitionDashboardProps = {
  */
 export function AdminAcquisitionDashboard({ data }: AdminAcquisitionDashboardProps) {
   const stats = data.statistics;
+  const { pagination } = data;
 
   return (
     <AdminShell
@@ -155,6 +159,7 @@ export function AdminAcquisitionDashboard({ data }: AdminAcquisitionDashboardPro
           Filtreler
         </h2>
         <form className="ea-admin-filters__form" method="get" action="/admin/acquisition">
+          <input type="hidden" name="page" value="1" />
           {data.activeQueue !== "all" ? (
             <input type="hidden" name="queue" value={data.activeQueue} />
           ) : null}
@@ -302,10 +307,80 @@ export function AdminAcquisitionDashboard({ data }: AdminAcquisitionDashboardPro
       </section>
 
       <section className="ea-admin-results" aria-labelledby="acquisition-results-heading">
-        <h2 id="acquisition-results-heading" className="ea-admin-section-title">
-          Kurum listesi ({data.rows.length})
-        </h2>
+        <div className="ea-admin-results__header">
+          <h2 id="acquisition-results-heading" className="ea-admin-section-title">
+            Kurum listesi ({data.filteredCount})
+          </h2>
+          {data.filteredCount > 0 ? (
+            <p className="ea-admin-muted" aria-live="polite">
+              {pagination.from}–{pagination.to} / {pagination.totalItems}
+            </p>
+          ) : null}
+        </div>
         <AdminAcquisitionBulkToolbar rows={data.rows} note={data.bulkActionsNote} />
+        {pagination.totalPages > 1 ? (
+          <nav className="ea-admin-published__pager" aria-label="Kurum edinimi sayfaları">
+            {pagination.page <= 1 ? (
+              <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
+                Önceki
+              </span>
+            ) : (
+              <a
+                className="ea-admin-published__pager-link"
+                href={buildAdminAcquisitionQueueHref(
+                  data.activeQueue,
+                  data.filters,
+                  data.searchQuery,
+                  data.activeSort,
+                  pagination.page - 1,
+                )}
+              >
+                Önceki
+              </a>
+            )}
+            <ol className="ea-admin-published__pager-pages">
+              {pagination.pageNumbers.map((pageNumber) => (
+                <li key={pageNumber}>
+                  <a
+                    className={
+                      pageNumber === pagination.page
+                        ? "ea-admin-published__pager-link ea-admin-published__pager-link--current"
+                        : "ea-admin-published__pager-link"
+                    }
+                    href={buildAdminAcquisitionQueueHref(
+                      data.activeQueue,
+                      data.filters,
+                      data.searchQuery,
+                      data.activeSort,
+                      pageNumber,
+                    )}
+                    aria-current={pageNumber === pagination.page ? "page" : undefined}
+                  >
+                    {pageNumber}
+                  </a>
+                </li>
+              ))}
+            </ol>
+            {pagination.page >= pagination.totalPages ? (
+              <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
+                Sonraki
+              </span>
+            ) : (
+              <a
+                className="ea-admin-published__pager-link"
+                href={buildAdminAcquisitionQueueHref(
+                  data.activeQueue,
+                  data.filters,
+                  data.searchQuery,
+                  data.activeSort,
+                  pagination.page + 1,
+                )}
+              >
+                Sonraki
+              </a>
+            )}
+          </nav>
+        ) : null}
       </section>
     </AdminShell>
   );

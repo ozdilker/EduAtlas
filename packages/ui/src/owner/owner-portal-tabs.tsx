@@ -8,7 +8,8 @@ export type OwnerPortalTabId =
   | "leads"
   | "insights"
   | "profile"
-  | "onboarding";
+  | "onboarding"
+  | "billing";
 
 export type OwnerPortalTabsProps = {
   activeTab: OwnerPortalTabId;
@@ -23,6 +24,7 @@ const TABS: readonly { id: OwnerPortalTabId; label: string; href: string }[] = [
   { id: "leads", label: "Talepler", href: "/owner/leads" },
   { id: "insights", label: "İçgörüler", href: "/owner/insights" },
   { id: "profile", label: "Profil", href: "/owner/profile" },
+  { id: "billing", label: "Üyelik", href: "/owner/billing" },
 ] as const;
 
 /**

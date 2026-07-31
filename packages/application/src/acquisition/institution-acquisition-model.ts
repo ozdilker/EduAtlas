@@ -72,6 +72,15 @@ export type AcquisitionStatistics = Readonly<{
   readonly queueCounts: Readonly<Record<AcquisitionQueueId, number>>;
 }>;
 
+export type AcquisitionListPagination = Readonly<{
+  readonly page: number;
+  readonly pageSize: number;
+  readonly totalPages: number;
+  readonly totalItems: number;
+  readonly from: number;
+  readonly to: number;
+}>;
+
 export type InstitutionAcquisitionDashboard = Readonly<{
   readonly generatedAt: string;
   readonly queue: AcquisitionQueueId;
@@ -86,6 +95,9 @@ export type InstitutionAcquisitionDashboard = Readonly<{
     readonly query?: string;
   }>;
   readonly statistics: AcquisitionStatistics;
+  /** Queue + filter matched total (not the current page slice length). */
+  readonly matchedCount: number;
+  readonly pagination: AcquisitionListPagination;
   readonly rows: readonly AcquisitionInstitutionRow[];
   readonly duplicateCandidates: readonly AcquisitionDuplicateCandidate[];
   readonly availableCities: readonly AcquisitionCountBucket[];

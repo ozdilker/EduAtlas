@@ -1,23 +1,43 @@
-import { ContentPageView } from "@eduatlas/ui";
+import {
+  ContentPageView,
+  LEGAL_CONTACT_EMAIL,
+  LEGAL_PAGE_NEXT_STEPS,
+} from "@eduatlas/ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "İletişim",
+  description: "EduAtlas ile iletişime geçin — info@eduatlas.com.tr",
 };
 
 export default function ContactPage() {
   return (
     <ContentPageView
       title="İletişim"
-      description="EduAtlas ile ilgili sorularınız için iletişim sayfası yer tutucusu."
+      description="Sorularınız, önerileriniz ve kurum başvurularınız için bize ulaşın."
       breadcrumbs={[
         { id: "home", label: "Ana sayfa", href: "/" },
         { id: "contact", label: "İletişim" },
       ]}
+      nextSteps={[
+        { id: "about", label: "Hakkımızda", href: "/about" },
+        { id: "claim", label: "Kurumunu Sahiplen", href: "/register" },
+        ...LEGAL_PAGE_NEXT_STEPS.filter((item) => item.id !== "contact"),
+      ]}
     >
       <p>
-        İletişim formu bu sprintte bağlı değildir. Keşfe hub ve arama sayfalarından devam
-        edebilirsiniz.
+        EduAtlas ekibine e-posta ile ulaşabilirsiniz. Kurum sahiplenme, teknik destek, iş birliği
+        ve KVKK başvuruları için:
+      </p>
+      <p>
+        <a className="ea-contact-email" href={`mailto:${LEGAL_CONTACT_EMAIL}`}>
+          {LEGAL_CONTACT_EMAIL}
+        </a>
+      </p>
+      <p>
+        Mümkün olduğunca kısa sürede dönüş yapmaya çalışırız. Kurum profili ve lead yönetimi için{" "}
+        <a href="/login">Kurum Girişi</a> veya <a href="/register">Kurumunu Sahiplen</a>{" "}
+        adımlarını kullanabilirsiniz.
       </p>
     </ContentPageView>
   );

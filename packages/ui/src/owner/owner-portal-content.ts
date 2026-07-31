@@ -21,6 +21,8 @@ export type OwnerLeadListItemView = {
   href: string;
   /** Presentation label for interest/role context (e.g. Ebeveyn / Öğrenci). */
   interestLabel?: string;
+  /** True when lead PII is masked pending plan upgrade. */
+  locked?: boolean;
 };
 
 export type OwnerLeadDetailView = {
@@ -35,6 +37,10 @@ export type OwnerLeadDetailView = {
   preferredContactTime?: string;
   createdAtLabel: string;
   consentAcceptedAtLabel: string;
+  locked?: boolean;
+  upgradeMessage?: string;
+  upgradeHref?: string;
+  upgradeCtaLabel?: string;
 };
 
 export type OwnerInstitutionSummaryView = {

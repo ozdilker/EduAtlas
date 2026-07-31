@@ -117,6 +117,15 @@ export {
   LocalFilesystemObjectStorage,
 } from "../media";
 export {
+  BILLING_PLANS_COLLECTION,
+  buildDefaultBillingPlans,
+  createFirestoreBillingPlanRepository,
+  createFirestoreInstitutionSubscriptionRepository,
+  FirestoreBillingPlanRepository,
+  FirestoreInstitutionSubscriptionRepository,
+  INSTITUTION_SUBSCRIPTIONS_COLLECTION,
+} from "../billing";
+export {
   createFirestoreHomepageVisualsRepository,
   createInMemoryHomepageVisualsRepository,
   createLocalFilesystemHomepageVisualsRepository,

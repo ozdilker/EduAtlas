@@ -34,14 +34,18 @@ export function OwnerLeadDetail({ lead, className }: OwnerLeadDetailProps) {
         <div>
           <dt>Telefon</dt>
           <dd>
-            <a href={`tel:${lead.phone.replaceAll(/\s+/g, "")}`}>{lead.phone}</a>
+            {lead.locked ? (
+              lead.phone
+            ) : (
+              <a href={`tel:${lead.phone.replaceAll(/\s+/g, "")}`}>{lead.phone}</a>
+            )}
           </dd>
         </div>
         {lead.email ? (
           <div>
             <dt>E-posta</dt>
             <dd>
-              <a href={`mailto:${lead.email}`}>{lead.email}</a>
+              {lead.locked ? lead.email : <a href={`mailto:${lead.email}`}>{lead.email}</a>}
             </dd>
           </div>
         ) : null}
@@ -66,16 +70,28 @@ export function OwnerLeadDetail({ lead, className }: OwnerLeadDetailProps) {
       </dl>
 
       <section
-        className="ea-owner-lead-detail__message"
+        className={cn(
+          "ea-owner-lead-detail__message",
+          lead.locked && "ea-owner-lead-detail__message--locked",
+        )}
         aria-labelledby="owner-lead-message-heading"
       >
         <h3 id="owner-lead-message-heading">Mesaj</h3>
         <p>{lead.message}</p>
       </section>
 
-      <p className="ea-owner-lead-detail__note">
-        Bu ekran yalnızca okuma amaçlıdır. Durum güncelleme, bildirim ve CRM bu sprintte yoktur.
-      </p>
+      {lead.locked ? (
+        <aside className="ea-owner-lead-detail__upgrade" aria-label="Premium yükseltme">
+          <p>{lead.upgradeMessage}</p>
+          <a className="ea-button ea-button--primary" href={lead.upgradeHref ?? "/owner/billing"}>
+            {lead.upgradeCtaLabel ?? "Ödeme yakında"}
+          </a>
+        </aside>
+      ) : (
+        <p className="ea-owner-lead-detail__note">
+          Bu ekran yalnızca okuma amaçlıdır. Durum güncelleme, bildirim ve CRM bu sprintte yoktur.
+        </p>
+      )}
     </article>
   );
 }
