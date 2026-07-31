@@ -34,7 +34,10 @@ export function evaluateInstitutionProfileCompleteness(
     [ProfileCompletenessSectionId.Gallery]: Boolean(
       institution.coverImageUrl?.trim() || (institution.galleryImages?.length ?? 0) > 0,
     ),
-    [ProfileCompletenessSectionId.Programs]: Boolean(institution.programsSummary?.trim()),
+    [ProfileCompletenessSectionId.Programs]: Boolean(
+      institution.programsSummary?.trim() || (institution.educationPrograms?.length ?? 0) > 0,
+    ),
+    [ProfileCompletenessSectionId.Amenities]: (institution.amenities?.length ?? 0) > 0,
     [ProfileCompletenessSectionId.Logo]: Boolean(institution.logoUrl?.trim()),
     [ProfileCompletenessSectionId.Location]: Boolean(
       institution.location.address?.trim() &&

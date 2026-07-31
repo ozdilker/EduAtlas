@@ -2,7 +2,7 @@ import { buildHomePageSeo } from "@eduatlas/seo";
 import { HomePageView } from "@eduatlas/ui";
 import { JsonLd } from "@/components/json-ld";
 import { getSeoSiteConfig } from "@/lib/seo-site";
-import { searchPublicInstitutions } from "@/server/institutions/search-public-institutions";
+import { getHomeFeaturedInstitutionsView } from "@/server/institutions/get-home-featured-institutions";
 import { getHomepageVisualsView } from "@/server/site/get-homepage-visuals-view";
 import { assertFirestoreReadsBudget, runWithFirestoreCounters } from "@eduatlas/firebase/monitoring";
 
@@ -17,7 +17,7 @@ export default async function HomePage() {
   return runWithFirestoreCounters(async () => {
     const [visuals, featured] = await Promise.all([
       getHomepageVisualsView(),
-      searchPublicInstitutions({ page: 1, pageSize: 6 }),
+      getHomeFeaturedInstitutionsView({ cityId: null }),
     ]);
 
     assertFirestoreReadsBudget("home");

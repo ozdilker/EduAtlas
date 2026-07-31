@@ -118,9 +118,15 @@ export const PROFILE_COMPLETENESS_SECTION_DEFINITIONS: ReadonlyArray<{
   }),
   Object.freeze({
     id: ProfileCompletenessSectionId.Programs,
-    label: "Programlar",
+    label: "Eğitim programları",
     weight: 10,
-    hint: "Program özetini ekleyerek ebeveynlerin aradığını bulmasını kolaylaştırın.",
+    hint: "Eğitim programlarını seçerek ebeveynlerin aradığını bulmasını kolaylaştırın.",
+  }),
+  Object.freeze({
+    id: ProfileCompletenessSectionId.Amenities,
+    label: "Kurum özellikleri",
+    weight: 10,
+    hint: "Servis, laboratuvar gibi kurum özelliklerini seçerek profili güçlendirin.",
   }),
   Object.freeze({
     id: ProfileCompletenessSectionId.Logo,

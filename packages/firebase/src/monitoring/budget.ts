@@ -6,7 +6,8 @@ export type PerformanceBudgetPage =
   | "detail";
 
 const DEFAULT_MAX_READS: Readonly<Record<PerformanceBudgetPage, number>> = Object.freeze({
-  home: 10,
+  // Homepage featured completeness ranking loads a candidate pool + getById.
+  home: 120,
   city: 15,
   detail: 20,
 });

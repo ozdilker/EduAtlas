@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Button } from "../components/button";
 import { getButtonClassName } from "../components/button-classes";
 import { cn } from "../lib/cn";
+import { setLastSearchCityId } from "../parent/parent-search-location-storage";
 import {
   buildSearchHref,
   type SearchFilterOption,
@@ -38,6 +39,9 @@ export function SearchResultsSidebar({ filters, className }: SearchResultsSideba
     setSelectedCityId(filters?.active.cityId ?? "");
     setSelectedDistrictId(filters?.active.districtId ?? "");
     setDistrictOptions(filters?.districts ?? []);
+    if (filters?.active.cityId) {
+      setLastSearchCityId(filters.active.cityId);
+    }
   }, [filters?.active.cityId, filters?.active.districtId, filters?.districts]);
 
   useEffect(() => {
@@ -159,6 +163,7 @@ export function SearchResultsSidebar({ filters, className }: SearchResultsSideba
               const nextCity = event.target.value;
               setSelectedCityId(nextCity);
               setSelectedDistrictId("");
+              setLastSearchCityId(nextCity);
               if (!nextCity) {
                 setDistrictOptions([]);
               }

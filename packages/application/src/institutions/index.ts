@@ -37,3 +37,11 @@ export {
   isInstitutionSort,
   parseInstitutionSort,
 } from "./institution-sort";
+export {
+  type GetHomeFeaturedInstitutionsDependencies,
+  type GetHomeFeaturedInstitutionsInput,
+  getHomeFeaturedInstitutions,
+  HOME_FEATURED_CANDIDATE_PAGE_SIZE,
+  HOME_FEATURED_LIMIT,
+  type HomeFeaturedInstitution,
+} from "./get-home-featured-institutions";

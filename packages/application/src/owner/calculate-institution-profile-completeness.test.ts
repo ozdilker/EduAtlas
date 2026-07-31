@@ -62,6 +62,7 @@ describe("calculateInstitutionProfileCompleteness", () => {
         ProfileCompletenessSectionId.Gallery,
         ProfileCompletenessSectionId.Logo,
         ProfileCompletenessSectionId.SocialLinks,
+        ProfileCompletenessSectionId.Amenities,
       ]),
     );
     expect(result?.nextActionHint).toMatch(/galeri|açıklama|sosyal|logo/i);

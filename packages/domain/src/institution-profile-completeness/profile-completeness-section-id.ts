@@ -10,6 +10,7 @@ export enum ProfileCompletenessSectionId {
   SocialLinks = "social_links",
   Gallery = "gallery",
   Programs = "programs",
+  Amenities = "amenities",
   Logo = "logo",
   Location = "location",
 }

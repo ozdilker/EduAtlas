@@ -6,6 +6,7 @@ import { Container } from "../components/container";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
 import { getHomePopularCities, getHomePopularSearches, getHomeTrustBar } from "./home-content";
+import { getLastSearchCityId, setLastSearchCityId } from "../parent/parent-search-location-storage";
 
 const DEFAULT_HOME_HERO_IMAGE_URL = "/images/home-hero.png";
 
@@ -140,6 +141,13 @@ export function HomeHero({
   const [activeHeroUrl, setActiveHeroUrl] = useState(heroImageUrl);
   const [, startTransition] = useTransition();
 
+  useEffect(() => {
+    const stored = getLastSearchCityId();
+    if (stored && cities.some((city) => city.id === stored)) {
+      setSelectedCityId(stored);
+    }
+  }, [cities]);
+
   function resolveUrlForCityId(cityId: string): string {
     if (!cityId) {
       return heroImageUrl;
@@ -160,6 +168,7 @@ export function HomeHero({
 
   function onCityChange(cityId: string) {
     setSelectedCityId(cityId);
+    setLastSearchCityId(cityId);
     const nextUrl = resolveUrlForCityId(cityId);
     startTransition(() => {
       void preloadImage(nextUrl).then(() => {
@@ -187,8 +196,16 @@ export function HomeHero({
           </p>
 
           <search className="ea-home-hero__search" aria-label="Kurum arama">
-            <form className="ea-home-hero__search-form" action="/search" method="get">
-              <label className="ea-sr-only" htmlFor="home-search-input">
+            <form
+              className="ea-home-hero__search-form"
+              action="/search"
+              method="get"
+              onSubmit={(event) => {
+                const form = event.currentTarget;
+                const city = new FormData(form).get("city");
+                setLastSearchCityId(typeof city === "string" ? city : "");
+              }}
+            >              <label className="ea-sr-only" htmlFor="home-search-input">
                 Kurum, şehir veya tür ara
               </label>
               <Input

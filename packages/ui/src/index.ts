@@ -159,6 +159,23 @@ export {
   upsertFavoriteInstitution,
   writeFavoriteInstitutions,
 } from "./parent/parent-favorites-storage";
+export {
+  SEARCH_LOCATION_CHANGED_EVENT,
+  SEARCH_LOCATION_STORAGE_KEY,
+  getLastSearchCityId,
+  setLastSearchCityId,
+} from "./parent/parent-search-location-storage";
+export type {
+  HomeFeaturedLocation,
+  HomeFeaturedLocationSource,
+} from "./parent/resolve-home-featured-location";
+export { resolveHomeFeaturedLocation } from "./parent/resolve-home-featured-location";
+export type { CityCentroid } from "./parent/turkey-city-centroids";
+export {
+  TURKEY_CITY_CENTROIDS,
+  findNearestCityId,
+  haversineDistanceKm,
+} from "./parent/turkey-city-centroids";
 export type { EduAtlasLogoProps, EduAtlasLogoVariant } from "./brand/eduatlas-logo";
 export { EDUATLAS_LOGO_SRC, EduAtlasLogo } from "./brand/eduatlas-logo";
 export type { BuyingGuideProps } from "./category-landing/buying-guide";
