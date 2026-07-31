@@ -16,6 +16,12 @@ export type ChangeOwnerPasswordInput = {
   newPassword: string;
 };
 
+export type ChangeOwnerEmailInput = {
+  currentEmail: string;
+  newEmail: string;
+  currentPassword: string;
+};
+
 /**
  * Admin-side Auth provisioning for claim approval (create/update user + owner role).
  */
@@ -24,4 +30,5 @@ export interface OwnerAccountProvisioner {
     input: ProvisionOwnerAccountInput,
   ): Promise<ProvisionOwnerAccountResult>;
   changePassword(input: ChangeOwnerPasswordInput): Promise<void>;
+  changeEmail(input: ChangeOwnerEmailInput): Promise<void>;
 }

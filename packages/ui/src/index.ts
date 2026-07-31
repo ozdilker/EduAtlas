@@ -310,6 +310,8 @@ export type { InstitutionHighlightsProps } from "./institution-profile/instituti
 export { InstitutionHighlights } from "./institution-profile/institution-highlights";
 export type { InstitutionAboutProps } from "./institution-profile/institution-about";
 export { InstitutionAbout } from "./institution-profile/institution-about";
+export type { InstitutionFaqsProps } from "./institution-profile/institution-faqs";
+export { InstitutionFaqs } from "./institution-profile/institution-faqs";
 export type {
   InstitutionLeadCTAProps,
   LeadFormActionState,
@@ -326,6 +328,7 @@ export type {
   InstitutionAmenityItem,
   InstitutionBreadcrumbItem,
   InstitutionContactItem,
+  InstitutionFaqItem,
   InstitutionGalleryItem,
   InstitutionHighlight,
   InstitutionProfileViewData,
@@ -488,6 +491,11 @@ export type {
   OwnerChangePasswordFormState,
 } from "./owner/owner-change-password-form";
 export { OwnerChangePasswordForm } from "./owner/owner-change-password-form";
+export type {
+  OwnerChangeEmailFormProps,
+  OwnerChangeEmailFormState,
+} from "./owner/owner-change-email-form";
+export { OwnerChangeEmailForm } from "./owner/owner-change-email-form";
 export type { OwnerWorkingHoursFieldsProps } from "./owner/owner-working-hours-fields";
 export { OwnerWorkingHoursFields } from "./owner/owner-working-hours-fields";
 export type { OwnerAmenityOption, OwnerAmenitiesFieldsProps } from "./owner/owner-amenities-fields";

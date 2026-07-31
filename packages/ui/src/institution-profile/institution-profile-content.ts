@@ -18,6 +18,12 @@ export type InstitutionHighlight = {
   description: string;
 };
 
+export type InstitutionFaqItem = {
+  id: string;
+  question: string;
+  answer: string;
+};
+
 export type InstitutionProgramItem = {
   id: string;
   name: string;
@@ -89,6 +95,7 @@ export type InstitutionProfileViewData = {
   breadcrumbs: InstitutionBreadcrumbItem[];
   quickFacts: InstitutionQuickFact[];
   highlights: InstitutionHighlight[];
+  faqs: InstitutionFaqItem[];
   programs: InstitutionProgramItem[];
   amenities: InstitutionAmenityItem[];
   workingHours: InstitutionWorkingHoursDay[];
@@ -150,6 +157,18 @@ export function getStaticInstitutionProfile(slug = "ornek-anaokulu"): Institutio
         id: "activities",
         title: "Zengin etkinlikler",
         description: "Sanat, müzik ve açık hava aktiviteleri.",
+      },
+    ],
+    faqs: [
+      {
+        id: "faq-fees",
+        question: "Ücretlendirme nasıl yapılıyor?",
+        answer: "Yıllık ve dönemlik plan seçenekleri sunulur; detay için bilgi talebi oluşturabilirsiniz.",
+      },
+      {
+        id: "faq-hours",
+        question: "Okul saatleri nedir?",
+        answer: "Hafta içi 08:00 – 18:00 arası hizmet verilmektedir.",
       },
     ],
     programs: [

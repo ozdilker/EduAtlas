@@ -85,6 +85,7 @@ export function toInstitutionProfileView(
     quickFacts: buildQuickFacts(institution, typeLabel),
     ...(institution.longDescription ? { longDescription: institution.longDescription } : {}),
     highlights: buildHighlights(institution),
+    faqs: buildFaqs(institution),
     programs: buildPrograms(institution),
     amenities: buildAmenities(institution),
     workingHours: buildWorkingHours(institution),
@@ -162,6 +163,14 @@ function buildHighlights(institution: Institution) {
     id: item.id,
     title: item.title,
     description: item.description,
+  }));
+}
+
+function buildFaqs(institution: Institution) {
+  return (institution.faqs ?? []).map((item) => ({
+    id: item.id,
+    question: item.question,
+    answer: item.answer,
   }));
 }
 

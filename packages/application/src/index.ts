@@ -122,6 +122,7 @@ export {
   isWeakPasswordError,
   MIN_PASSWORD_LENGTH,
   normalizeEmail,
+  type ChangeOwnerEmailInput,
   type ChangeOwnerPasswordInput,
   type OwnerAccountProvisioner,
   type OwnerBindingRepository,

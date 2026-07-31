@@ -177,6 +177,7 @@ describe("approveClaimRequest application service", () => {
         return { userId: "uid_owner_1", email: input.email, created: true };
       },
       async changePassword() {},
+      async changeEmail() {},
     };
 
     const submitted = await submitClaimRequest(
@@ -256,6 +257,7 @@ describe("approveClaimRequest application service", () => {
               return { userId: "uid", email: input.email, created: true };
             },
             async changePassword() {},
+            async changeEmail() {},
           },
           emailService: {
             async send() {

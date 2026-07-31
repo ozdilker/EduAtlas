@@ -1,6 +1,7 @@
 import { OwnerInstitutionProfilePage } from "@eduatlas/ui";
 import { redirect } from "next/navigation";
 import { appendOwnerInstitutionGalleryAction } from "@/server/owner/append-owner-institution-gallery-action";
+import { changeOwnerEmailAction } from "@/server/owner/change-owner-email-action";
 import { changeOwnerPasswordAction } from "@/server/owner/change-owner-password-action";
 import { getOwnerInstitutionProfileView } from "@/server/owner/get-owner-institution-profile";
 import { removeOwnerInstitutionBrochureAction } from "@/server/owner/remove-owner-institution-brochure-action";
@@ -22,7 +23,7 @@ export const dynamic = "force-dynamic";
  * Owner institution profile management — editable published fields only.
  */
 export default async function OwnerProfilePage() {
-  const { institutionId } = await requireOwnerContext();
+  const { institutionId, user } = await requireOwnerContext();
   const data = await getOwnerInstitutionProfileView({ institutionId });
 
   if (!data) {
@@ -33,6 +34,8 @@ export default async function OwnerProfilePage() {
     <OwnerInstitutionProfilePage
       data={data}
       action={updateOwnerInstitutionProfileAction}
+      accountEmail={user.email}
+      changeEmailAction={changeOwnerEmailAction}
       changePasswordAction={changeOwnerPasswordAction}
       logoField={
         <OwnerInstitutionLogoUpload

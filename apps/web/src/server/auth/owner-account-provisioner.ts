@@ -1,6 +1,8 @@
 import {
   assertPasswordPolicy,
+  EmailAlreadyInUseError,
   InvalidCredentialsError,
+  isValidEmailFormat,
   normalizeEmail,
   type OwnerAccountProvisioner,
 } from "@eduatlas/application";
@@ -56,6 +58,30 @@ class InMemoryOwnerAccountProvisioner implements OwnerAccountProvisioner {
       throw new InvalidCredentialsError("Mevcut şifre hatalı.");
     }
     existing.password = input.newPassword;
+  }
+
+  async changeEmail(input: {
+    currentEmail: string;
+    newEmail: string;
+    currentPassword: string;
+  }) {
+    const currentEmail = normalizeEmail(input.currentEmail);
+    const newEmail = normalizeEmail(input.newEmail);
+    if (!isValidEmailFormat(newEmail)) {
+      throw new InvalidCredentialsError("Geçerli bir e-posta adresi girin.");
+    }
+    if (newEmail === currentEmail) {
+      throw new InvalidCredentialsError("Yeni e-posta mevcut adresle aynı olamaz.");
+    }
+    const existing = this.users.get(currentEmail);
+    if (!existing || existing.password !== input.currentPassword) {
+      throw new InvalidCredentialsError("Mevcut şifre hatalı.");
+    }
+    if (this.users.has(newEmail)) {
+      throw new EmailAlreadyInUseError();
+    }
+    this.users.delete(currentEmail);
+    this.users.set(newEmail, existing);
   }
 }
 

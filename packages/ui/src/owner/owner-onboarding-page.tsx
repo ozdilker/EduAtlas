@@ -138,7 +138,12 @@ export function OwnerOnboardingView({ data, className }: OwnerOnboardingViewProp
             <a href="/owner/leads" className="ea-owner-onboarding__primary-link">
               Talepleri gör
             </a>
-            <a href={data.publicProfileHref} className="ea-owner-portal__public-link">
+            <a
+              href={data.publicProfileHref}
+              className="ea-owner-portal__public-link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Genel profili aç
             </a>
           </div>

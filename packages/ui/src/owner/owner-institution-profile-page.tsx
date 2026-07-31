@@ -5,6 +5,10 @@ import type {
   OwnerInstitutionProfilePageViewData,
 } from "./owner-institution-profile-content";
 import {
+  OwnerChangeEmailForm,
+  type OwnerChangeEmailFormState,
+} from "./owner-change-email-form";
+import {
   OwnerChangePasswordForm,
   type OwnerChangePasswordFormState,
 } from "./owner-change-password-form";
@@ -17,6 +21,11 @@ export type OwnerInstitutionProfilePageProps = {
     prevState: OwnerInstitutionProfileFormState,
     formData: FormData,
   ) => Promise<OwnerInstitutionProfileFormState>;
+  accountEmail?: string;
+  changeEmailAction?: (
+    prevState: OwnerChangeEmailFormState,
+    formData: FormData,
+  ) => Promise<OwnerChangeEmailFormState>;
   changePasswordAction?: (
     prevState: OwnerChangePasswordFormState,
     formData: FormData,
@@ -34,6 +43,8 @@ export type OwnerInstitutionProfilePageProps = {
 export function OwnerInstitutionProfilePage({
   data,
   action,
+  accountEmail,
+  changeEmailAction,
   changePasswordAction,
   logoField,
   coverField,
@@ -66,6 +77,12 @@ export function OwnerInstitutionProfilePage({
           galleryField={galleryField}
           brochureField={brochureField}
         />
+
+        {changeEmailAction && accountEmail ? (
+          <section className="ea-owner-change-email-section" aria-label="Giriş e-postası">
+            <OwnerChangeEmailForm currentEmail={accountEmail} action={changeEmailAction} />
+          </section>
+        ) : null}
 
         {changePasswordAction ? (
           <section className="ea-owner-change-password-section" aria-label="Hesap şifresi">

@@ -6,6 +6,7 @@ import {
   InstitutionAbout,
   InstitutionAmenities,
   InstitutionBreadcrumb,
+  InstitutionFaqs,
   InstitutionGallery,
   InstitutionHero,
   InstitutionHighlights,
@@ -116,6 +117,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
               <InstitutionPrograms programs={profile.programs} />
               <InstitutionAmenities items={profile.amenities} />
               <InstitutionWorkingHours days={profile.workingHours} />
+              <InstitutionFaqs faqs={profile.faqs} />
 
               <Suspense fallback={null}>
                 <InstitutionBelowFold profile={profile} relatedPromise={relatedPromise} />

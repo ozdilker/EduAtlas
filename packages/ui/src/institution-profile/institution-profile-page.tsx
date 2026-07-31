@@ -8,6 +8,7 @@ import { InstitutionAbout } from "./institution-about";
 import { InstitutionAmenities } from "./institution-amenities";
 import { InstitutionBreadcrumb } from "./institution-breadcrumb";
 import { InstitutionClaimCTA, type InstitutionClaimCTAProps } from "./institution-claim-cta";
+import { InstitutionFaqs } from "./institution-faqs";
 import { InstitutionGallery } from "./institution-gallery";
 import { InstitutionHero } from "./institution-hero";
 import { InstitutionHighlights } from "./institution-highlights";
@@ -64,6 +65,7 @@ export function InstitutionProfilePage({
           <InstitutionPrograms programs={profile.programs} />
           <InstitutionAmenities items={profile.amenities} />
           <InstitutionWorkingHours days={profile.workingHours} />
+          <InstitutionFaqs faqs={profile.faqs} />
           <InstitutionGallery items={profile.gallery} />
           <InstitutionLocation
             address={profile.address}

@@ -43,6 +43,7 @@ export {
 } from "./in-memory-owner-binding-repository";
 export type { OwnerBindingRepository } from "./owner-binding-repository";
 export type {
+  ChangeOwnerEmailInput,
   ChangeOwnerPasswordInput,
   OwnerAccountProvisioner,
   ProvisionOwnerAccountInput,
