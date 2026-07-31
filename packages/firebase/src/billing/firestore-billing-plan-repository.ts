@@ -41,6 +41,13 @@ function fromDocument(id: string, data: FirestoreBillingPlanDocument): BillingPl
 }
 
 function toDocument(plan: BillingPlan): FirestoreBillingPlanDocument {
+  const entitlements: Record<string, boolean | number> = {};
+  for (const [key, value] of Object.entries(plan.entitlements)) {
+    if (typeof value === "boolean" || typeof value === "number") {
+      entitlements[key] = value;
+    }
+  }
+
   return {
     code: plan.code,
     name: plan.name,
@@ -51,7 +58,7 @@ function toDocument(plan: BillingPlan): FirestoreBillingPlanDocument {
     trialDays: plan.trialDays,
     active: plan.active,
     sortOrder: plan.sortOrder,
-    entitlements: { ...plan.entitlements },
+    entitlements,
     updatedAt: plan.updatedAt,
   };
 }
