@@ -14,7 +14,7 @@ export type AdminBillingPlanRow = Readonly<{
 
 export type AdminBillingPageProps = {
   plans: readonly AdminBillingPlanRow[];
-  updateAction: (formData: FormData) => Promise<{ ok: boolean; message?: string }>;
+  updateAction: (formData: FormData) => Promise<void>;
   statusMessage?: string;
 };
 
