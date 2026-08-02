@@ -15,6 +15,7 @@ import {
 } from "./admin-import-content";
 import { buildAdminNavItems } from "./admin-nav";
 import { AdminShell } from "./admin-shell";
+import { prepareImportUploadFile } from "./prepare-import-upload-file";
 
 export type AdminImportPageProps = {
   action: (prevState: AdminImportFormState, formData: FormData) => Promise<AdminImportFormState>;
@@ -28,12 +29,21 @@ function createJobId(): string {
   return `00000000-0000-4000-8000-${Date.now().toString(16).padStart(12, "0").slice(-12)}`;
 }
 
-function SubmitButtons({ canExecute }: { canExecute: boolean }) {
+function SubmitButtons({
+  canExecute,
+  previewPending,
+  onPreviewClick,
+}: {
+  canExecute: boolean;
+  previewPending: boolean;
+  onPreviewClick: () => void;
+}) {
   const { pending } = useFormStatus();
+  const busy = pending || previewPending;
   return (
     <div className="ea-admin-import__actions">
-      <Button type="submit" name="mode" value="preview" size="sm" disabled={pending}>
-        {pending ? "İşleniyor…" : "Önizle (deneme)"}
+      <Button type="button" size="sm" disabled={busy} onClick={onPreviewClick}>
+        {previewPending ? "İşleniyor…" : "Önizle (deneme)"}
       </Button>
       <Button
         type="submit"
@@ -41,7 +51,7 @@ function SubmitButtons({ canExecute }: { canExecute: boolean }) {
         value="execute"
         variant="primary"
         size="sm"
-        disabled={pending || !canExecute}
+        disabled={busy || !canExecute}
       >
         {pending ? "İçe aktarılıyor…" : "İçe aktar"}
       </Button>
@@ -223,15 +233,22 @@ function ImportFormBody({
   state,
   canExecute,
   jobId,
+  previewPending,
+  onPreviewClick,
+  onFileChange,
 }: {
   state: AdminImportFormState;
   canExecute: boolean;
   jobId: string;
+  previewPending: boolean;
+  onPreviewClick: () => void;
+  onFileChange: (file: File | null) => void;
 }) {
   const { pending } = useFormStatus();
   const fileInputId = useId();
   const dryRunId = useId();
   const hasCachedUpload = Boolean(state.uploadToken);
+  const busy = pending || previewPending;
 
   return (
     <>
@@ -248,7 +265,11 @@ function ImportFormBody({
           accept=".csv,.xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
           required={!hasCachedUpload}
           className="ea-admin-import__file"
-          disabled={pending}
+          disabled={busy}
+          onChange={(event) => {
+            const next = event.target.files?.[0] ?? null;
+            onFileChange(next);
+          }}
         />
         {hasCachedUpload && state.summary?.fileName ? (
           <p className="ea-admin-import__cached-file">
@@ -258,12 +279,16 @@ function ImportFormBody({
         ) : null}
       </div>
       <div className="ea-admin-import__dry-run">
-        <input id={dryRunId} name="dryRun" type="checkbox" value="1" disabled={pending} />
+        <input id={dryRunId} name="dryRun" type="checkbox" value="1" disabled={busy} />
         <label htmlFor={dryRunId}>
           Deneme modu — “İçe aktar”da da hiçbir şey yazma (dry-run)
         </label>
       </div>
-      <SubmitButtons canExecute={canExecute} />
+      <SubmitButtons
+        canExecute={canExecute}
+        previewPending={previewPending}
+        onPreviewClick={onPreviewClick}
+      />
       <p className="ea-admin-muted">
         Önce “Önizle”, sonra “İçe aktar”. Büyük MEB listelerinde yazma küçük partiler halinde
         ilerler; yukarıdaki çubuktan takip edebilirsiniz. Aynı dosyayı tekrar içe aktarmak
@@ -282,6 +307,9 @@ export function AdminImportPage({
 }: AdminImportPageProps) {
   const [activeJobId, setActiveJobId] = useState<string>("");
   const [progress, setProgress] = useState<AdminImportProgressView | null>(null);
+  const [previewPending, setPreviewPending] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewState, setPreviewState] = useState<AdminImportFormState | null>(null);
   const totalRowsHintRef = useRef(0);
 
   const wrappedAction = async (
@@ -291,6 +319,18 @@ export function AdminImportPage({
     if (String(formData.get("mode")) === "execute") {
       const id = createJobId();
       formData.set("jobId", id);
+      // Re-attach (and compress) the client-held file so execute fits body limits
+      // and works even if /tmp cache missed on another serverless instance.
+      if (selectedFile && selectedFile.size > 0) {
+        const prepared = await prepareImportUploadFile(selectedFile);
+        formData.set("file", prepared.uploadFile);
+        formData.set("originalFileName", selectedFile.name);
+        if (prepared.contentEncoding) {
+          formData.set("contentEncoding", prepared.contentEncoding);
+        } else {
+          formData.delete("contentEncoding");
+        }
+      }
       setActiveJobId(id);
       setProgress({
         phase: "queued",
@@ -308,13 +348,59 @@ export function AdminImportPage({
   };
 
   const [state, formAction, isPending] = useActionState(wrappedAction, initialState);
-  const currentStep = getAdminImportStepIndex(state.phase);
-  const hasCachedUpload = Boolean(state.uploadToken);
-  const canExecute = state.phase === "preview" && hasCachedUpload;
+  const viewState = previewState ?? state;
+  const currentStep = getAdminImportStepIndex(viewState.phase);
+  const hasCachedUpload = Boolean(viewState.uploadToken) || Boolean(selectedFile);
+  const canExecute = viewState.phase === "preview" && hasCachedUpload;
+  const busy = isPending || previewPending;
+
+  const handlePreview = async () => {
+    if (!selectedFile || selectedFile.size <= 0) {
+      setPreviewState({
+        ...ADMIN_IMPORT_INITIAL_STATE,
+        phase: "error",
+        message: "Lütfen bir .csv, .xlsx veya .xls dosyası seçin.",
+      });
+      return;
+    }
+
+    setPreviewPending(true);
+    try {
+      const prepared = await prepareImportUploadFile(selectedFile);
+      const body = new FormData();
+      body.set("file", prepared.uploadFile);
+      body.set("originalFileName", selectedFile.name);
+      if (prepared.contentEncoding) {
+        body.set("contentEncoding", prepared.contentEncoding);
+      }
+      const response = await fetch("/api/admin/import-preview", {
+        method: "POST",
+        body,
+        credentials: "same-origin",
+      });
+      const payload = (await response.json()) as AdminImportFormState;
+      setPreviewState(payload);
+    } catch {
+      setPreviewState({
+        ...ADMIN_IMPORT_INITIAL_STATE,
+        phase: "error",
+        message:
+          "Önizleme isteği başarısız oldu (ağ/zaman aşımı). Dosyayı yeniden seçip tekrar deneyin.",
+      });
+    } finally {
+      setPreviewPending(false);
+    }
+  };
 
   useEffect(() => {
-    totalRowsHintRef.current = state.summary?.totalRows ?? 0;
-  }, [state.summary?.totalRows]);
+    totalRowsHintRef.current = viewState.summary?.totalRows ?? 0;
+  }, [viewState.summary?.totalRows]);
+
+  useEffect(() => {
+    if (state.phase === "done" || (state.phase === "error" && state.message)) {
+      setPreviewState(null);
+    }
+  }, [state.phase, state.message]);
 
   useEffect(() => {
     if (!isPending || !activeJobId) {
@@ -413,16 +499,16 @@ export function AdminImportPage({
         </ol>
       </nav>
 
-      {state.message ? (
+      {viewState.message ? (
         <p
           className={
-            state.phase === "error"
+            viewState.phase === "error"
               ? "ea-admin-import__status ea-admin-import__status--error"
               : "ea-admin-import__status ea-admin-import__status--info"
           }
           role="status"
         >
-          {state.message}
+          {viewState.message}
         </p>
       ) : null}
 
@@ -433,7 +519,19 @@ export function AdminImportPage({
           1. Dosya yükle
         </h2>
         <form action={formAction} className="ea-admin-import__form">
-          <ImportFormBody state={state} canExecute={canExecute} jobId={activeJobId} />
+          <ImportFormBody
+            state={viewState}
+            canExecute={canExecute}
+            jobId={activeJobId}
+            previewPending={previewPending}
+            onPreviewClick={() => {
+              void handlePreview();
+            }}
+            onFileChange={(file) => {
+              setSelectedFile(file);
+              setPreviewState(null);
+            }}
+          />
         </form>
 
         <details className="ea-admin-import__template">
@@ -446,63 +544,66 @@ export function AdminImportPage({
         </details>
       </section>
 
-      {state.summary ? (
+      {viewState.summary ? (
         <section
           className="ea-admin-import__summary"
           aria-labelledby="admin-import-summary-heading"
         >
           <h2 id="admin-import-summary-heading" className="ea-admin-section-title">
-            {state.phase === "done" ? "Özet" : "Önizleme özeti (henüz yazılmadı)"}
+            {viewState.phase === "done" ? "Özet" : "Önizleme özeti (henüz yazılmadı)"}
           </h2>
           <div className="ea-admin-stats__grid">
             <article className="ea-admin-stat">
               <h3>Dosya</h3>
               <p className="ea-admin-stat__value ea-admin-import__file-name">
-                {state.summary.fileName}
+                {viewState.summary.fileName}
               </p>
               <p className="ea-admin-muted">
-                {state.summary.formatLabel}
-                {state.summary.dryRun ? " · deneme modu" : ""}
+                {viewState.summary.formatLabel}
+                {viewState.summary.dryRun ? " · deneme modu" : ""}
               </p>
             </article>
             <article className="ea-admin-stat">
               <h3>Toplam satır</h3>
-              <p className="ea-admin-stat__value">{state.summary.totalRows}</p>
+              <p className="ea-admin-stat__value">{viewState.summary.totalRows}</p>
             </article>
             <article className="ea-admin-stat">
-              <h3>{state.phase === "done" ? "Yeni eklenen" : "Aktarılabilir"}</h3>
+              <h3>{viewState.phase === "done" ? "Yeni eklenen" : "Aktarılabilir"}</h3>
               <p className="ea-admin-stat__value">
-                {state.phase === "done" ? state.summary.created : state.summary.importable}
+                {viewState.phase === "done"
+                  ? viewState.summary.created
+                  : viewState.summary.importable}
               </p>
             </article>
             <article className="ea-admin-stat">
               <h3>Güncellenen</h3>
-              <p className="ea-admin-stat__value">{state.summary.updated}</p>
+              <p className="ea-admin-stat__value">{viewState.summary.updated}</p>
             </article>
             <article className="ea-admin-stat">
               <h3>Atlanan</h3>
-              <p className="ea-admin-stat__value">{state.summary.skipped}</p>
+              <p className="ea-admin-stat__value">{viewState.summary.skipped}</p>
             </article>
             <article className="ea-admin-stat">
               <h3>Yinelenen</h3>
-              <p className="ea-admin-stat__value">{state.summary.duplicates}</p>
+              <p className="ea-admin-stat__value">{viewState.summary.duplicates}</p>
             </article>
             <article className="ea-admin-stat">
               <h3>Geçersiz / hatalı</h3>
               <p className="ea-admin-stat__value">
-                {state.summary.invalid + state.summary.failed}
+                {viewState.summary.invalid + viewState.summary.failed}
               </p>
             </article>
           </div>
-          {state.unknownHeaders.length > 0 ? (
+          {viewState.unknownHeaders.length > 0 ? (
             <p className="ea-admin-muted">
-              Tanınmayan sütunlar yok sayıldı: {state.unknownHeaders.join(", ")}
+              Tanınmayan sütunlar yok sayıldı: {viewState.unknownHeaders.join(", ")}
             </p>
           ) : null}
         </section>
       ) : null}
 
-      {state.rows.length > 0 ? <ImportRowsPager rows={state.rows} /> : null}
+      {viewState.rows.length > 0 ? <ImportRowsPager rows={viewState.rows} /> : null}
+      {busy ? <p className="ea-admin-muted">İşleniyor…</p> : null}
     </AdminShell>
   );
 }

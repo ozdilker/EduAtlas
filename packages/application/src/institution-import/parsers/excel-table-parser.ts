@@ -5,32 +5,53 @@ import {
   isTextSpreadsheetPayload,
   isZipPackage,
 } from "./decode-import-text";
+import { looksLikeMebHtmlTable, parseMebHtmlTable } from "./meb-html-table-parser";
 import { ensureSheetJsCodepage } from "./sheetjs-runtime";
 
 /**
  * Reads legacy .xls and modern .xlsx into a string table (first sheet).
  * Handles MEB HTML-as-.xls exports and Windows-1254 Turkish encodings.
+ *
+ * MEB HTML exports bypass SheetJS — building a full workbook from a ~5MB
+ * HTML string OOMs Vercel serverless even when validation is light.
  */
 export function parseExcelTable(content: Uint8Array): string[][] {
-  ensureSheetJsCodepage();
+  if (isTextSpreadsheetPayload(content)) {
+    const text = decodeImportTextBytes(content);
+    if (looksLikeMebHtmlTable(text)) {
+      const rows = parseMebHtmlTable(text);
+      if (rows.length === 0) {
+        throw new Error("HTML tablosunda satır bulunamadı.");
+      }
+      return rows;
+    }
 
-  const workbook = isTextSpreadsheetPayload(content)
-    ? XLSX.read(decodeImportTextBytes(content), {
+    ensureSheetJsCodepage();
+    return sheetMatrixFromWorkbook(
+      XLSX.read(text, {
         type: "string",
         cellDates: false,
         cellNF: false,
         cellText: true,
         codepage: 1254,
-      })
-    : XLSX.read(content, {
-        type: "array",
-        cellDates: false,
-        cellNF: false,
-        cellText: true,
-        // Turkish legacy BIFF without CodePage record (MEB / older Excel).
-        codepage: isOleCompoundFile(content) || !isZipPackage(content) ? 1254 : undefined,
-      });
+      }),
+    );
+  }
 
+  ensureSheetJsCodepage();
+  return sheetMatrixFromWorkbook(
+    XLSX.read(content, {
+      type: "array",
+      cellDates: false,
+      cellNF: false,
+      cellText: true,
+      // Turkish legacy BIFF without CodePage record (MEB / older Excel).
+      codepage: isOleCompoundFile(content) || !isZipPackage(content) ? 1254 : undefined,
+    }),
+  );
+}
+
+function sheetMatrixFromWorkbook(workbook: XLSX.WorkBook): string[][] {
   const firstSheetName = workbook.SheetNames[0];
   if (!firstSheetName) {
     throw new Error("Excel dosyasında çalışma sayfası bulunamadı.");

@@ -26,6 +26,7 @@ import {
   getImportUpload,
   storeImportUpload,
 } from "./import-upload-cache";
+import { readImportUploadBytes } from "./read-import-upload-bytes";
 
 function createServerJobId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -100,12 +101,17 @@ async function resolveImportFile(
   const previousToken = prevState.uploadToken?.trim() || tokenFromForm || null;
 
   if (file instanceof File && file.size > 0) {
-    const content = new Uint8Array(await file.arrayBuffer());
-    const uploadToken = await storeImportUpload(file.name, content);
+    const encodingHint = String(formData.get("contentEncoding") ?? "");
+    const originalName = String(formData.get("originalFileName") ?? "").trim();
+    const fileName =
+      originalName ||
+      (file.name.toLowerCase().endsWith(".gz") ? file.name.slice(0, -3) : file.name);
+    const content = await readImportUploadBytes(file, encodingHint);
+    const uploadToken = await storeImportUpload(fileName, content);
     if (previousToken && previousToken !== uploadToken) {
       await deleteImportUpload(previousToken);
     }
-    return { fileName: file.name, content, uploadToken };
+    return { fileName, content, uploadToken };
   }
 
   const token = tokenFromForm || prevState.uploadToken || "";
@@ -153,6 +159,9 @@ export async function importInstitutionsAction(
 
   const { fileName, content, uploadToken } = resolved;
   const startedAt = Date.now();
+  console.info(
+    `[eduatlas] importInstitutionsAction start mode=${mode} file=${fileName} bytes=${content.byteLength}`,
+  );
 
   try {
     // Only wipe the singleton before execute (quota recovery). Preview must keep
