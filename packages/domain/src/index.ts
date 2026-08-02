@@ -487,3 +487,12 @@ export {
   type CreateCampaignSegmentInput,
   type CreateCampaignTemplateInput,
 } from "./outreach";
+export {
+  buildDeliveryIdempotencyKey,
+  createDeliveryJob,
+  DeliveryJobStatus,
+  isDeliveryJobStatus,
+  parseDeliveryJobStatus,
+  type CreateDeliveryJobInput,
+  type DeliveryJob,
+} from "./delivery";

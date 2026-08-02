@@ -18,6 +18,22 @@ export type AdminOutreachOption = Readonly<{
   name: string;
 }>;
 
+export type AdminOutreachProgress = Readonly<{
+  total: number;
+  sent: number;
+  queued: number;
+  failed: number;
+  bounced: number;
+  percent: number;
+}>;
+
+export type AdminOutreachRecipientRow = Readonly<{
+  id: string;
+  institutionId: string;
+  email: string;
+  status: string;
+}>;
+
 export type AdminOutreachPageData = Readonly<{
   campaigns: readonly AdminOutreachCampaignRow[];
   templates: readonly AdminOutreachOption[];
@@ -27,6 +43,8 @@ export type AdminOutreachPageData = Readonly<{
   previewSubject: string;
   sampleInstitutionName: string;
   defaultCtaHref: string;
+  progress: AdminOutreachProgress | null;
+  recipients: readonly AdminOutreachRecipientRow[];
   notice?: string;
   error?: string;
 }>;
@@ -39,7 +57,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 /**
- * Loads campaign builder view data (in-memory outreach store).
+ * Loads campaign builder + delivery view data.
  */
 export async function getAdminOutreachPageData(searchParams: {
   id?: string | string[];
@@ -82,6 +100,9 @@ export async function getAdminOutreachPageData(searchParams: {
 
   let previewHtml = "";
   let previewSubject = "";
+  let progress: AdminOutreachProgress | null = null;
+  let recipients: AdminOutreachRecipientRow[] = [];
+
   if (selected) {
     try {
       const preview = await service.previewCampaignMail({
@@ -95,6 +116,14 @@ export async function getAdminOutreachPageData(searchParams: {
       previewHtml = "";
       previewSubject = "";
     }
+    progress = await service.getProgress(selected.id);
+    const recipientRows = await stores.recipientRepository.listByCampaignId(selected.id);
+    recipients = recipientRows.map((r) => ({
+      id: r.id,
+      institutionId: r.institutionId,
+      email: r.email,
+      status: r.status,
+    }));
   }
 
   return Object.freeze({
@@ -110,6 +139,8 @@ export async function getAdminOutreachPageData(searchParams: {
     previewSubject,
     sampleInstitutionName: SAMPLE_INSTITUTION_NAME,
     defaultCtaHref: ctaHref,
+    progress,
+    recipients: Object.freeze(recipients),
     notice: firstParam(searchParams.notice)?.trim() || undefined,
     error: firstParam(searchParams.error)?.trim() || undefined,
   });

@@ -5,6 +5,7 @@ export const CampaignStatus = Object.freeze({
   Paused: "paused",
   Completed: "completed",
   Cancelled: "cancelled",
+  Failed: "failed",
 } as const);
 
 export type CampaignStatus = (typeof CampaignStatus)[keyof typeof CampaignStatus];

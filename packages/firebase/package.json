@@ -16,6 +16,7 @@
     "./media": "./src/media/index.ts",
     "./storage": "./src/storage/index.ts",
     "./notifications": "./src/notifications/index.ts",
+    "./outreach": "./src/outreach/index.ts",
     "./site": "./src/site/index.ts",
     "./seeds": "./src/seeds/index.ts",
     "./monitoring": "./src/monitoring/index.ts",

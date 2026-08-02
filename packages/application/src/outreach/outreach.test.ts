@@ -163,15 +163,15 @@ describe("OutreachService", () => {
     });
     expect(campaign.status).toBe(CampaignStatus.Draft);
 
-    const ready = await service.markReady("camp_1", NOW);
-    expect(ready.status).toBe(CampaignStatus.Ready);
-
     const recipients = await service.addRecipients({
       campaignId: "camp_1",
       now: NOW,
       recipients: [{ institutionId: "inst_1", email: "a@example.com" }],
     });
     expect(recipients[0]?.status).toBe(CampaignRecipientStatus.Pending);
+
+    const ready = await service.markReady("camp_1", NOW);
+    expect(ready.status).toBe(CampaignStatus.Ready);
 
     const enqueued = await service.enqueuePendingRecipients("camp_1", NOW);
     expect(enqueued).toBe(1);

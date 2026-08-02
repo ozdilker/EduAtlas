@@ -191,3 +191,21 @@ export {
   getAdminStorage,
   getFirebaseAdminProviders,
 } from "./providers";
+export {
+  createFirestoreOutreachRepositories,
+  deliveryJobDocId,
+  FirestoreCampaignLogRepository,
+  FirestoreCampaignRecipientRepository,
+  FirestoreCampaignRepository,
+  FirestoreCampaignSegmentRepository,
+  FirestoreCampaignTemplateRepository,
+  FirestoreDeliveryJobRepository,
+  FirestoreDeliverySendBudget,
+  OUTREACH_BUDGET,
+  OUTREACH_CAMPAIGNS,
+  OUTREACH_JOBS,
+  OUTREACH_LOGS,
+  OUTREACH_RECIPIENTS,
+  OUTREACH_SEGMENTS,
+  OUTREACH_TEMPLATES,
+} from "../outreach";

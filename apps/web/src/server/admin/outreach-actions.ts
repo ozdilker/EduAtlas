@@ -9,11 +9,12 @@ import {
 } from "@eduatlas/application";
 import { campaignIdAsString } from "@eduatlas/domain";
 import { randomBytes } from "node:crypto";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { getSeoSiteConfig } from "@/lib/seo-site";
 import { requireAdminSession } from "@/server/auth/current-session";
 import { getEmailService } from "@/server/notifications/repository";
-import { getOutreachService } from "@/server/outreach/store";
+import { getOutreachService, tickOutreachDelivery } from "@/server/outreach/store";
 
 function formString(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
@@ -32,9 +33,6 @@ function outreachRedirect(params: {
   redirect(qs ? `/admin/outreach?${qs}` : "/admin/outreach");
 }
 
-/**
- * Create or update an outreach campaign (in-memory).
- */
 export async function saveOutreachCampaignAction(formData: FormData): Promise<void> {
   const session = await requireAdminSession();
   const service = await getOutreachService();
@@ -92,9 +90,6 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
   }
 }
 
-/**
- * Send a single test email for the selected campaign.
- */
 export async function sendOutreachTestEmailAction(formData: FormData): Promise<void> {
   await requireAdminSession();
   const service = await getOutreachService();
@@ -131,5 +126,95 @@ export async function sendOutreachTestEmailAction(formData: FormData): Promise<v
         ? error.message
         : "Test e-postası gönderilemedi.";
     outreachRedirect({ id: campaignId, error: message });
+  }
+}
+
+async function campaignAction(
+  formData: FormData,
+  run: (campaignId: string, now: string) => Promise<{ id: string; notice: string }>,
+): Promise<void> {
+  await requireAdminSession();
+  const campaignId = formString(formData, "campaignId");
+  if (!campaignId) {
+    outreachRedirect({ error: "Kampanya seçilmedi." });
+  }
+  const now = new Date().toISOString();
+  try {
+    const result = await run(campaignId, now);
+    outreachRedirect({ id: result.id, notice: result.notice });
+  } catch (error) {
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "İşlem başarısız.";
+    outreachRedirect({ id: campaignId, error: message });
+  }
+}
+
+export async function prepareOutreachCampaignAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    const result = await service.prepareCampaign(campaignId, now);
+    return {
+      id: campaignId,
+      notice: `Prepare tamam: ${result.recipientCount} alıcı (${result.skippedDuplicates} atlandı).`,
+    };
+  });
+}
+
+export async function approveOutreachCampaignAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.approveCampaign(campaignId, now);
+    return { id: campaignId, notice: "Kampanya onaylandı (ready)." };
+  });
+}
+
+export async function runOutreachCampaignAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.start(campaignId, now);
+    after(() => {
+      void tickOutreachDelivery().catch((error) => {
+        console.error("[outreach] delivery tick failed", error);
+      });
+    });
+    return { id: campaignId, notice: "Kampanya çalışıyor. Worker tick başlatıldı." };
+  });
+}
+
+export async function pauseOutreachCampaignAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.pause(campaignId, now);
+    return { id: campaignId, notice: "Kampanya duraklatıldı." };
+  });
+}
+
+export async function resumeOutreachCampaignAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.resume(campaignId, now);
+    after(() => {
+      void tickOutreachDelivery().catch((error) => {
+        console.error("[outreach] delivery tick failed", error);
+      });
+    });
+    return { id: campaignId, notice: "Kampanya devam ediyor." };
+  });
+}
+
+export async function tickOutreachDeliveryAction(formData: FormData): Promise<void> {
+  await requireAdminSession();
+  const campaignId = formString(formData, "campaignId");
+  try {
+    const result = await tickOutreachDelivery();
+    outreachRedirect({
+      id: campaignId || undefined,
+      notice: `Worker tick: ${result.processed} işlendi.`,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Tick başarısız.";
+    outreachRedirect({ id: campaignId || undefined, error: message });
   }
 }

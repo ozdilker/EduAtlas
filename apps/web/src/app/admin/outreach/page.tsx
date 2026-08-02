@@ -6,8 +6,14 @@ import {
 } from "@eduatlas/application";
 import { AdminOutreachPage } from "@eduatlas/ui";
 import {
+  approveOutreachCampaignAction,
+  pauseOutreachCampaignAction,
+  prepareOutreachCampaignAction,
+  resumeOutreachCampaignAction,
+  runOutreachCampaignAction,
   saveOutreachCampaignAction,
   sendOutreachTestEmailAction,
+  tickOutreachDeliveryAction,
 } from "@/server/admin/outreach-actions";
 import { getAdminOutreachPageData } from "@/server/admin/get-admin-outreach";
 import { getCurrentUser } from "@/server/auth/current-session";
@@ -61,10 +67,18 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       previewSubject={data.previewSubject}
       sampleInstitutionName={data.sampleInstitutionName}
       defaultTestEmail={user?.email ?? ""}
+      progress={data.progress}
+      recipients={data.recipients}
       notice={data.notice}
       error={data.error}
       saveAction={saveOutreachCampaignAction}
       testSendAction={sendOutreachTestEmailAction}
+      prepareAction={prepareOutreachCampaignAction}
+      approveAction={approveOutreachCampaignAction}
+      runAction={runOutreachCampaignAction}
+      pauseAction={pauseOutreachCampaignAction}
+      resumeAction={resumeOutreachCampaignAction}
+      tickAction={tickOutreachDeliveryAction}
     />
   );
 }

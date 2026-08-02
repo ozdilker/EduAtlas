@@ -87,6 +87,8 @@ export type {
   AdminOutreachCampaignOption,
   AdminOutreachFormValues,
   AdminOutreachPageProps,
+  AdminOutreachProgressView,
+  AdminOutreachRecipientView,
   AdminOutreachSelectOption,
 } from "./admin/admin-outreach-page";
 export { AdminOutreachPage } from "./admin/admin-outreach-page";

@@ -23,6 +23,22 @@ export type AdminOutreachFormValues = Readonly<{
   preheader: string;
 }>;
 
+export type AdminOutreachProgressView = Readonly<{
+  total: number;
+  sent: number;
+  queued: number;
+  failed: number;
+  bounced: number;
+  percent: number;
+}>;
+
+export type AdminOutreachRecipientView = Readonly<{
+  id: string;
+  institutionId: string;
+  email: string;
+  status: string;
+}>;
+
 export type AdminOutreachPageProps = {
   campaigns: readonly AdminOutreachCampaignOption[];
   templates: readonly AdminOutreachSelectOption[];
@@ -32,14 +48,22 @@ export type AdminOutreachPageProps = {
   previewSubject: string;
   sampleInstitutionName: string;
   defaultTestEmail?: string;
+  progress?: AdminOutreachProgressView | null;
+  recipients?: readonly AdminOutreachRecipientView[];
   notice?: string;
   error?: string;
   saveAction: (formData: FormData) => Promise<void>;
   testSendAction: (formData: FormData) => Promise<void>;
+  prepareAction?: (formData: FormData) => Promise<void>;
+  approveAction?: (formData: FormData) => Promise<void>;
+  runAction?: (formData: FormData) => Promise<void>;
+  pauseAction?: (formData: FormData) => Promise<void>;
+  resumeAction?: (formData: FormData) => Promise<void>;
+  tickAction?: (formData: FormData) => Promise<void>;
 };
 
 /**
- * Admin Campaign Builder — preview + test send only (no bulk start).
+ * Admin Campaign Builder + delivery controls (Prepare → Approve → Run).
  */
 export function AdminOutreachPage({
   campaigns,
@@ -50,20 +74,30 @@ export function AdminOutreachPage({
   previewSubject,
   sampleInstitutionName,
   defaultTestEmail = "",
+  progress = null,
+  recipients = [],
   notice,
   error,
   saveAction,
   testSendAction,
+  prepareAction,
+  approveAction,
+  runAction,
+  pauseAction,
+  resumeAction,
+  tickAction,
 }: AdminOutreachPageProps) {
   const isExisting = Boolean(form.id);
+  const status = campaigns.find((c) => c.id === form.id)?.status ?? "draft";
+  const hasRecipients = recipients.length > 0;
 
   return (
     <AdminShell activeNavId="outreach" navItems={buildAdminNavItems()}>
       <header className="ea-admin-page-header">
         <h1 className="ea-admin-page-header__title">Kampanyalar</h1>
         <p className="ea-admin-page-header__subtitle">
-          İlk e-posta kampanyasını oluşturun, EMDS önizlemesini kontrol edin ve kendinize test
-          gönderin. Toplu gönderim bu aşamada kapalıdır.
+          Prepare → Approve → Run ile kontrollü gönderim. Test maili DeliveryJob kuyruğunu
+          kullanmaz.
         </p>
       </header>
 
@@ -195,6 +229,95 @@ export function AdminOutreachPage({
               {isExisting ? "Kaydet" : "Oluştur"}
             </Button>
           </form>
+
+          {isExisting ? (
+            <div className="ea-admin-outreach__delivery">
+              <h3 className="ea-admin-subsection-title">Gönderim (Delivery)</h3>
+              <p className="ea-admin-muted">Durum: {status}</p>
+              {progress ? (
+                <ul className="ea-admin-outreach__progress">
+                  <li>Toplam: {progress.total}</li>
+                  <li>Gönderildi: {progress.sent}</li>
+                  <li>Kuyrukta: {progress.queued}</li>
+                  <li>Başarısız: {progress.failed}</li>
+                  <li>Bounce: {progress.bounced}</li>
+                  <li>%{progress.percent}</li>
+                </ul>
+              ) : null}
+              <div className="ea-admin-outreach__delivery-actions">
+                {prepareAction && status === "draft" && !hasRecipients ? (
+                  <form action={prepareAction}>
+                    <input type="hidden" name="campaignId" value={form.id} />
+                    <Button type="submit" size="sm">
+                      Prepare
+                    </Button>
+                  </form>
+                ) : null}
+                {approveAction && status === "draft" && hasRecipients ? (
+                  <form action={approveAction}>
+                    <input type="hidden" name="campaignId" value={form.id} />
+                    <Button type="submit" size="sm" variant="primary">
+                      Approve
+                    </Button>
+                  </form>
+                ) : null}
+                {runAction && (status === "ready" || status === "paused") ? (
+                  <form action={runAction}>
+                    <input type="hidden" name="campaignId" value={form.id} />
+                    <Button type="submit" size="sm" variant="primary">
+                      Run
+                    </Button>
+                  </form>
+                ) : null}
+                {pauseAction && status === "running" ? (
+                  <form action={pauseAction}>
+                    <input type="hidden" name="campaignId" value={form.id} />
+                    <Button type="submit" size="sm">
+                      Pause
+                    </Button>
+                  </form>
+                ) : null}
+                {resumeAction && status === "paused" ? (
+                  <form action={resumeAction}>
+                    <input type="hidden" name="campaignId" value={form.id} />
+                    <Button type="submit" size="sm">
+                      Resume
+                    </Button>
+                  </form>
+                ) : null}
+                {tickAction && (status === "running" || status === "paused") ? (
+                  <form action={tickAction}>
+                    <input type="hidden" name="campaignId" value={form.id} />
+                    <Button type="submit" size="sm">
+                      Worker tick
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
+              {hasRecipients ? (
+                <div className="ea-admin-table-wrap">
+                  <table className="ea-admin-table">
+                    <thead>
+                      <tr>
+                        <th>Kurum</th>
+                        <th>E-posta</th>
+                        <th>Durum</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recipients.map((row) => (
+                        <tr key={row.id}>
+                          <td>{row.institutionId}</td>
+                          <td>{row.email}</td>
+                          <td>{row.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {isExisting ? (
             <form action={testSendAction} className="ea-admin-outreach__test">

@@ -1,6 +1,7 @@
 export const CampaignRecipientStatus = Object.freeze({
   Pending: "pending",
   Queued: "queued",
+  Sending: "sending",
   Sent: "sent",
   Delivered: "delivered",
   Opened: "opened",

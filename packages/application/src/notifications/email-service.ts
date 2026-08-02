@@ -22,6 +22,8 @@ export type SendEmailInput = {
 export type SendEmailResult = Readonly<{
   readonly messageId: string;
   readonly accepted: boolean;
+  readonly smtpResponse?: string;
+  readonly smtpCode?: string;
 }>;
 
 export interface EmailService {

@@ -44,4 +44,10 @@ export {
   OutreachService,
   type OutreachServiceDependencies,
 } from "./outreach-service";
+export {
+  getCampaignProgress,
+  computeCampaignProgress,
+  type CampaignProgress,
+} from "./campaign-progress";
+export { prepareCampaign, type PrepareCampaignResult } from "./prepare-campaign";
 export { renderCampaignTemplatePreview } from "./render-campaign-template";

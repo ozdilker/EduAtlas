@@ -12,6 +12,10 @@ import {
 } from "@eduatlas/domain";
 import type { EmailService } from "../notifications/email-service";
 import type { RenderedEmail } from "../notifications/email-templates";
+import type { InstitutionRepository } from "../institutions/institution-repository";
+import type { DeliveryJobRepository } from "../delivery/delivery-job-repository";
+import type { OutreachDeliveryConfig } from "../delivery/delivery-config";
+import { loadOutreachDeliveryConfig } from "../delivery/delivery-config";
 import { applyMailTokens } from "./apply-mail-tokens";
 import type { CampaignLogRepository } from "./campaign-log-repository";
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
@@ -19,11 +23,19 @@ import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
 import type { CampaignTemplateRepository } from "./campaign-template-repository";
 import {
+  getCampaignProgress,
+  type CampaignProgress,
+} from "./campaign-progress";
+import {
   renderClaimInvitationMail,
 } from "./claim-invitation-mail";
 import { OutreachNotFoundError, OutreachValidationError } from "./errors";
 import type { OutreachQueue } from "./outreach-queue";
 import { CLAIM_INVITATION_TEMPLATE_ID } from "./outreach-seeds";
+import {
+  prepareCampaign as prepareCampaignAction,
+  type PrepareCampaignResult,
+} from "./prepare-campaign";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
 
 export type OutreachServiceDependencies = Readonly<{
@@ -33,6 +45,9 @@ export type OutreachServiceDependencies = Readonly<{
   readonly templateRepository: CampaignTemplateRepository;
   readonly logRepository: CampaignLogRepository;
   readonly queue: OutreachQueue;
+  readonly deliveryJobRepository?: DeliveryJobRepository;
+  readonly institutionRepository?: InstitutionRepository;
+  readonly deliveryConfig?: OutreachDeliveryConfig;
 }>;
 
 let logSeq = 0;
@@ -145,9 +160,16 @@ export class OutreachService {
   }
 
   async markReady(campaignId: string, now: string): Promise<Campaign> {
+    return this.approveCampaign(campaignId, now);
+  }
+
+  /**
+   * Approve prepared campaign for run (draft → ready). Requires recipients.
+   */
+  async approveCampaign(campaignId: string, now: string): Promise<Campaign> {
     const campaign = await this.requireCampaign(campaignId);
     if (campaign.status !== CampaignStatus.Draft) {
-      throw new OutreachValidationError("Only draft campaigns can be marked ready.");
+      throw new OutreachValidationError("Only draft campaigns can be approved.");
     }
     const template = await this.deps.templateRepository.getById(campaign.templateId);
     if (!template) {
@@ -157,13 +179,56 @@ export class OutreachService {
     if (!segment) {
       throw new OutreachValidationError("Campaign segment is missing.");
     }
+    const recipients = await this.deps.recipientRepository.listByCampaignId(
+      campaignIdAsString(campaign.id),
+    );
+    if (recipients.length === 0) {
+      throw new OutreachValidationError("Approve requires a prepared recipient list.");
+    }
 
     const updated = createCampaign(
       toCreateInput(campaign, { status: CampaignStatus.Ready }),
     );
     await this.deps.campaignRepository.update(updated);
-    await this.log(campaignIdAsString(updated.id), "Campaign marked ready.", now);
+    await this.log(campaignIdAsString(updated.id), "Campaign approved (ready).", now);
     return updated;
+  }
+
+  async prepareCampaign(campaignId: string, now: string): Promise<PrepareCampaignResult> {
+    if (!this.deps.deliveryJobRepository || !this.deps.institutionRepository) {
+      throw new OutreachValidationError("Delivery repositories are not configured.");
+    }
+    const result = await prepareCampaignAction(
+      { campaignId, now },
+      {
+        campaignRepository: this.deps.campaignRepository,
+        segmentRepository: this.deps.segmentRepository,
+        recipientRepository: this.deps.recipientRepository,
+        deliveryJobRepository: this.deps.deliveryJobRepository,
+        institutionRepository: this.deps.institutionRepository,
+        config: this.deps.deliveryConfig ?? loadOutreachDeliveryConfig(),
+      },
+    );
+    await this.log(
+      campaignId.trim(),
+      `Prepared ${result.recipientCount} recipient(s); skipped ${result.skippedDuplicates}.`,
+      now,
+    );
+    return result;
+  }
+
+  async getProgress(campaignId: string): Promise<CampaignProgress> {
+    if (!this.deps.deliveryJobRepository) {
+      return Object.freeze({
+        total: 0,
+        sent: 0,
+        queued: 0,
+        failed: 0,
+        bounced: 0,
+        percent: 0,
+      });
+    }
+    return getCampaignProgress(campaignId, this.deps.deliveryJobRepository);
   }
 
   async start(campaignId: string, now: string): Promise<Campaign> {
@@ -171,6 +236,17 @@ export class OutreachService {
     if (campaign.status !== CampaignStatus.Ready && campaign.status !== CampaignStatus.Paused) {
       throw new OutreachValidationError("Only ready or paused campaigns can start/resume running.");
     }
+
+    const all = await this.deps.campaignRepository.list();
+    const otherRunning = all.find(
+      (c) =>
+        c.status === CampaignStatus.Running &&
+        campaignIdAsString(c.id) !== campaignIdAsString(campaign.id),
+    );
+    if (otherRunning) {
+      throw new OutreachValidationError("Another campaign is already running.");
+    }
+
     const updated = createCampaign(
       toCreateInput(campaign, {
         status: CampaignStatus.Running,
