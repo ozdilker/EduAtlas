@@ -1,13 +1,13 @@
+import { MetadataEngine } from "@eduatlas/seo";
 import { InstitutionsBrowsePage } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 import { searchPublicInstitutions } from "@/server/institutions/search-public-institutions";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Kurumlar",
-  description: "Türkiye’deki yayınlı eğitim kurumlarını keşfedin.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "institutions-index",
+}).metadata;
 
 /**
  * Public institutions index — real published institutions from search.

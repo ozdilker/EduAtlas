@@ -1,11 +1,10 @@
 import { ContentPageView } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { MetadataEngine } from "@eduatlas/seo";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "Hakkımızda",
-  description:
-    "EduAtlas, ailelerin Türkiye’deki eğitim kurumlarını bilinçli ve güvenilir şekilde keşfetmesi için hayata geçirildi.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "about",
+}).metadata;
 
 export default function AboutPage() {
   return (

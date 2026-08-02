@@ -5,13 +5,12 @@ import {
   LEGAL_UPDATED_AT_LABEL,
   LegalDocument,
 } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { MetadataEngine } from "@eduatlas/seo";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "Gizlilik Politikası",
-  description:
-    "EduAtlas’ın kişisel verileri nasıl topladığı, kullandığı ve koruduğuna dair gizlilik politikası.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "privacy",
+}).metadata;
 
 export default function PrivacyPage() {
   return (

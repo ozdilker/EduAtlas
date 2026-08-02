@@ -1,4 +1,4 @@
-import { buildHomePageSeo } from "@eduatlas/seo";
+import { MetadataEngine } from "@eduatlas/seo";
 import { HomePageView } from "@eduatlas/ui";
 import { JsonLd } from "@/components/json-ld";
 import { getSeoSiteConfig } from "@/lib/seo-site";
@@ -7,7 +7,7 @@ import { getHomepageVisualsView } from "@/server/site/get-homepage-visuals-view"
 import { assertFirestoreReadsBudget, runWithFirestoreCounters } from "@eduatlas/firebase/monitoring";
 
 const site = getSeoSiteConfig();
-const homeSeo = buildHomePageSeo(site);
+const homeSeo = MetadataEngine.resolve("home", site);
 
 export const revalidate = 3600;
 

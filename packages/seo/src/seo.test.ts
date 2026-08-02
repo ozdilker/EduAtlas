@@ -148,7 +148,8 @@ describe("page SEO builders", () => {
 
   it("builds institution, city, and category SEO with static demo content", () => {
     const institution = buildInstitutionPageSeo(site, { slug: "ornek-anaokulu" });
-    const city = buildCityPageSeo(site, { citySlug: "istanbul" });
+    const city = buildCityPageSeo(site, { citySlug: "istanbul", cityName: "İstanbul" });
+    const ankara = buildCityPageSeo(site, { citySlug: "ankara", cityName: "Ankara" });
     const category = buildCategoryPageSeo(site, { categorySlug: "anaokulu" });
     const dershane = buildCategoryPageSeo(site, { categorySlug: "dershane" });
 
@@ -159,6 +160,12 @@ describe("page SEO builders", () => {
       absolute: "Örnek Anaokulu | Anaokulu | Kadıköy, İstanbul | EduAtlas",
     });
     expect(city.metadata.alternates.canonical).toBe("https://eduatlas.com/cities/istanbul");
+    expect(city.metadata.title).toEqual({
+      absolute: "İstanbul eğitim kurumları | EduAtlas",
+    });
+    expect(ankara.metadata.title).toEqual({
+      absolute: "Ankara eğitim kurumları | EduAtlas",
+    });
     expect(category.metadata.alternates.canonical).toBe("https://eduatlas.com/categories/anaokulu");
     expect(category.metadata.title).toEqual({
       absolute: "Anaokulu kurumları | EduAtlas",

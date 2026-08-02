@@ -1,49 +1,50 @@
+import { MetadataEngine, resolveCategoryPluralLabel } from "@eduatlas/seo";
 import { HubPlaceholderPage } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { getSeoSiteConfig } from "@/lib/seo-site";
+import {
+  resolveGeoHubLabels,
+  resolveTypeHubLabel,
+} from "@/server/seo/resolve-geo-hub-labels";
 
 type CityTypeRouteProps = {
   params: Promise<{ city: string; type: string }>;
 };
 
-function labelize(value: string): string {
-  return value
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-export async function generateMetadata({ params }: CityTypeRouteProps): Promise<Metadata> {
+export async function generateMetadata({ params }: CityTypeRouteProps) {
   const { city, type } = await params;
-  const cityLabel = labelize(city);
-  const typeLabel = labelize(type);
-
-  return {
-    title: `${cityLabel} ${typeLabel}`,
-    description: `${cityLabel} ${typeLabel} hub yer tutucusu.`,
-    alternates: { canonical: `/cities/${city}/types/${type}` },
-  };
+  const geo = resolveGeoHubLabels(city);
+  const typeName = resolveTypeHubLabel(type);
+  return MetadataEngine.resolve("city-type", getSeoSiteConfig(), {
+    citySlug: geo?.citySlug ?? city,
+    typeSlug: type,
+    cityName: geo?.cityName,
+    typeName,
+  }).metadata;
 }
 
 export default async function CityTypeHubRoute({ params }: CityTypeRouteProps) {
   const { city, type } = await params;
-  const cityLabel = labelize(city);
-  const typeLabel = labelize(type);
+  const geo = resolveGeoHubLabels(city);
+  const cityLabel = geo?.cityName ?? city;
+  const citySlug = geo?.citySlug ?? city;
+  const typeName = resolveTypeHubLabel(type);
+  const plural = resolveCategoryPluralLabel(type, typeName);
 
   return (
     <HubPlaceholderPage
-      title={`${cityLabel} ${typeLabel}`}
-      description={`${cityLabel} içinde ${typeLabel} keşfi için şehir×kategori yer tutucusu.`}
+      title={`${cityLabel} ${plural}`}
+      description={`${cityLabel} içinde ${typeName} keşfi için şehir×kategori yer tutucusu.`}
       breadcrumbs={[
         { id: "home", label: "Ana sayfa", href: "/" },
         { id: "cities", label: "Şehirler", href: "/cities" },
-        { id: "city", label: cityLabel, href: `/cities/${city}` },
-        { id: "type", label: typeLabel },
+        { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
+        { id: "type", label: plural },
       ]}
       primaryHref={`/categories/${type}`}
-      primaryLabel={`${typeLabel} kategori hub’ı`}
+      primaryLabel={`${typeName} kategori hub’ı`}
       nextSteps={[
-        { id: "city", label: cityLabel, href: `/cities/${city}` },
-        { id: "category", label: typeLabel, href: `/categories/${type}` },
+        { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
+        { id: "category", label: typeName, href: `/categories/${type}` },
         { id: "search", label: "Arama", href: "/search" },
         { id: "institutions", label: "Kurumlar", href: "/institutions" },
       ]}

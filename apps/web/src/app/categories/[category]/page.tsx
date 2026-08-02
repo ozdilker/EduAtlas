@@ -1,4 +1,4 @@
-import { buildCategoryPageSeo } from "@eduatlas/seo";
+import { MetadataEngine } from "@eduatlas/seo";
 import { CategoryLandingPage } from "@eduatlas/ui";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
@@ -14,7 +14,12 @@ type CategoryLandingRouteProps = {
 
 export async function generateMetadata({ params }: CategoryLandingRouteProps) {
   const { category } = await params;
-  return buildCategoryPageSeo(getSeoSiteConfig(), { categorySlug: category }).metadata;
+  const landing = await getCategoryLandingView(category);
+  return MetadataEngine.resolve("category", getSeoSiteConfig(), {
+    categorySlug: landing?.slug ?? category,
+    categoryName: landing?.name,
+    description: landing?.description,
+  }).metadata;
 }
 
 const CATEGORY_SLUG_ALIASES: Record<string, InstitutionType> = Object.freeze({
@@ -38,7 +43,7 @@ export default async function CategoryLandingRoute({ params }: CategoryLandingRo
     notFound();
   }
 
-  const pageSeo = buildCategoryPageSeo(getSeoSiteConfig(), {
+  const pageSeo = MetadataEngine.resolve("category", getSeoSiteConfig(), {
     categorySlug: landing.slug,
     categoryName: landing.name,
     description: landing.description,

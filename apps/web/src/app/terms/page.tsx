@@ -5,13 +5,12 @@ import {
   LEGAL_UPDATED_AT_LABEL,
   LegalDocument,
 } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { MetadataEngine } from "@eduatlas/seo";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "Kullanım Koşulları",
-  description:
-    "EduAtlas platformunu kullanırken geçerli olan kullanım koşulları ve hizmet şartları.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "terms",
+}).metadata;
 
 export default function TermsPage() {
   return (

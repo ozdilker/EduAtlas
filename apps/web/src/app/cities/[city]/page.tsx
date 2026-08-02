@@ -1,4 +1,4 @@
-import { buildCityPageSeo } from "@eduatlas/seo";
+import { MetadataEngine } from "@eduatlas/seo";
 import { CityLandingPage } from "@eduatlas/ui";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
@@ -15,7 +15,12 @@ type CityLandingRouteProps = {
 
 export async function generateMetadata({ params }: CityLandingRouteProps) {
   const { city } = await params;
-  return buildCityPageSeo(getSeoSiteConfig(), { citySlug: city }).metadata;
+  const landing = await getCityLandingView(city);
+  return MetadataEngine.resolve("city", getSeoSiteConfig(), {
+    citySlug: landing?.slug ?? city,
+    cityName: landing?.name,
+    description: landing?.description,
+  }).metadata;
 }
 
 export async function generateStaticParams(): Promise<{ city: string }[]> {
@@ -36,7 +41,11 @@ export default async function CityLandingRoute({ params }: CityLandingRouteProps
 
     assertFirestoreReadsBudget("city");
 
-    const pageSeo = buildCityPageSeo(getSeoSiteConfig(), { citySlug: landing.slug });
+    const pageSeo = MetadataEngine.resolve("city", getSeoSiteConfig(), {
+      citySlug: landing.slug,
+      cityName: landing.name,
+      description: landing.description,
+    });
 
     return (
       <>

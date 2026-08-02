@@ -1,4 +1,5 @@
 import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
+import { humanizeSlug } from "../humanize-slug";
 import { buildMetadata } from "../metadata";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
@@ -117,12 +118,4 @@ export function buildCategoryPageSeo(
       ),
     ],
   };
-}
-
-function humanizeSlug(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toLocaleUpperCase("tr-TR") + part.slice(1))
-    .join(" ");
 }

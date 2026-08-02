@@ -2,6 +2,7 @@ import { createInstitutionFilters, type InstitutionRepository } from "@eduatlas/
 import { type Institution, InstitutionStatus, institutionIdAsString } from "@eduatlas/domain";
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import type { InstitutionProfileViewData } from "@eduatlas/ui";
+import { cache } from "react";
 import { getInstitutionRepository } from "./repository";
 import {
   isPublicInstitution,
@@ -40,10 +41,11 @@ export async function getPublicInstitutionProfileBySlug(
   };
 }
 
-export async function getPublicInstitutionProfileAboveFoldBySlug(
-  slug: string,
-  repository?: InstitutionRepository,
-): Promise<PublicInstitutionProfile | null> {
+export const getPublicInstitutionProfileAboveFoldBySlug = cache(
+  async function getPublicInstitutionProfileAboveFoldBySlug(
+    slug: string,
+    repository?: InstitutionRepository,
+  ): Promise<PublicInstitutionProfile | null> {
   const repo = repository ?? (await getInstitutionRepository());
   const institution = await repo.getBySlug(slug);
 
@@ -56,7 +58,8 @@ export async function getPublicInstitutionProfileAboveFoldBySlug(
     institution,
     profile: toInstitutionProfileView(institution, geo),
   };
-}
+},
+);
 
 export async function loadRelatedInstitutions(
   repository: InstitutionRepository,

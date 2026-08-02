@@ -5,12 +5,12 @@ import {
   LEGAL_UPDATED_AT_LABEL,
   LegalDocument,
 } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { MetadataEngine } from "@eduatlas/seo";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "Çerez Politikası",
-  description: "EduAtlas’ın çerez ve benzeri teknolojileri nasıl kullandığına dair bilgilendirme.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "cookies",
+}).metadata;
 
 export default function CookiesPage() {
   return (

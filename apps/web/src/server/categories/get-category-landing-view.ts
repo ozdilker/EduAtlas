@@ -4,6 +4,7 @@ import {
 } from "@eduatlas/domain";
 import { buildTurkeyGeographySeedCatalog } from "@eduatlas/firebase/server";
 import type { CategoryLandingViewData } from "@eduatlas/ui";
+import { cache } from "react";
 import { searchPublicInstitutions } from "../institutions/search-public-institutions";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 
@@ -49,8 +50,9 @@ export function resolveInstitutionTypeFromCategorySlug(slug: string): Institutio
 /**
  * Builds a data-backed category hub for `/categories/{slug}`.
  * Returns null when the slug is not a known institution type.
+ * Cached per-request so generateMetadata + page share one load.
  */
-export async function getCategoryLandingView(
+export const getCategoryLandingView = cache(async function getCategoryLandingView(
   categorySlug: string,
 ): Promise<CategoryLandingViewData | null> {
   const type = resolveInstitutionTypeFromCategorySlug(categorySlug);
@@ -189,7 +191,7 @@ export async function getCategoryLandingView(
       },
     ],
   };
-}
+});
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat("tr-TR").format(value);

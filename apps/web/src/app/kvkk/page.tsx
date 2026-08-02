@@ -5,13 +5,12 @@ import {
   LEGAL_UPDATED_AT_LABEL,
   LegalDocument,
 } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { MetadataEngine } from "@eduatlas/seo";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "KVKK Aydınlatma Metni",
-  description:
-    "6698 sayılı KVKK kapsamında EduAtlas kişisel veri işleme aydınlatma metni.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "kvkk",
+}).metadata;
 
 export default function KvkkPage() {
   return (

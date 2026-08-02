@@ -14,17 +14,31 @@ export type { PageSeoResult } from "./pages";
 export {
   buildCategoryPageSeo,
   buildCityPageSeo,
+  buildCityTypePageSeo,
+  buildDistrictPageSeo,
   buildHomePageSeo,
   buildInstitutionPageSeo,
   buildSearchPageSeo,
+  buildStaticPageSeo,
+  CATEGORY_PLURAL_BY_SLUG,
   DEMO_CATEGORY_SEO,
   DEMO_CITY_SEO,
   DEMO_INSTITUTION_SEO,
+  listStaticPageSeoIds,
+  resolveCategoryPluralLabel,
   resolveCategorySeoContent,
   type CategorySeoContent,
   type InstitutionPageSeoContent,
+  type StaticPageSeoId,
 } from "./pages";
 export { createSeoSiteConfig, DEFAULT_SEO_SITE_URL, resolveSiteOrigin } from "./site";
+export { humanizeSlug } from "./humanize-slug";
+export {
+  buildPageSeo,
+  MetadataEngine,
+  type MetadataEngineInputMap,
+  type MetadataPageKind,
+} from "./engine";
 export {
   buildRobotsTxt,
   createBlockedRobotsPolicy,

@@ -1,10 +1,10 @@
+import { MetadataEngine } from "@eduatlas/seo";
 import { CategoryIndexPage } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "Kurum tipleri",
-  description: "Anaokulundan dershaneye kurum türlerine göre keşfedin.",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "categories-index",
+}).metadata;
 
 export default function CategoriesIndexRoute() {
   return <CategoryIndexPage />;

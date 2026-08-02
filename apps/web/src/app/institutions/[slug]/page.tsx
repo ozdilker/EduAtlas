@@ -1,6 +1,6 @@
+import { MetadataEngine } from "@eduatlas/seo";
 import { getInstitutionTypeSlug, InstitutionVerification, institutionIdAsString } from "@eduatlas/domain";
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
-import { buildInstitutionPageSeo } from "@eduatlas/seo";
 import {
   Container,
   InstitutionAbout,
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: InstitutionProfileRouteProps)
   const { institution, profile } = result;
   const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
 
-  return buildInstitutionPageSeo(getSeoSiteConfig(), {
+  return MetadataEngine.resolve("institution", getSeoSiteConfig(), {
     slug: institution.slug,
     name: institution.name,
     typeLabel: getInstitutionTypeLabel(institution.primaryType),
@@ -73,7 +73,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
   return runWithFirestoreCounters(async () => {
     const { slug } = await params;
     const repo = await getInstitutionRepository();
-    const result = await getPublicInstitutionProfileAboveFoldBySlug(slug, repo);
+    const result = await getPublicInstitutionProfileAboveFoldBySlug(slug);
 
     if (!result) {
       notFound();
@@ -81,7 +81,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
 
     const { institution, profile } = result;
     const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
-    const pageSeo = buildInstitutionPageSeo(getSeoSiteConfig(), {
+    const pageSeo = MetadataEngine.resolve("institution", getSeoSiteConfig(), {
       slug: institution.slug,
       name: institution.name,
       typeLabel: profile.typeLabel,

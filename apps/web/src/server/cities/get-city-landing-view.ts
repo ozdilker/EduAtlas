@@ -6,6 +6,7 @@ import {
 } from "@eduatlas/domain";
 import { buildTurkeyGeographySeedCatalog } from "@eduatlas/firebase/server";
 import type { CityLandingViewData } from "@eduatlas/ui";
+import { cache } from "react";
 import { searchPublicInstitutions } from "../institutions/search-public-institutions";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 
@@ -36,8 +37,11 @@ const DISTRICT_LINK_LIMIT = 12;
  * Builds a data-backed city hub view for `/cities/{slug}`.
  * Uses the Türkiye geography catalog + a lightweight count query.
  * Returns null when the slug is not a known city.
+ * Cached per-request so generateMetadata + page share one load.
  */
-export async function getCityLandingView(citySlug: string): Promise<CityLandingViewData | null> {
+export const getCityLandingView = cache(async function getCityLandingView(
+  citySlug: string,
+): Promise<CityLandingViewData | null> {
   const slug = citySlug.trim().toLowerCase();
   if (!slug) {
     return null;
@@ -168,7 +172,7 @@ export async function getCityLandingView(citySlug: string): Promise<CityLandingV
     ],
     relatedCities,
   };
-}
+});
 
 function formatCount(value: number): string {
   return new Intl.NumberFormat("tr-TR").format(value);

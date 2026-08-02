@@ -1,5 +1,5 @@
 import { AppRole } from "@eduatlas/domain";
-import { buildSearchPageSeo } from "@eduatlas/seo";
+import { MetadataEngine } from "@eduatlas/seo";
 import { SearchResultsPage } from "@eduatlas/ui";
 import { JsonLd } from "@/components/json-ld";
 import { getSeoSiteConfig } from "@/lib/seo-site";
@@ -33,7 +33,7 @@ function firstParam(value: string | string[] | undefined): string {
 }
 
 export async function generateMetadata() {
-  return buildSearchPageSeo(getSeoSiteConfig()).metadata;
+  return MetadataEngine.resolve("search", getSeoSiteConfig()).metadata;
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
@@ -64,7 +64,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const session = await getCurrentSession();
   const isParent = session?.user.role === AppRole.Parent;
 
-  const searchSeo = buildSearchPageSeo(getSeoSiteConfig());
+  const searchSeo = MetadataEngine.resolve("search", getSeoSiteConfig());
   const totalPages = view.result.page.totalPages;
   const currentPage = view.result.page.page;
   const pagination =

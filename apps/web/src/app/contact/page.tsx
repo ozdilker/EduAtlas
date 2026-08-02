@@ -3,12 +3,12 @@ import {
   LEGAL_CONTACT_EMAIL,
   LEGAL_PAGE_NEXT_STEPS,
 } from "@eduatlas/ui";
-import type { Metadata } from "next";
+import { MetadataEngine } from "@eduatlas/seo";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 
-export const metadata: Metadata = {
-  title: "İletişim",
-  description: "EduAtlas ile iletişime geçin — info@eduatlas.com.tr",
-};
+export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
+  pageId: "contact",
+}).metadata;
 
 export default function ContactPage() {
   return (
