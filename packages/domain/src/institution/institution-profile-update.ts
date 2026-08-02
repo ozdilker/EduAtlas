@@ -266,5 +266,7 @@ export function applyInstitutionProfileUpdate(
     createdAt: institution.createdAt,
     updatedAt: update.updatedAt,
     updatedByUserId: update.updatedBy,
+    leadCounters: institution.leadCounters,
+    googleBusiness: institution.googleBusiness,
   });
 }

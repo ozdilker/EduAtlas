@@ -194,6 +194,32 @@
   line-height: var(--ea-line-height-heading);
 }
 
+.ea-profile-hero__google-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  margin: var(--ea-space-2) 0 0;
+  font-size: 0.95rem;
+  color: var(--ea-color-text);
+}
+
+.ea-profile-hero__google-rating-star {
+  color: #c47a12;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.ea-profile-hero__google-rating-value {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ea-profile-hero__google-rating-count {
+  color: var(--ea-color-text-muted);
+  font-size: 0.875rem;
+}
+
 .ea-profile-trust {
   padding: var(--ea-space-4) 0;
 }

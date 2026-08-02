@@ -123,6 +123,8 @@ export async function reviewInstitution(
     createdAt: existing.createdAt,
     updatedAt: now,
     updatedByUserId: input.reviewedBy ?? existing.updatedByUserId,
+    leadCounters: existing.leadCounters,
+    googleBusiness: existing.googleBusiness,
   });
 
   const saved = await deps.institutionRepository.update(

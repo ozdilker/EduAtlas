@@ -22,7 +22,10 @@ import {
 } from "@eduatlas/domain";
 import type { Firestore } from "firebase-admin/firestore";
 import { FirestoreInstitutionDocumentStore } from "./firestore-institution-document-store";
-import { FirestoreInstitutionMapper } from "./firestore-institution-mapper";
+import {
+  FirestoreInstitutionMapper,
+  googleBusinessFromDocument,
+} from "./firestore-institution-mapper";
 import type {
   InstitutionDocumentRecord,
   InstitutionDocumentStore,
@@ -201,6 +204,8 @@ export class FirestoreInstitutionRepository
       id,
       FirestoreInstitutionMapper.toFirestore(institution, {
         leadCounters: institution.leadCounters ?? existing.data.leadCounters,
+        googleBusiness:
+          institution.googleBusiness ?? googleBusinessFromDocument(existing.data),
       }),
     );
     return institution;
@@ -267,6 +272,7 @@ export class FirestoreInstitutionRepository
       createdAt: institution.createdAt,
       updatedAt: new Date().toISOString(),
       leadCounters: institution.leadCounters,
+      googleBusiness: institution.googleBusiness,
     });
 
     await this.store.replace(key, FirestoreInstitutionMapper.toFirestore(deleted));

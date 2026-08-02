@@ -83,6 +83,14 @@ export type InstitutionProfileViewData = {
   address: string;
   /** Google Maps link from owner profile (optional). */
   googleMapsUrl?: string;
+  /** Google Business Maps URI from Places sync (preferred over owner link when present). */
+  googleBusinessMapsUrl?: string;
+  /** Google rating 0–5 from Places sync (optional). */
+  googleRating?: number;
+  /** Google user rating count from Places sync (optional). */
+  googleReviewCount?: number;
+  /** Matched Google place display name (optional). */
+  googlePlaceName?: string;
   /** Optional coordinates when available. */
   latitude?: number;
   longitude?: number;

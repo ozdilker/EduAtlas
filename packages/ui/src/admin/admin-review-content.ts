@@ -62,6 +62,13 @@ export type AdminReviewPanelView = Readonly<{
   readonly canReturnToDraft: boolean;
   readonly canReject: boolean;
   readonly profileHref: string;
+  readonly googlePlaceName: string;
+  readonly googleFormattedAddress: string;
+  readonly googleSyncStatusLabel: string;
+  readonly googleMatchMethodLabel: string;
+  readonly googleConfidenceLabel: string;
+  readonly googleLastError: string;
+  readonly googleMapsUrl: string;
 }>;
 
 export type AdminReviewFiltersView = Readonly<{

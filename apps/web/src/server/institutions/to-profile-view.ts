@@ -69,6 +69,18 @@ export function toInstitutionProfileView(
     summary: institution.shortDescription,
     address: institution.location.address,
     googleMapsUrl: institution.location.googleMapsUrl,
+    ...(institution.googleBusiness?.mapsUrl
+      ? { googleBusinessMapsUrl: institution.googleBusiness.mapsUrl }
+      : {}),
+    ...(institution.googleBusiness?.rating !== undefined
+      ? { googleRating: institution.googleBusiness.rating }
+      : {}),
+    ...(institution.googleBusiness?.reviewCount !== undefined
+      ? { googleReviewCount: institution.googleBusiness.reviewCount }
+      : {}),
+    ...(institution.googleBusiness?.placeName
+      ? { googlePlaceName: institution.googleBusiness.placeName }
+      : {}),
     ...(institution.location.latitude !== undefined
       ? { latitude: institution.location.latitude }
       : {}),

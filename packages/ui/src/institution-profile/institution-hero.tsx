@@ -67,6 +67,22 @@ export function InstitutionHero({ profile, className }: InstitutionHeroProps) {
             {profile.name}
           </h1>
 
+          {profile.googleRating !== undefined ? (
+            <p className="ea-profile-hero__google-rating" aria-label="Google puanı">
+              <span className="ea-profile-hero__google-rating-star" aria-hidden="true">
+                ★
+              </span>
+              <span className="ea-profile-hero__google-rating-value">
+                {formatGoogleRating(profile.googleRating)}
+              </span>
+              {profile.googleReviewCount !== undefined ? (
+                <span className="ea-profile-hero__google-rating-count">
+                  ({formatReviewCount(profile.googleReviewCount)} Google değerlendirme)
+                </span>
+              ) : null}
+            </p>
+          ) : null}
+
           <p className="ea-profile-hero__location">
             <a href={profile.typeHref}>{profile.typeLabel}</a>
             <span aria-hidden="true"> · </span>
@@ -80,4 +96,15 @@ export function InstitutionHero({ profile, className }: InstitutionHeroProps) {
       </div>
     </section>
   );
+}
+
+function formatGoogleRating(rating: number): string {
+  return rating.toLocaleString("tr-TR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+function formatReviewCount(count: number): string {
+  return count.toLocaleString("tr-TR");
 }

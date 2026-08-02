@@ -5,6 +5,8 @@ export type InstitutionLocationProps = {
   city: string;
   district: string;
   googleMapsUrl?: string;
+  /** Preferred Maps deep-link from Google Places sync. */
+  googleBusinessMapsUrl?: string;
   latitude?: number;
   longitude?: number;
   className?: string;
@@ -70,17 +72,26 @@ export function InstitutionLocation({
   city,
   district,
   googleMapsUrl,
+  googleBusinessMapsUrl,
   latitude,
   longitude,
   className,
 }: InstitutionLocationProps) {
   const query = buildInstitutionMapsQuery(address, district, city);
+  const placesMapsUrl = googleBusinessMapsUrl?.trim() || undefined;
   const ownerMapsUrl = googleMapsUrl?.trim() || undefined;
-  const mapsHref = ownerMapsUrl || (query ? buildGoogleMapsSearchUrl(query) : undefined);
+  const mapsHref =
+    placesMapsUrl || ownerMapsUrl || (query ? buildGoogleMapsSearchUrl(query) : undefined);
   const embedSrc = query
     ? buildGoogleMapsEmbedUrl(query, latitude, longitude)
     : undefined;
-  const fromAddress = !ownerMapsUrl && Boolean(query);
+  const mapsSource: "places" | "owner" | "address" | null = placesMapsUrl
+    ? "places"
+    : ownerMapsUrl
+      ? "owner"
+      : query
+        ? "address"
+        : null;
 
   return (
     <section
@@ -111,13 +122,9 @@ export function InstitutionLocation({
               target="_blank"
               rel="noopener noreferrer"
             >
-              Google Maps’te aç
+              Google Maps’te Gör
             </a>
-            <p className="ea-profile-location__map-hint">
-              {fromAddress
-                ? "Konum adresten otomatik bulundu"
-                : "Konum bağlantısı kurum tarafından eklendi"}
-            </p>
+            <p className="ea-profile-location__map-hint">{mapsHint(mapsSource)}</p>
           </div>
         </div>
       ) : mapsHref ? (
@@ -128,13 +135,9 @@ export function InstitutionLocation({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Google Maps’te aç
+            Google Maps’te Gör
           </a>
-          <p className="ea-profile-location__map-hint">
-            {fromAddress
-              ? "Konum adresten otomatik bulundu"
-              : "Konum bağlantısı kurum tarafından eklendi"}
-          </p>
+          <p className="ea-profile-location__map-hint">{mapsHint(mapsSource)}</p>
         </div>
       ) : (
         <div
@@ -147,4 +150,17 @@ export function InstitutionLocation({
       )}
     </section>
   );
+}
+
+function mapsHint(source: "places" | "owner" | "address" | null): string {
+  if (source === "places") {
+    return "Google İşletme profilinden";
+  }
+  if (source === "owner") {
+    return "Konum bağlantısı kurum tarafından eklendi";
+  }
+  if (source === "address") {
+    return "Konum adresten otomatik bulundu";
+  }
+  return "";
 }

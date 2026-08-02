@@ -21,6 +21,20 @@ export {
   getInstitutionAcquisitionDashboard,
 } from "./acquisition";
 export {
+  buildGooglePlaceSearchQuery,
+  isGoogleSyncEligibleRequest,
+  pickBestGooglePlaceMatch,
+  scoreGooglePlaceMatch,
+  syncGoogleBusiness,
+  syncGoogleBusinessForInstitution,
+  type GooglePlaceDetails,
+  type GooglePlaceSearchQuery,
+  type GooglePlacesProvider,
+  type SyncGoogleBusinessDependencies,
+  type SyncGoogleBusinessInput,
+  type SyncGoogleBusinessResult,
+} from "./google-business";
+export {
   type AgentIntegrationRoute,
   type AiWorkforceFoundationSummary,
   type AiWorkforceOrchestrator,

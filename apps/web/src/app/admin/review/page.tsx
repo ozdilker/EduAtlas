@@ -5,6 +5,10 @@ import {
   type ReviewSearchParams,
 } from "@/server/admin/get-admin-review-queue";
 import { reviewInstitutionAction } from "@/server/admin/review-institution-action";
+import {
+  rematchGoogleBusinessAction,
+  syncGoogleBusinessAction,
+} from "@/server/admin/google-business-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +28,12 @@ type AdminReviewRouteProps = {
 export default async function AdminReviewRoute({ searchParams }: AdminReviewRouteProps) {
   const params = await searchParams;
   const data = await getAdminReviewQueueView(params);
-  return <AdminReviewPage data={data} reviewAction={reviewInstitutionAction} />;
+  return (
+    <AdminReviewPage
+      data={data}
+      reviewAction={reviewInstitutionAction}
+      syncGoogleAction={syncGoogleBusinessAction}
+      rematchGoogleAction={rematchGoogleBusinessAction}
+    />
+  );
 }

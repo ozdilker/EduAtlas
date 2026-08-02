@@ -30,6 +30,7 @@ import { getInstitutionTypeLabel } from "@/server/institutions/to-profile-view";
 import { getInstitutionRepository } from "@/server/institutions/repository";
 import { submitInstitutionClaimAction } from "@/server/claims/submit-institution-claim-action";
 import { submitInstitutionLeadAction } from "@/server/leads/submit-institution-lead-action";
+import { scheduleGoogleBusinessSyncIfNeeded } from "@/server/google-business/schedule-google-business-sync";
 import { InstitutionProfileSidebarLeadDialog } from "./institution-profile-sidebar-lead-dialog";
 import { Suspense } from "react";
 import { assertFirestoreReadsBudget, runWithFirestoreCounters } from "@eduatlas/firebase/monitoring";
@@ -81,6 +82,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
     }
 
     const { institution, profile } = result;
+    await scheduleGoogleBusinessSyncIfNeeded(institution);
     const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
     const pageSeo = MetadataEngine.resolve("institution", getSeoSiteConfig(), {
       slug: institution.slug,
@@ -162,6 +164,7 @@ async function InstitutionBelowFold({
         city={profile.city}
         district={profile.district}
         googleMapsUrl={profile.googleMapsUrl}
+        googleBusinessMapsUrl={profile.googleBusinessMapsUrl}
         latitude={profile.latitude}
         longitude={profile.longitude}
       />

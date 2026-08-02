@@ -38,6 +38,11 @@ import {
 } from "./institution-highlights";
 import { assertValidInstitutionSlug, normalizeInstitutionSlug } from "./validation";
 import type { InstitutionLeadCounters } from "./institution-lead-counters";
+import {
+  createGoogleBusinessSnapshot,
+  type CreateGoogleBusinessSnapshotInput,
+  type GoogleBusinessSnapshot,
+} from "./google-business-snapshot";
 
 /**
  * Canonical Institution aggregate root (pure domain).
@@ -85,6 +90,10 @@ export type Institution = Readonly<{
    * Denormalized lead counters used by owner surfaces (optional until triggers populate it).
    */
   readonly leadCounters?: InstitutionLeadCounters;
+  /**
+   * Cached Google Business / Places snapshot (lazy sync). Never includes review bodies.
+   */
+  readonly googleBusiness?: GoogleBusinessSnapshot;
 }>;
 
 export type CreateInstitutionInput = {
@@ -118,6 +127,7 @@ export type CreateInstitutionInput = {
   updatedAt: string;
   updatedByUserId?: string;
   leadCounters?: InstitutionLeadCounters;
+  googleBusiness?: CreateGoogleBusinessSnapshotInput | GoogleBusinessSnapshot;
 };
 
 /**
@@ -146,6 +156,9 @@ export function createInstitution(input: CreateInstitutionInput): Institution {
   const highlights = input.highlights ? createInstitutionHighlights(input.highlights) : undefined;
   const updatedByUserId = input.updatedByUserId?.trim();
   const leadCounters = input.leadCounters;
+  const googleBusiness = input.googleBusiness
+    ? createGoogleBusinessSnapshot(input.googleBusiness)
+    : undefined;
   const status = input.status ?? InstitutionStatus.Draft;
   const verification = input.verification
     ? typeof input.verification === "string"
@@ -224,6 +237,7 @@ export function createInstitution(input: CreateInstitutionInput): Institution {
     updatedAt: input.updatedAt,
     ...(updatedByUserId ? { updatedByUserId } : {}),
     ...(leadCounters ? { leadCounters } : {}),
+    ...(googleBusiness ? { googleBusiness } : {}),
   });
 }
 

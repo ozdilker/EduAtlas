@@ -1,11 +1,15 @@
 import {
+  createGoogleBusinessSnapshot,
   createInstitution,
   foldTurkishText,
+  type GoogleBusinessSnapshot,
   type Institution,
   type InstitutionLeadCounters,
   type InstitutionWorkingHours,
   InstitutionVerification,
   institutionIdAsString,
+  isGoogleBusinessMatchMethod,
+  isGoogleBusinessSyncStatus,
   isWeekday,
   parseInstitutionStatus,
   parseInstitutionType,
@@ -25,6 +29,8 @@ export type FirestoreInstitutionMapperOptions = {
    * (e.g. lead counters) when the incoming domain entity doesn't carry them.
    */
   readonly leadCounters?: InstitutionLeadCounters;
+  /** Preserve Google Business snapshot when domain omit during unrelated updates. */
+  readonly googleBusiness?: GoogleBusinessSnapshot;
 };
 
 /**
@@ -88,6 +94,7 @@ export class FirestoreInstitutionMapper {
       updatedAt: requireTimestamp(data.updatedAt, "updatedAt"),
       updatedByUserId: data.updatedByUserId,
       leadCounters: data.leadCounters,
+      googleBusiness: googleBusinessFromDocument(data),
     });
   }
 
@@ -239,6 +246,9 @@ export class FirestoreInstitutionMapper {
       document.leadCounters = effectiveLeadCounters;
     }
 
+    const effectiveGoogle = options.googleBusiness ?? institution.googleBusiness;
+    applyGoogleBusinessToDocument(document, effectiveGoogle);
+
     return document;
   }
 
@@ -355,6 +365,24 @@ export class FirestoreInstitutionMapper {
           },
         };
       })(),
+      googlePlaceId: readOptionalString(data, "googlePlaceId"),
+      googlePlaceName: readOptionalString(data, "googlePlaceName"),
+      googleFormattedAddress: readOptionalString(data, "googleFormattedAddress"),
+      googleRating: readOptionalNumber(data, "googleRating"),
+      googleReviewCount: readOptionalNumber(data, "googleReviewCount"),
+      googleBusinessMapsUrl: readOptionalString(data, "googleBusinessMapsUrl"),
+      googleBusinessUrl: readOptionalString(data, "googleBusinessUrl"),
+      googlePhotoReferences: (() => {
+        const refs = readStringArray(data, "googlePhotoReferences");
+        return refs.length > 0 ? refs : undefined;
+      })(),
+      googleConfidenceScore: readOptionalNumber(data, "googleConfidenceScore"),
+      googleMatchMethod: readOptionalString(data, "googleMatchMethod"),
+      googleSyncStatus: readOptionalString(data, "googleSyncStatus"),
+      googleLastSyncedAt: normalizeTimestamp(data.googleLastSyncedAt),
+      googleLastError: readOptionalString(data, "googleLastError"),
+      googleRetryCount: readOptionalNumber(data, "googleRetryCount"),
+      googleNextRetryAt: normalizeTimestamp(data.googleNextRetryAt),
     };
   }
 
@@ -590,4 +618,101 @@ function readHighlights(
   }
 
   return highlights.length > 0 ? highlights : undefined;
+}
+
+/**
+ * Reconstructs a domain GoogleBusinessSnapshot from flat Firestore fields.
+ */
+export function googleBusinessFromDocument(
+  data: FirestoreInstitutionDocument,
+): GoogleBusinessSnapshot | undefined {
+  const hasAny =
+    Boolean(data.googlePlaceId) ||
+    Boolean(data.googleSyncStatus) ||
+    Boolean(data.googleMatchMethod) ||
+    Boolean(data.googleLastSyncedAt) ||
+    Boolean(data.googleLastError) ||
+    data.googleRetryCount !== undefined ||
+    Boolean(data.googlePlaceName);
+
+  if (!hasAny) {
+    return undefined;
+  }
+
+  const matchMethod =
+    data.googleMatchMethod && isGoogleBusinessMatchMethod(data.googleMatchMethod)
+      ? data.googleMatchMethod
+      : "unmatched";
+  const syncStatus =
+    data.googleSyncStatus && isGoogleBusinessSyncStatus(data.googleSyncStatus)
+      ? data.googleSyncStatus
+      : "never_synced";
+
+  return createGoogleBusinessSnapshot({
+    placeId: data.googlePlaceId,
+    placeName: data.googlePlaceName,
+    formattedAddress: data.googleFormattedAddress,
+    rating: data.googleRating,
+    reviewCount:
+      data.googleReviewCount !== undefined ? Math.trunc(data.googleReviewCount) : undefined,
+    mapsUrl: data.googleBusinessMapsUrl,
+    businessUrl: data.googleBusinessUrl,
+    photoReferences: data.googlePhotoReferences,
+    confidenceScore: data.googleConfidenceScore,
+    matchMethod,
+    syncStatus,
+    lastSyncedAt: data.googleLastSyncedAt,
+    lastError: data.googleLastError,
+    retryCount: data.googleRetryCount !== undefined ? Math.trunc(data.googleRetryCount) : 0,
+    nextRetryAt: data.googleNextRetryAt,
+  });
+}
+
+function applyGoogleBusinessToDocument(
+  document: FirestoreInstitutionDocument,
+  snapshot: GoogleBusinessSnapshot | undefined,
+): void {
+  if (!snapshot) {
+    return;
+  }
+
+  if (snapshot.placeId) {
+    document.googlePlaceId = snapshot.placeId;
+  }
+  if (snapshot.placeName) {
+    document.googlePlaceName = snapshot.placeName;
+  }
+  if (snapshot.formattedAddress) {
+    document.googleFormattedAddress = snapshot.formattedAddress;
+  }
+  if (snapshot.rating !== undefined) {
+    document.googleRating = snapshot.rating;
+  }
+  if (snapshot.reviewCount !== undefined) {
+    document.googleReviewCount = snapshot.reviewCount;
+  }
+  if (snapshot.mapsUrl) {
+    document.googleBusinessMapsUrl = snapshot.mapsUrl;
+  }
+  if (snapshot.businessUrl) {
+    document.googleBusinessUrl = snapshot.businessUrl;
+  }
+  if (snapshot.photoReferences && snapshot.photoReferences.length > 0) {
+    document.googlePhotoReferences = [...snapshot.photoReferences];
+  }
+  if (snapshot.confidenceScore !== undefined) {
+    document.googleConfidenceScore = snapshot.confidenceScore;
+  }
+  document.googleMatchMethod = snapshot.matchMethod;
+  document.googleSyncStatus = snapshot.syncStatus;
+  if (snapshot.lastSyncedAt) {
+    document.googleLastSyncedAt = snapshot.lastSyncedAt;
+  }
+  if (snapshot.lastError) {
+    document.googleLastError = snapshot.lastError;
+  }
+  document.googleRetryCount = snapshot.retryCount;
+  if (snapshot.nextRetryAt) {
+    document.googleNextRetryAt = snapshot.nextRetryAt;
+  }
 }

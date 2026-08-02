@@ -61,6 +61,7 @@ export function toCreateInstitutionInput(institution: Institution): CreateInstit
     updatedAt: institution.updatedAt,
     updatedByUserId: institution.updatedByUserId,
     leadCounters: institution.leadCounters,
+    googleBusiness: institution.googleBusiness,
   };
 }
 

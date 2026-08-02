@@ -105,6 +105,25 @@ export type FirestoreInstitutionDocument = {
       lost: number;
     };
   };
+
+  /** Google Places place resource id (places/xxx or bare id). */
+  googlePlaceId?: string;
+  googlePlaceName?: string;
+  googleFormattedAddress?: string;
+  googleRating?: number;
+  googleReviewCount?: number;
+  /** Official Google Maps URI for the place (not owner-entered googleMapsUrl). */
+  googleBusinessMapsUrl?: string;
+  googleBusinessUrl?: string;
+  googlePhotoReferences?: string[];
+  /** 0–1 match confidence. */
+  googleConfidenceScore?: number;
+  googleMatchMethod?: string;
+  googleSyncStatus?: string;
+  googleLastSyncedAt?: string;
+  googleLastError?: string;
+  googleRetryCount?: number;
+  googleNextRetryAt?: string;
 };
 
 export const INSTITUTIONS_COLLECTION = "institutions";

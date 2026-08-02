@@ -8,13 +8,22 @@ export type AdminReviewPageProps = {
   data: AdminReviewQueueViewData;
   /** Server action: publish / return_to_draft / reject. No Firestore in UI. */
   reviewAction: (formData: FormData) => Promise<void>;
+  /** Force-refresh Google Place details. */
+  syncGoogleAction?: (formData: FormData) => Promise<void>;
+  /** Re-run Text Search match (“Google Eşleşmesini Yeniden Ara”). */
+  rematchGoogleAction?: (formData: FormData) => Promise<void>;
 };
 
 /**
  * Institution Review Queue — human review before publication.
  * Queue tabs, filters, row list, and a review panel with actions.
  */
-export function AdminReviewPage({ data, reviewAction }: AdminReviewPageProps) {
+export function AdminReviewPage({
+  data,
+  reviewAction,
+  syncGoogleAction,
+  rematchGoogleAction,
+}: AdminReviewPageProps) {
   const selected = data.selected;
 
   return (
@@ -327,6 +336,59 @@ export function AdminReviewPage({ data, reviewAction }: AdminReviewPageProps) {
                 </p>
               ) : null}
             </article>
+
+            <section aria-labelledby="review-panel-google">
+              <h3 id="review-panel-google" className="ea-admin-subsection-title">
+                Google İşletme
+              </h3>
+              <dl className="ea-admin-review__facts">
+                <dt>Durum</dt>
+                <dd>{selected.googleSyncStatusLabel || "—"}</dd>
+                <dt>Eşleşme</dt>
+                <dd>{selected.googleMatchMethodLabel || "—"}</dd>
+                <dt>Güven</dt>
+                <dd>{selected.googleConfidenceLabel || "—"}</dd>
+                <dt>Google adı</dt>
+                <dd>{selected.googlePlaceName || "—"}</dd>
+                <dt>Google adres</dt>
+                <dd>{selected.googleFormattedAddress || "—"}</dd>
+                {selected.googleLastError ? (
+                  <>
+                    <dt>Son hata</dt>
+                    <dd>{selected.googleLastError}</dd>
+                  </>
+                ) : null}
+              </dl>
+              {selected.googleMapsUrl ? (
+                <p>
+                  <a href={selected.googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                    Google Maps’te Gör
+                  </a>
+                </p>
+              ) : null}
+              {(syncGoogleAction || rematchGoogleAction) && (
+                <div className="ea-admin-review__actions">
+                  {syncGoogleAction ? (
+                    <form action={syncGoogleAction}>
+                      <input type="hidden" name="institutionId" value={selected.id} />
+                      <input type="hidden" name="returnTo" value={data.returnTo} />
+                      <Button type="submit" size="sm">
+                        Google Bilgilerini Güncelle
+                      </Button>
+                    </form>
+                  ) : null}
+                  {rematchGoogleAction ? (
+                    <form action={rematchGoogleAction}>
+                      <input type="hidden" name="institutionId" value={selected.id} />
+                      <input type="hidden" name="returnTo" value={data.returnTo} />
+                      <Button type="submit" size="sm">
+                        Google Eşleşmesini Yeniden Ara
+                      </Button>
+                    </form>
+                  ) : null}
+                </div>
+              )}
+            </section>
 
             <section aria-labelledby="review-panel-quality">
               <h3 id="review-panel-quality" className="ea-admin-subsection-title">

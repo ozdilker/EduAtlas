@@ -7,6 +7,8 @@ import {
   type ReviewSort,
 } from "@eduatlas/application";
 import {
+  GoogleBusinessMatchMethod,
+  GoogleBusinessSyncStatus,
   type InstitutionStatus,
   type InstitutionType,
   institutionIdAsString,
@@ -254,5 +256,52 @@ function toPanelView(row: ReviewQueueRow): AdminReviewPanelView {
     canReturnToDraft: status !== "draft",
     canReject: status !== "archived",
     profileHref: `/institutions/${institution.slug}`,
+    googlePlaceName: institution.googleBusiness?.placeName ?? "",
+    googleFormattedAddress: institution.googleBusiness?.formattedAddress ?? "",
+    googleSyncStatusLabel: googleSyncStatusLabel(institution.googleBusiness?.syncStatus),
+    googleMatchMethodLabel: googleMatchMethodLabel(institution.googleBusiness?.matchMethod),
+    googleConfidenceLabel:
+      institution.googleBusiness?.confidenceScore !== undefined
+        ? `%${Math.round(institution.googleBusiness.confidenceScore * 100)}`
+        : "",
+    googleLastError: institution.googleBusiness?.lastError ?? "",
+    googleMapsUrl:
+      institution.googleBusiness?.mapsUrl ?? institution.location.googleMapsUrl ?? "",
   });
+}
+
+function googleSyncStatusLabel(status: string | undefined): string {
+  switch (status) {
+    case GoogleBusinessSyncStatus.Synced:
+      return "Eşitlendi";
+    case GoogleBusinessSyncStatus.Stale:
+      return "Eski";
+    case GoogleBusinessSyncStatus.Failed:
+      return "Başarısız";
+    case GoogleBusinessSyncStatus.NotFound:
+      return "Bulunamadı";
+    case GoogleBusinessSyncStatus.ManualRequired:
+      return "Manuel gerekli";
+    case GoogleBusinessSyncStatus.Pending:
+      return "Beklemede";
+    case GoogleBusinessSyncStatus.NeverSynced:
+      return "Hiç eşitlenmedi";
+    default:
+      return status ? String(status) : "Hiç eşitlenmedi";
+  }
+}
+
+function googleMatchMethodLabel(method: string | undefined): string {
+  switch (method) {
+    case GoogleBusinessMatchMethod.TextSearch:
+      return "Arama";
+    case GoogleBusinessMatchMethod.Rematch:
+      return "Yeniden arama";
+    case GoogleBusinessMatchMethod.Manual:
+      return "Manuel";
+    case GoogleBusinessMatchMethod.Unmatched:
+      return "Eşleşmedi";
+    default:
+      return method ? String(method) : "—";
+  }
 }

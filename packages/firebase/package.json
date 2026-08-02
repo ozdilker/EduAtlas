@@ -19,7 +19,8 @@
     "./site": "./src/site/index.ts",
     "./seeds": "./src/seeds/index.ts",
     "./monitoring": "./src/monitoring/index.ts",
-    "./cache": "./src/cache/index.ts"
+    "./cache": "./src/cache/index.ts",
+    "./google-places": "./src/google-places/index.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

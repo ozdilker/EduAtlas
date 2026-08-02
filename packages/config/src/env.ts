@@ -12,6 +12,8 @@ const serverEnvSchema = publicEnvSchema.extend({
   NODE_ENV: appEnvironmentSchema.default("development"),
   /** When truthy, /robots.txt allows crawl + sitemap; otherwise Disallow: / */
   EDUATLAS_ALLOW_ROBOTS: z.string().optional(),
+  /** Server-only Google Places API (New) key — never expose to the browser. */
+  GOOGLE_PLACES_API_KEY: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -31,6 +33,7 @@ function readServerEnvFromProcess(): Record<string, string | undefined> {
     ...readPublicEnvFromProcess(),
     NODE_ENV: process.env.NODE_ENV,
     EDUATLAS_ALLOW_ROBOTS: process.env.EDUATLAS_ALLOW_ROBOTS,
+    GOOGLE_PLACES_API_KEY: process.env.GOOGLE_PLACES_API_KEY,
   };
 }
 
