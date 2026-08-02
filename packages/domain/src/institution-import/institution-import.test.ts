@@ -13,7 +13,9 @@ import {
   importSourceFormatFromFileName,
   mapInstitutionTypeLabel,
   resolveImportSlug,
+  allocateUniqueImportSlug,
   slugifyInstitutionName,
+  slugTokenFromGeoId,
 } from "../index";
 
 describe("institution import domain", () => {
@@ -59,13 +61,38 @@ describe("institution import domain", () => {
     expect(resolveImportSlug(withoutSlug)).toBe("ankara-etut-merkezi");
   });
 
-  it("builds duplicate keys with folded name and city", () => {
-    expect(importDuplicateKey("Güneşli Bahçe", "city_ankara")).toBe(
-      importDuplicateKey("GÜNEŞLİ BAHÇE ", "city_ankara"),
+  it("builds duplicate keys with folded name, city, and district", () => {
+    expect(importDuplicateKey("Güneşli Bahçe", "city_ankara", "dist_cankaya")).toBe(
+      importDuplicateKey("GÜNEŞLİ BAHÇE ", "city_ankara", "dist_cankaya"),
     );
-    expect(importDuplicateKey("Güneşli Bahçe", "city_ankara")).not.toBe(
-      importDuplicateKey("Güneşli Bahçe", "city_istanbul"),
+    expect(importDuplicateKey("Güneşli Bahçe", "city_ankara", "dist_cankaya")).not.toBe(
+      importDuplicateKey("Güneşli Bahçe", "city_istanbul", "dist_kadikoy"),
     );
+    expect(importDuplicateKey("Güneşli Bahçe", "city_ankara", "dist_cankaya")).not.toBe(
+      importDuplicateKey("Güneşli Bahçe", "city_ankara", "dist_kecioren"),
+    );
+  });
+
+  it("allocates unique slugs with district then city disambiguators", () => {
+    const taken = new Set(["ayni-kurum"]);
+    const first = allocateUniqueImportSlug({
+      baseSlug: "ayni-kurum",
+      districtSlug: "cankaya",
+      citySlug: "ankara",
+      taken,
+    });
+    expect(first).toEqual({ slug: "ayni-kurum-cankaya", disambiguated: true });
+
+    taken.add(first.slug);
+    const second = allocateUniqueImportSlug({
+      baseSlug: "ayni-kurum",
+      districtSlug: "kadikoy",
+      citySlug: "istanbul",
+      taken,
+    });
+    expect(second.slug).toBe("ayni-kurum-kadikoy");
+    expect(slugTokenFromGeoId("city_ankara")).toBe("ankara");
+    expect(slugTokenFromGeoId("dist_kadikoy")).toBe("kadikoy");
   });
 
   it("classifies issue severity", () => {

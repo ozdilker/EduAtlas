@@ -249,6 +249,9 @@ export {
   INSTITUTION_IMPORT_FIELDS,
   type InstitutionImport,
   type InstitutionImportField,
+  type AllocateUniqueImportSlugInput,
+  type AllocateUniqueImportSlugResult,
+  allocateUniqueImportSlug,
   importDuplicateKey,
   importIssueError,
   importIssueWarning,
@@ -264,6 +267,7 @@ export {
   resolveMappedImportField,
   headerRowHasNameField,
   slugifyInstitutionName,
+  slugTokenFromGeoId,
 } from "./institution-import";
 export {
   type CreateInstitutionProfileCompletenessInput,

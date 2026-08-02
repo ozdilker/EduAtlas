@@ -40,7 +40,10 @@ export {
   resolveMappedImportField,
 } from "./import-column-map";
 export {
+  type AllocateUniqueImportSlugInput,
+  type AllocateUniqueImportSlugResult,
   type CreateInstitutionImportInput,
+  allocateUniqueImportSlug,
   createInstitutionImport,
   INSTITUTION_IMPORT_FIELDS,
   type InstitutionImport,
@@ -49,4 +52,5 @@ export {
   REQUIRED_INSTITUTION_IMPORT_FIELDS,
   resolveImportSlug,
   slugifyInstitutionName,
+  slugTokenFromGeoId,
 } from "./institution-import";

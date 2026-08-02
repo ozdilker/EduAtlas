@@ -1,4 +1,5 @@
 import {
+  allocateUniqueImportSlug,
   cityIdAsString,
   createInstitutionImport,
   createPublishedInstitution,
@@ -15,6 +16,7 @@ import {
   isValidInstitutionSlug,
   REQUIRED_INSTITUTION_IMPORT_FIELDS,
   resolveImportSlug,
+  slugTokenFromGeoId,
 } from "@eduatlas/domain";
 import type { CityRepository } from "../geography/city-repository";
 import type { DistrictRepository } from "../geography/district-repository";
@@ -102,20 +104,28 @@ export async function validateImport(
 
   const existingSlugs = new Set(existingItems.map((item) => item.slug));
   const existingDuplicateKeys = new Set(
-    existingItems.map((item) => importDuplicateKey(item.name, item.location.cityId)),
+    existingItems.map((item) =>
+      importDuplicateKey(item.name, item.location.cityId, item.location.districtId),
+    ),
   );
 
   const knownCityIds = new Set<string>();
   const knownDistrictIds = new Set<string>();
+  const citySlugById = new Map<string, string>();
+  const districtSlugById = new Map<string, string>();
+
   if (deps.cityRepository) {
     const cities = await deps.cityRepository.list();
     for (const city of cities) {
       const cityId = cityIdAsString(city.id);
       knownCityIds.add(cityId);
+      citySlugById.set(cityId, city.slug);
       if (deps.districtRepository) {
         const districts = await deps.districtRepository.listByCityId(cityId);
         for (const district of districts) {
-          knownDistrictIds.add(districtIdAsString(district.id));
+          const districtId = districtIdAsString(district.id);
+          knownDistrictIds.add(districtId);
+          districtSlugById.set(districtId, district.slug);
         }
       }
     }
@@ -211,7 +221,16 @@ export async function validateImport(
       issues.push(importIssueError("longitude", "Boylam -180 ile 180 arasında sayı olmalı."));
     }
 
-    const slugPreview = resolveImportSlug(row);
+    const baseSlug = resolveImportSlug(row);
+    const takenSlugs = new Set<string>([...existingSlugs, ...seenSlugs]);
+    const allocated = allocateUniqueImportSlug({
+      baseSlug,
+      districtSlug:
+        districtSlugById.get(row.districtId) || slugTokenFromGeoId(row.districtId),
+      citySlug: citySlugById.get(row.cityId) || slugTokenFromGeoId(row.cityId),
+      taken: takenSlugs,
+    });
+    const slugPreview = allocated.slug;
 
     if (row.slug && !isValidInstitutionSlug(row.slug)) {
       issues.push(importIssueWarning("slug", `Geçersiz slug; addan üretildi: "${slugPreview}".`));
@@ -221,34 +240,35 @@ export async function validateImport(
       issues.push(importIssueError("slug", "Addan geçerli bir slug üretilemedi."));
     }
 
+    if (allocated.disambiguated && slugPreview) {
+      issues.push(
+        importIssueWarning(
+          "slug",
+          `Aynı ad farklı konumda; slug ayırt edildi: "${baseSlug}" → "${slugPreview}".`,
+        ),
+      );
+    }
+
     if (!row.phone && !row.email) {
       issues.push(
         importIssueWarning("phone", "Telefon veya e-posta yok; yayınlama için en az biri gerekli."),
       );
     }
 
-    const duplicateKey = row.name ? importDuplicateKey(row.name, row.cityId) : "";
-
-    if (slugPreview && (existingSlugs.has(slugPreview) || seenSlugs.has(slugPreview))) {
-      isDuplicate = true;
-      issues.push(
-        importIssueWarning(
-          "slug",
-          seenSlugs.has(slugPreview)
-            ? `Dosya içinde yinelenen slug: "${slugPreview}".`
-            : `Bu slug zaten kayıtlı: "${slugPreview}".`,
-        ),
-      );
-    }
+    const duplicateKey = row.name
+      ? importDuplicateKey(row.name, row.cityId, row.districtId)
+      : "";
 
     if (
-      !isDuplicate &&
       duplicateKey &&
       (existingDuplicateKeys.has(duplicateKey) || seenDuplicateKeys.has(duplicateKey))
     ) {
       isDuplicate = true;
       issues.push(
-        importIssueWarning("name", "Aynı ad ve şehirde bir kurum zaten mevcut (olası yinelenme)."),
+        importIssueWarning(
+          "name",
+          "Aynı ad, şehir ve ilçede bir kurum zaten mevcut (olası yinelenme).",
+        ),
       );
     }
 

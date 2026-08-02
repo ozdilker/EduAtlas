@@ -434,12 +434,32 @@ describe("executeImport", () => {
     expect(repository.size).toBe(0);
   });
 
-  it("marks in-file slug duplicates so only the first row is created", async () => {
+  it("disambiguates same-name institutions in different cities instead of skipping", async () => {
     const repository = new InMemoryInstitutionRepository();
     const csv = [
       "name,primaryType,cityId,districtId,address,shortDescription",
       "Aynı Kurum,dershane,city_ankara,dist_cankaya,Adres 1,Açıklama",
       "Aynı Kurum,dershane,city_istanbul,dist_kadikoy,Adres 2,Açıklama",
+    ].join("\n");
+
+    const execution = await executeImport(
+      { fileName: "k.csv", content: csvBytes(csv), dryRun: false, now: NOW },
+      importDeps(repository),
+    );
+
+    expect(execution.result.createdCount).toBe(2);
+    expect(execution.result.duplicateCount).toBe(0);
+    expect(repository.size).toBe(2);
+    const slugs = [...(await repository.list()).items.map((item) => item.slug)].sort();
+    expect(slugs).toEqual(["ayni-kurum", "ayni-kurum-kadikoy"]);
+  });
+
+  it("still skips true duplicates with same name, city, and district", async () => {
+    const repository = new InMemoryInstitutionRepository();
+    const csv = [
+      "name,primaryType,cityId,districtId,address,shortDescription",
+      "Aynı Kurum,dershane,city_ankara,dist_cankaya,Adres 1,Açıklama",
+      "Aynı Kurum,dershane,city_ankara,dist_cankaya,Adres 2,Açıklama",
     ].join("\n");
 
     const execution = await executeImport(

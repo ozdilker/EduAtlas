@@ -96,15 +96,16 @@ export function createInstitutionImport(input: CreateInstitutionImportInput): In
 
 /**
  * Generates a URL-safe institution slug from a Turkish display name.
- * Deterministic: same name always yields the same slug.
+ * Deterministic: same name always yields the same base slug.
  */
 export function slugifyInstitutionName(name: string): string {
   return foldTurkishText(name).replaceAll(/\s+/g, "-").replaceAll(/-+/g, "-").slice(0, 120);
 }
 
 /**
- * Resolves the slug an import row would use: the provided slug when
+ * Resolves the base slug an import row would use: the provided slug when
  * present, otherwise a slug generated from the name.
+ * Callers should run {@link allocateUniqueImportSlug} when collisions exist.
  */
 export function resolveImportSlug(row: InstitutionImport): string {
   const provided = normalizeInstitutionSlug(row.slug);
@@ -114,10 +115,102 @@ export function resolveImportSlug(row: InstitutionImport): string {
   return slugifyInstitutionName(row.name);
 }
 
+export type AllocateUniqueImportSlugInput = Readonly<{
+  readonly baseSlug: string;
+  /** District geography slug (preferred disambiguator per URL-STRATEGY). */
+  readonly districtSlug?: string;
+  /** City geography slug (fallback disambiguator). */
+  readonly citySlug?: string;
+  /** Slugs already reserved (DB + earlier rows in this file). */
+  readonly taken: ReadonlySet<string>;
+}>;
+
+export type AllocateUniqueImportSlugResult = Readonly<{
+  readonly slug: string;
+  /** True when a disambiguator was appended because `baseSlug` was taken. */
+  readonly disambiguated: boolean;
+}>;
+
 /**
- * Duplicate-detection key: Turkish-folded name + city.
- * Mirrors the acquisition dashboard duplicate heuristic.
+ * Ensures a globally unique institution slug.
+ * Order: base → `-{district}` → `-{city}` → `-{city}-{district}` → `-2`…`-n`.
  */
-export function importDuplicateKey(name: string, cityId: string): string {
-  return `${foldTurkishText(name)}::${cityId.trim()}`;
+export function allocateUniqueImportSlug(
+  input: AllocateUniqueImportSlugInput,
+): AllocateUniqueImportSlugResult {
+  const base = normalizeInstitutionSlug(input.baseSlug).slice(0, 120);
+  if (!base) {
+    return Object.freeze({ slug: "", disambiguated: false });
+  }
+
+  const district = sanitizeGeoSlugToken(input.districtSlug);
+  const city = sanitizeGeoSlugToken(input.citySlug);
+
+  const candidates: string[] = [base];
+  if (district) {
+    candidates.push(clipSlug(`${base}-${district}`));
+  }
+  if (city) {
+    candidates.push(clipSlug(`${base}-${city}`));
+  }
+  if (city && district) {
+    candidates.push(clipSlug(`${base}-${city}-${district}`));
+  }
+
+  for (const candidate of candidates) {
+    if (candidate && isValidInstitutionSlug(candidate) && !input.taken.has(candidate)) {
+      return Object.freeze({
+        slug: candidate,
+        disambiguated: candidate !== base,
+      });
+    }
+  }
+
+  for (let n = 2; n < 1000; n += 1) {
+    const candidate = clipSlug(`${base}-${n}`);
+    if (isValidInstitutionSlug(candidate) && !input.taken.has(candidate)) {
+      return Object.freeze({ slug: candidate, disambiguated: true });
+    }
+  }
+
+  const fallback = clipSlug(`${base}-${city || district || "x"}`);
+  return Object.freeze({ slug: fallback, disambiguated: true });
+}
+
+/**
+ * Turns catalog or legacy geo ids into a slug token when catalog slug is unknown.
+ * e.g. `city_ankara` → `ankara`, `dist_kadikoy` → `kadikoy`.
+ */
+export function slugTokenFromGeoId(id: string): string {
+  return sanitizeGeoSlugToken(
+    id
+      .trim()
+      .toLowerCase()
+      .replace(/^(city_|dist_|district_)/i, "")
+      .replaceAll("_", "-"),
+  );
+}
+
+/**
+ * Duplicate-detection key: Turkish-folded name + city + district.
+ * Same-named schools in different cities or districts are not duplicates.
+ */
+export function importDuplicateKey(name: string, cityId: string, districtId = ""): string {
+  return `${foldTurkishText(name)}::${cityId.trim()}::${districtId.trim()}`;
+}
+
+function sanitizeGeoSlugToken(raw: string | undefined): string {
+  if (!raw?.trim()) {
+    return "";
+  }
+  return foldTurkishText(raw)
+    .replaceAll(/\s+/g, "-")
+    .replaceAll(/[^a-z0-9-]/g, "")
+    .replaceAll(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+}
+
+function clipSlug(slug: string): string {
+  return normalizeInstitutionSlug(slug).slice(0, 120);
 }
