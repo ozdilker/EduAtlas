@@ -1,4 +1,7 @@
-import { buildCanonical } from "./canonical";
+import {
+  CanonicalResolver,
+  type CanonicalSearchParams,
+} from "./canonical";
 import { buildDescription } from "./description";
 import { buildOpenGraph } from "./open-graph";
 import { buildTitle } from "./title";
@@ -15,10 +18,17 @@ export type BuildMetadataOptions = {
   robots?: SeoMetadataInput["robots"];
   openGraphType?: "website" | "article";
   images?: string[];
+  /**
+   * Optional allowlisted query keys for canonical (future pagination).
+   * Default omitted → strip all query params via CanonicalResolver.
+   */
+  canonicalAllowQueryKeys?: readonly string[];
+  canonicalSearchParams?: CanonicalSearchParams;
 };
 
 /**
  * Composes title, description, canonical, Open Graph, and Twitter Card metadata.
+ * Canonical is produced only through CanonicalResolver.
  */
 export function buildMetadata(options: BuildMetadataOptions): SeoMetadata {
   const title =
@@ -37,7 +47,12 @@ export function buildMetadata(options: BuildMetadataOptions): SeoMetadata {
   const description = buildDescription(
     options.description || options.site.defaultDescription || "",
   );
-  const canonical = buildCanonical(options.site.siteUrl, options.path);
+  const canonical = CanonicalResolver.resolve({
+    siteUrl: options.site.siteUrl,
+    path: options.path,
+    searchParams: options.canonicalSearchParams,
+    allowQueryKeys: options.canonicalAllowQueryKeys,
+  });
   const absoluteTitle = options.absoluteTitle ?? true;
 
   const openGraph = buildOpenGraph(

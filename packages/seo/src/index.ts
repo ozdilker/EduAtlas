@@ -1,4 +1,13 @@
-export { buildCanonical } from "./canonical";
+export {
+  buildCanonical,
+  CANONICAL_CONTENT_QUERY_ALLOWLIST,
+  CANONICAL_TRACKING_QUERY_KEYS,
+  CanonicalResolver,
+  isCanonicalTrackingQueryKey,
+  resolveCanonical,
+  type CanonicalSearchParams,
+  type ResolveCanonicalInput,
+} from "./canonical";
 export { buildDescription } from "./description";
 export {
   buildBreadcrumbJsonLd,
