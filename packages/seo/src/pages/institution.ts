@@ -72,6 +72,7 @@ export function buildInstitutionPageSeo(
         citySlug,
         district,
         districtSlug,
+        path,
       }),
     ],
   };

@@ -52,6 +52,8 @@ export type SchemaHomeInput = {
 
 export type SchemaStaticInput = {
   breadcrumbLabel: string;
+  /** Current static page path for ListItem.item (canonical). */
+  path: string;
 };
 
 /**
@@ -102,6 +104,8 @@ export type SchemaInstitutionInput = {
   citySlug: string;
   district: string;
   districtSlug: string;
+  /** Institution profile path for the current ListItem.item. */
+  path: string;
 };
 
 export type SchemaSearchInput = Record<string, never>;

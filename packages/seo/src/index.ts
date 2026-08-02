@@ -50,6 +50,7 @@ export {
 } from "./engine";
 export {
   DEFAULT_SCHEMA_ADAPTERS,
+  BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
   EDUATLAS_ALTERNATE_NAME,
   ITEM_LIST_ORDER_ASCENDING,
@@ -68,6 +69,7 @@ export {
   resolveOrganizationSchemaId,
   resolveSiteOriginUrl,
   resolveWebSiteSchemaId,
+  type BreadcrumbSchemaBuildInput,
   type CollectionPageSchemaBuildInput,
   type OrganizationKnowsAboutTopic,
   type OrganizationSchemaBuildInput,

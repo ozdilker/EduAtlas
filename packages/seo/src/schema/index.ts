@@ -10,6 +10,7 @@ export {
   staticSchemaAdapter,
 } from "./adapters";
 export {
+  BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
   ITEM_LIST_ORDER_ASCENDING,
   ItemListSchemaBuilder,
@@ -17,6 +18,7 @@ export {
   OrganizationSchemaBuilder,
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
+  type BreadcrumbSchemaBuildInput,
   type CollectionPageSchemaBuildInput,
   type ItemListSchemaBuildInput,
   type OrganizationSchemaBuildInput,

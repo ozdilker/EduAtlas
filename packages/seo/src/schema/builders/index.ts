@@ -1,4 +1,8 @@
 export {
+  BreadcrumbSchemaBuilder,
+  type BreadcrumbSchemaBuildInput,
+} from "./breadcrumb";
+export {
   CollectionPageSchemaBuilder,
   type CollectionPageSchemaBuildInput,
 } from "./collection-page";

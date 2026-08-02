@@ -1,6 +1,6 @@
-import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
 import type { JsonLdObject } from "../types";
 import {
+  BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
   OrganizationSchemaBuilder,
   WebSiteSchemaBuilder,
@@ -13,7 +13,7 @@ import type {
 } from "./types";
 
 /**
- * Home: Organization (@id) + exactly one WebSite (publisher references Organization).
+ * Home: Organization (@id) + WebSite + BreadcrumbList (Ana sayfa only).
  */
 export const homeSchemaAdapter: SchemaBuilder<"home"> = Object.freeze({
   kind: "home",
@@ -27,6 +27,9 @@ export const homeSchemaAdapter: SchemaBuilder<"home"> = Object.freeze({
           description,
           ...(input.potentialAction ? { potentialAction: input.potentialAction } : {}),
         },
+      }),
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [{ name: "Ana sayfa", path: "/" }],
       }),
     ]);
   },
@@ -43,10 +46,12 @@ export const staticSchemaAdapter: SchemaBuilder<"static"> = Object.freeze({
   kind: "static",
   build({ site, input }: SchemaBuildContext<"static">): readonly JsonLdObject[] {
     return Object.freeze([
-      buildBreadcrumbJsonLd(
-        [{ name: "Ana sayfa", path: "/" }, { name: input.breadcrumbLabel }],
-        site,
-      ),
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [
+          { name: "Ana sayfa", path: "/" },
+          { name: input.breadcrumbLabel, path: input.path },
+        ],
+      }),
     ]);
   },
 });
@@ -62,14 +67,13 @@ export const citySchemaAdapter: SchemaBuilder<"city"> = Object.freeze({
   build({ site, input }: SchemaBuildContext<"city">): readonly JsonLdObject[] {
     const path = `/cities/${input.citySlug}`;
     return Object.freeze([
-      buildBreadcrumbJsonLd(
-        [
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [
           { name: "Ana sayfa", path: "/" },
           { name: "Şehirler", path: "/cities" },
-          { name: input.cityName },
+          { name: input.cityName, path },
         ],
-        site,
-      ),
+      }),
       CollectionPageSchemaBuilder.build(site, {
         path,
         name: input.name,
@@ -85,15 +89,14 @@ export const districtSchemaAdapter: SchemaBuilder<"district"> = Object.freeze({
   build({ site, input }: SchemaBuildContext<"district">): readonly JsonLdObject[] {
     const path = `/cities/${input.citySlug}/${input.districtSlug}`;
     return Object.freeze([
-      buildBreadcrumbJsonLd(
-        [
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [
           { name: "Ana sayfa", path: "/" },
           { name: "Şehirler", path: "/cities" },
           { name: input.cityName, path: `/cities/${input.citySlug}` },
-          { name: input.districtName },
+          { name: input.districtName, path },
         ],
-        site,
-      ),
+      }),
       CollectionPageSchemaBuilder.build(site, {
         path,
         name: input.name,
@@ -109,14 +112,13 @@ export const categorySchemaAdapter: SchemaBuilder<"category"> = Object.freeze({
   build({ site, input }: SchemaBuildContext<"category">): readonly JsonLdObject[] {
     const path = `/categories/${input.categorySlug}`;
     return Object.freeze([
-      buildBreadcrumbJsonLd(
-        [
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [
           { name: "Ana sayfa", path: "/" },
           { name: "Kategoriler", path: "/categories" },
-          { name: input.categoryName },
+          { name: input.categoryName, path },
         ],
-        site,
-      ),
+      }),
       CollectionPageSchemaBuilder.build(site, {
         path,
         name: input.name,
@@ -132,15 +134,14 @@ export const cityTypeSchemaAdapter: SchemaBuilder<"city-type"> = Object.freeze({
   build({ site, input }: SchemaBuildContext<"city-type">): readonly JsonLdObject[] {
     const path = `/cities/${input.citySlug}/types/${input.typeSlug}`;
     return Object.freeze([
-      buildBreadcrumbJsonLd(
-        [
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [
           { name: "Ana sayfa", path: "/" },
           { name: "Şehirler", path: "/cities" },
           { name: input.cityName, path: `/cities/${input.citySlug}` },
-          { name: input.typeLabel },
+          { name: input.typeLabel, path },
         ],
-        site,
-      ),
+      }),
       CollectionPageSchemaBuilder.build(site, {
         path,
         name: input.name,
@@ -155,16 +156,15 @@ export const institutionSchemaAdapter: SchemaBuilder<"institution"> = Object.fre
   kind: "institution",
   build({ site, input }: SchemaBuildContext<"institution">): readonly JsonLdObject[] {
     return Object.freeze([
-      buildBreadcrumbJsonLd(
-        [
+      BreadcrumbSchemaBuilder.build(site, {
+        items: [
           { name: "Ana sayfa", path: "/" },
           { name: input.city, path: `/cities/${input.citySlug}` },
           { name: input.district, path: `/cities/${input.citySlug}/${input.districtSlug}` },
           { name: input.typeLabel, path: `/categories/${input.typeSlug}` },
-          { name: input.name },
+          { name: input.name, path: input.path },
         ],
-        site,
-      ),
+      }),
     ]);
   },
 });

@@ -3,6 +3,7 @@ import { buildHomePageSeo } from "../pages/home";
 import { createSeoSiteConfig } from "../site";
 import { homeSchemaAdapter, searchSchemaAdapter } from "./adapters";
 import {
+  BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
   ITEM_LIST_ORDER_ASCENDING,
   ItemListSchemaBuilder,
@@ -103,6 +104,47 @@ describe("OrganizationSchemaBuilder", () => {
   });
 });
 
+describe("BreadcrumbSchemaBuilder", () => {
+  it("emits one BreadcrumbList with canonical item urls and display names", () => {
+    const breadcrumbs = BreadcrumbSchemaBuilder.build(site, {
+      items: [
+        { name: "Ana sayfa", path: "/" },
+        { name: "İstanbul", path: "/cities/istanbul" },
+        { name: "Kadıköy", path: "/cities/istanbul/kadikoy" },
+        { name: "ABC Koleji", path: "/institutions/abc-koleji" },
+      ],
+    });
+
+    expect(breadcrumbs["@type"]).toBe(SchemaOrgType.BreadcrumbList);
+    expect(breadcrumbs.itemListElement).toEqual([
+      {
+        "@type": SchemaOrgType.ListItem,
+        position: 1,
+        name: "Ana sayfa",
+        item: "https://eduatlas.com.tr/",
+      },
+      {
+        "@type": SchemaOrgType.ListItem,
+        position: 2,
+        name: "İstanbul",
+        item: "https://eduatlas.com.tr/cities/istanbul",
+      },
+      {
+        "@type": SchemaOrgType.ListItem,
+        position: 3,
+        name: "Kadıköy",
+        item: "https://eduatlas.com.tr/cities/istanbul/kadikoy",
+      },
+      {
+        "@type": SchemaOrgType.ListItem,
+        position: 4,
+        name: "ABC Koleji",
+        item: "https://eduatlas.com.tr/institutions/abc-koleji",
+      },
+    ]);
+  });
+});
+
 describe("CollectionPageSchemaBuilder", () => {
   it("emits CollectionPage without ItemList when items are empty", () => {
     const page = CollectionPageSchemaBuilder.build(site, {
@@ -191,14 +233,15 @@ describe("WebSiteSchemaBuilder", () => {
 });
 
 describe("SchemaEngine home graph", () => {
-  it("builds Organization + WebSite via registry", () => {
+  it("builds Organization + WebSite + BreadcrumbList via registry", () => {
     const graphs = SchemaEngine.build("home", site, {
       description: "Türkiye genelinde eğitim kurumlarını keşfedin.",
     });
-    expect(graphs).toHaveLength(2);
+    expect(graphs).toHaveLength(3);
     expect(graphs[0]?.["@type"]).toBe(SchemaOrgType.Organization);
     expect(graphs[0]?.description).toBe("Türkiye genelinde eğitim kurumlarını keşfedin.");
     expect(graphs[1]?.["@type"]).toBe(SchemaOrgType.WebSite);
+    expect(graphs[2]?.["@type"]).toBe(SchemaOrgType.BreadcrumbList);
   });
 
   it("returns empty graph for search", () => {

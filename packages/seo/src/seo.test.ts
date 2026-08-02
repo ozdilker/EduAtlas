@@ -134,10 +134,14 @@ describe("JSON-LD helpers", () => {
 });
 
 describe("page SEO builders", () => {
-  it("builds home SEO with Organization and WebSite JSON-LD", () => {
+  it("builds home SEO with Organization, WebSite, and BreadcrumbList JSON-LD", () => {
     const page = buildHomePageSeo(site);
     expect(page.metadata.alternates.canonical).toBe("https://eduatlas.com/");
-    expect(page.jsonLd).toHaveLength(2);
+    expect(page.jsonLd.map((n) => n["@type"])).toEqual([
+      "Organization",
+      "WebSite",
+      "BreadcrumbList",
+    ]);
   });
 
   it("builds search SEO as noindex", () => {
@@ -175,6 +179,13 @@ describe("page SEO builders", () => {
       absolute: "Dershane kurumları | EduAtlas",
     });
     expect(institution.jsonLd[0]?.["@type"]).toBe("BreadcrumbList");
+    const crumbs = institution.jsonLd[0]?.itemListElement as Array<Record<string, unknown>>;
+    expect(crumbs).toHaveLength(5);
+    expect(crumbs.every((c) => typeof c.item === "string" && typeof c.name === "string")).toBe(
+      true,
+    );
+    expect(crumbs[4]?.name).toBe("Örnek Anaokulu");
+    expect(crumbs[4]?.item).toBe("https://eduatlas.com/institutions/ornek-anaokulu");
     expect(city.jsonLd.map((n) => n["@type"])).toEqual(["BreadcrumbList", "CollectionPage"]);
     expect(category.jsonLd.map((n) => n["@type"])).toEqual(["BreadcrumbList", "CollectionPage"]);
     expect(city.jsonLd[1]?.mainEntity).toBeUndefined();

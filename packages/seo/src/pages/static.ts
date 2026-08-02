@@ -106,7 +106,10 @@ export function buildStaticPageSeo(
   return {
     metadata,
     jsonLd: [
-      ...SchemaEngine.build("static", site, { breadcrumbLabel: def.breadcrumbLabel }),
+      ...SchemaEngine.build("static", site, {
+        breadcrumbLabel: def.breadcrumbLabel,
+        path: def.path,
+      }),
     ],
   };
 }
