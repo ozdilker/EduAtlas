@@ -1,6 +1,7 @@
 import { humanizeSlug } from "../humanize-slug";
 import { buildMetadata } from "../metadata";
 import { SchemaEngine } from "../schema";
+import type { SchemaListInstitutionItem } from "../schema/types";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -92,6 +93,7 @@ export function buildCategoryPageSeo(
     categoryName?: string;
     title?: string;
     description?: string;
+    items?: readonly SchemaListInstitutionItem[];
   },
 ): PageSeoResult {
   const categorySlug = options?.categorySlug?.trim() || "anaokulu";
@@ -111,6 +113,14 @@ export function buildCategoryPageSeo(
 
   return {
     metadata,
-    jsonLd: [...SchemaEngine.build("category", site, { categoryName: name })],
+    jsonLd: [
+      ...SchemaEngine.build("category", site, {
+        categorySlug,
+        categoryName: name,
+        name: title,
+        description,
+        items: options?.items,
+      }),
+    ],
   };
 }

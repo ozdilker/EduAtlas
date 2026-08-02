@@ -54,23 +54,43 @@ export type SchemaStaticInput = {
   breadcrumbLabel: string;
 };
 
-export type SchemaCityInput = {
+/**
+ * Institution already on a listing page — passed into SchemaEngine (no extra fetch).
+ */
+export type SchemaListInstitutionItem = Readonly<{
+  readonly name: string;
+  readonly path: string;
+}>;
+
+type SchemaCollectionPageFields = {
+  /** CollectionPage name (usually the page title). */
+  name: string;
+  description: string;
+  /** Institutions rendered on the page; empty → CollectionPage without ItemList. */
+  items?: readonly SchemaListInstitutionItem[];
+};
+
+export type SchemaCityInput = SchemaCollectionPageFields & {
+  citySlug: string;
   cityName: string;
 };
 
-export type SchemaDistrictInput = {
+export type SchemaDistrictInput = SchemaCollectionPageFields & {
   citySlug: string;
   cityName: string;
+  districtSlug: string;
   districtName: string;
 };
 
-export type SchemaCategoryInput = {
+export type SchemaCategoryInput = SchemaCollectionPageFields & {
+  categorySlug: string;
   categoryName: string;
 };
 
-export type SchemaCityTypeInput = {
+export type SchemaCityTypeInput = SchemaCollectionPageFields & {
   citySlug: string;
   cityName: string;
+  typeSlug: string;
   typeLabel: string;
 };
 

@@ -1,4 +1,4 @@
-import { MetadataEngine } from "@eduatlas/seo";
+import { MetadataEngine, toSchemaListItems } from "@eduatlas/seo";
 import { CategoryLandingPage } from "@eduatlas/ui";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
@@ -47,6 +47,7 @@ export default async function CategoryLandingRoute({ params }: CategoryLandingRo
     categorySlug: landing.slug,
     categoryName: landing.name,
     description: landing.description,
+    items: toSchemaListItems(landing.featuredInstitutions),
   });
 
   return (

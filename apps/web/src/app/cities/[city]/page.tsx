@@ -1,4 +1,4 @@
-import { MetadataEngine } from "@eduatlas/seo";
+import { MetadataEngine, toSchemaListItems } from "@eduatlas/seo";
 import { CityLandingPage } from "@eduatlas/ui";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
@@ -45,6 +45,7 @@ export default async function CityLandingRoute({ params }: CityLandingRouteProps
       citySlug: landing.slug,
       cityName: landing.name,
       description: landing.description,
+      items: toSchemaListItems(landing.featuredInstitutions),
     });
 
     return (

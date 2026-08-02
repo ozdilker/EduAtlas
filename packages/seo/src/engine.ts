@@ -7,6 +7,7 @@ import { buildHomePageSeo, type PageSeoResult } from "./pages/home";
 import { buildInstitutionPageSeo, type InstitutionPageSeoContent } from "./pages/institution";
 import { buildSearchPageSeo } from "./pages/search";
 import { buildStaticPageSeo, type StaticPageSeoId } from "./pages/static";
+import type { SchemaListInstitutionItem } from "./schema/types";
 
 export type MetadataPageKind =
   | "home"
@@ -31,6 +32,7 @@ type CityInput = {
   cityName?: string;
   title?: string;
   description?: string;
+  items?: readonly SchemaListInstitutionItem[];
 };
 
 type DistrictInput = {
@@ -40,6 +42,7 @@ type DistrictInput = {
   districtName?: string;
   title?: string;
   description?: string;
+  items?: readonly SchemaListInstitutionItem[];
 };
 
 type CategoryInput = {
@@ -47,6 +50,7 @@ type CategoryInput = {
   categoryName?: string;
   title?: string;
   description?: string;
+  items?: readonly SchemaListInstitutionItem[];
 };
 
 type CityTypeInput = {
@@ -56,6 +60,7 @@ type CityTypeInput = {
   typeName?: string;
   title?: string;
   description?: string;
+  items?: readonly SchemaListInstitutionItem[];
 };
 
 type InstitutionInput = Partial<InstitutionPageSeoContent> & {

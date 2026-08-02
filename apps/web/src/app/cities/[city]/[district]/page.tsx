@@ -1,5 +1,6 @@
 import { MetadataEngine } from "@eduatlas/seo";
 import { HubPlaceholderPage } from "@eduatlas/ui";
+import { JsonLd } from "@/components/json-ld";
 import { getSeoSiteConfig } from "@/lib/seo-site";
 import { resolveGeoHubLabels } from "@/server/seo/resolve-geo-hub-labels";
 
@@ -24,25 +25,37 @@ export default async function DistrictHubRoute({ params }: DistrictRouteProps) {
   const cityLabel = geo?.cityName ?? city;
   const districtLabel = geo?.districtName ?? district;
   const citySlug = geo?.citySlug ?? city;
+  const districtSlug = geo?.districtSlug ?? district;
+
+  const pageSeo = MetadataEngine.resolve("district", getSeoSiteConfig(), {
+    citySlug,
+    districtSlug,
+    cityName: geo?.cityName,
+    districtName: geo?.districtName,
+    items: [],
+  });
 
   return (
-    <HubPlaceholderPage
-      title={`${districtLabel}’da Eğitim Kurumları`}
-      description={`${cityLabel} / ${districtLabel} için ilçe hub yer tutucusu. Detaylı liste sonraki sprintlerde bağlanacaktır.`}
-      breadcrumbs={[
-        { id: "home", label: "Ana sayfa", href: "/" },
-        { id: "cities", label: "Şehirler", href: "/cities" },
-        { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
-        { id: "district", label: districtLabel },
-      ]}
-      primaryHref={`/cities/${citySlug}`}
-      primaryLabel={`${cityLabel} hub’ına dön`}
-      nextSteps={[
-        { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
-        { id: "search", label: "Arama", href: "/search" },
-        { id: "categories", label: "Kurum tipleri", href: "/categories" },
-        { id: "sample", label: "Örnek kurum", href: "/institutions/ornek-anaokulu" },
-      ]}
-    />
+    <>
+      <JsonLd data={pageSeo.jsonLd} />
+      <HubPlaceholderPage
+        title={`${districtLabel}’da Eğitim Kurumları`}
+        description={`${cityLabel} / ${districtLabel} için ilçe hub yer tutucusu. Detaylı liste sonraki sprintlerde bağlanacaktır.`}
+        breadcrumbs={[
+          { id: "home", label: "Ana sayfa", href: "/" },
+          { id: "cities", label: "Şehirler", href: "/cities" },
+          { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
+          { id: "district", label: districtLabel },
+        ]}
+        primaryHref={`/cities/${citySlug}`}
+        primaryLabel={`${cityLabel} hub’ına dön`}
+        nextSteps={[
+          { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
+          { id: "search", label: "Arama", href: "/search" },
+          { id: "categories", label: "Kurum tipleri", href: "/categories" },
+          { id: "sample", label: "Örnek kurum", href: "/institutions/ornek-anaokulu" },
+        ]}
+      />
+    </>
   );
 }

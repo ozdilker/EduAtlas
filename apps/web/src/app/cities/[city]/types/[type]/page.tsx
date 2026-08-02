@@ -1,5 +1,6 @@
 import { MetadataEngine, resolveCategoryPluralLabel } from "@eduatlas/seo";
 import { HubPlaceholderPage } from "@eduatlas/ui";
+import { JsonLd } from "@/components/json-ld";
 import { getSeoSiteConfig } from "@/lib/seo-site";
 import {
   resolveGeoHubLabels,
@@ -30,24 +31,35 @@ export default async function CityTypeHubRoute({ params }: CityTypeRouteProps) {
   const typeName = resolveTypeHubLabel(type);
   const plural = resolveCategoryPluralLabel(type, typeName);
 
+  const pageSeo = MetadataEngine.resolve("city-type", getSeoSiteConfig(), {
+    citySlug,
+    typeSlug: type,
+    cityName: geo?.cityName,
+    typeName,
+    items: [],
+  });
+
   return (
-    <HubPlaceholderPage
-      title={`${cityLabel} ${plural}`}
-      description={`${cityLabel} içinde ${typeName} keşfi için şehir×kategori yer tutucusu.`}
-      breadcrumbs={[
-        { id: "home", label: "Ana sayfa", href: "/" },
-        { id: "cities", label: "Şehirler", href: "/cities" },
-        { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
-        { id: "type", label: plural },
-      ]}
-      primaryHref={`/categories/${type}`}
-      primaryLabel={`${typeName} kategori hub’ı`}
-      nextSteps={[
-        { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
-        { id: "category", label: typeName, href: `/categories/${type}` },
-        { id: "search", label: "Arama", href: "/search" },
-        { id: "institutions", label: "Kurumlar", href: "/institutions" },
-      ]}
-    />
+    <>
+      <JsonLd data={pageSeo.jsonLd} />
+      <HubPlaceholderPage
+        title={`${cityLabel} ${plural}`}
+        description={`${cityLabel} içinde ${typeName} keşfi için şehir×kategori yer tutucusu.`}
+        breadcrumbs={[
+          { id: "home", label: "Ana sayfa", href: "/" },
+          { id: "cities", label: "Şehirler", href: "/cities" },
+          { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
+          { id: "type", label: plural },
+        ]}
+        primaryHref={`/categories/${type}`}
+        primaryLabel={`${typeName} kategori hub’ı`}
+        nextSteps={[
+          { id: "city", label: cityLabel, href: `/cities/${citySlug}` },
+          { id: "category", label: typeName, href: `/categories/${type}` },
+          { id: "search", label: "Arama", href: "/search" },
+          { id: "institutions", label: "Kurumlar", href: "/institutions" },
+        ]}
+      />
+    </>
   );
 }

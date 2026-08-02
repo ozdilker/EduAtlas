@@ -1,6 +1,7 @@
 import { humanizeSlug } from "../humanize-slug";
 import { buildMetadata } from "../metadata";
 import { SchemaEngine } from "../schema";
+import type { SchemaListInstitutionItem } from "../schema/types";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -16,6 +17,7 @@ export function buildDistrictPageSeo(
     districtName?: string;
     title?: string;
     description?: string;
+    items?: readonly SchemaListInstitutionItem[];
   },
 ): PageSeoResult {
   const citySlug = options?.citySlug?.trim().toLowerCase() || "istanbul";
@@ -41,7 +43,11 @@ export function buildDistrictPageSeo(
       ...SchemaEngine.build("district", site, {
         citySlug,
         cityName,
+        districtSlug,
         districtName,
+        name: title,
+        description,
+        items: options?.items,
       }),
     ],
   };

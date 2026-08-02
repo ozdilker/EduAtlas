@@ -1,9 +1,14 @@
 import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
 import type { JsonLdObject } from "../types";
-import { OrganizationSchemaBuilder, WebSiteSchemaBuilder } from "./builders";
+import {
+  CollectionPageSchemaBuilder,
+  OrganizationSchemaBuilder,
+  WebSiteSchemaBuilder,
+} from "./builders";
 import type {
   SchemaBuilder,
   SchemaBuildContext,
+  SchemaListInstitutionItem,
   SchemaPageKind,
 } from "./types";
 
@@ -46,9 +51,16 @@ export const staticSchemaAdapter: SchemaBuilder<"static"> = Object.freeze({
   },
 });
 
+function collectionItems(
+  items: readonly SchemaListInstitutionItem[] | undefined,
+): readonly SchemaListInstitutionItem[] | undefined {
+  return items?.length ? items : undefined;
+}
+
 export const citySchemaAdapter: SchemaBuilder<"city"> = Object.freeze({
   kind: "city",
   build({ site, input }: SchemaBuildContext<"city">): readonly JsonLdObject[] {
+    const path = `/cities/${input.citySlug}`;
     return Object.freeze([
       buildBreadcrumbJsonLd(
         [
@@ -58,6 +70,12 @@ export const citySchemaAdapter: SchemaBuilder<"city"> = Object.freeze({
         ],
         site,
       ),
+      CollectionPageSchemaBuilder.build(site, {
+        path,
+        name: input.name,
+        description: input.description,
+        items: collectionItems(input.items),
+      }),
     ]);
   },
 });
@@ -65,6 +83,7 @@ export const citySchemaAdapter: SchemaBuilder<"city"> = Object.freeze({
 export const districtSchemaAdapter: SchemaBuilder<"district"> = Object.freeze({
   kind: "district",
   build({ site, input }: SchemaBuildContext<"district">): readonly JsonLdObject[] {
+    const path = `/cities/${input.citySlug}/${input.districtSlug}`;
     return Object.freeze([
       buildBreadcrumbJsonLd(
         [
@@ -75,6 +94,12 @@ export const districtSchemaAdapter: SchemaBuilder<"district"> = Object.freeze({
         ],
         site,
       ),
+      CollectionPageSchemaBuilder.build(site, {
+        path,
+        name: input.name,
+        description: input.description,
+        items: collectionItems(input.items),
+      }),
     ]);
   },
 });
@@ -82,6 +107,7 @@ export const districtSchemaAdapter: SchemaBuilder<"district"> = Object.freeze({
 export const categorySchemaAdapter: SchemaBuilder<"category"> = Object.freeze({
   kind: "category",
   build({ site, input }: SchemaBuildContext<"category">): readonly JsonLdObject[] {
+    const path = `/categories/${input.categorySlug}`;
     return Object.freeze([
       buildBreadcrumbJsonLd(
         [
@@ -91,6 +117,12 @@ export const categorySchemaAdapter: SchemaBuilder<"category"> = Object.freeze({
         ],
         site,
       ),
+      CollectionPageSchemaBuilder.build(site, {
+        path,
+        name: input.name,
+        description: input.description,
+        items: collectionItems(input.items),
+      }),
     ]);
   },
 });
@@ -98,6 +130,7 @@ export const categorySchemaAdapter: SchemaBuilder<"category"> = Object.freeze({
 export const cityTypeSchemaAdapter: SchemaBuilder<"city-type"> = Object.freeze({
   kind: "city-type",
   build({ site, input }: SchemaBuildContext<"city-type">): readonly JsonLdObject[] {
+    const path = `/cities/${input.citySlug}/types/${input.typeSlug}`;
     return Object.freeze([
       buildBreadcrumbJsonLd(
         [
@@ -108,6 +141,12 @@ export const cityTypeSchemaAdapter: SchemaBuilder<"city-type"> = Object.freeze({
         ],
         site,
       ),
+      CollectionPageSchemaBuilder.build(site, {
+        path,
+        name: input.name,
+        description: input.description,
+        items: collectionItems(input.items),
+      }),
     ]);
   },
 });

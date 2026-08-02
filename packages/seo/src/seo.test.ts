@@ -175,7 +175,8 @@ describe("page SEO builders", () => {
       absolute: "Dershane kurumları | EduAtlas",
     });
     expect(institution.jsonLd[0]?.["@type"]).toBe("BreadcrumbList");
-    expect(city.jsonLd[0]?.["@type"]).toBe("BreadcrumbList");
-    expect(category.jsonLd[0]?.["@type"]).toBe("BreadcrumbList");
+    expect(city.jsonLd.map((n) => n["@type"])).toEqual(["BreadcrumbList", "CollectionPage"]);
+    expect(category.jsonLd.map((n) => n["@type"])).toEqual(["BreadcrumbList", "CollectionPage"]);
+    expect(city.jsonLd[1]?.mainEntity).toBeUndefined();
   });
 });

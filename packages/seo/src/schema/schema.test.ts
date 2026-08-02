@@ -3,6 +3,9 @@ import { buildHomePageSeo } from "../pages/home";
 import { createSeoSiteConfig } from "../site";
 import { homeSchemaAdapter, searchSchemaAdapter } from "./adapters";
 import {
+  CollectionPageSchemaBuilder,
+  ITEM_LIST_ORDER_ASCENDING,
+  ItemListSchemaBuilder,
   OrganizationSchemaBuilder,
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
@@ -100,6 +103,58 @@ describe("OrganizationSchemaBuilder", () => {
   });
 });
 
+describe("CollectionPageSchemaBuilder", () => {
+  it("emits CollectionPage without ItemList when items are empty", () => {
+    const page = CollectionPageSchemaBuilder.build(site, {
+      path: "/cities/istanbul",
+      name: "İstanbul eğitim kurumları",
+      description: "İstanbul'da kurumları keşfedin.",
+      items: [],
+    });
+
+    expect(page["@type"]).toBe(SchemaOrgType.CollectionPage);
+    expect(page.url).toBe("https://eduatlas.com.tr/cities/istanbul");
+    expect(page["@id"]).toBe("https://eduatlas.com.tr/cities/istanbul#collectionpage");
+    expect(page.isPartOf).toEqual({ "@id": resolveWebSiteSchemaId(site) });
+    expect(page.mainEntity).toBeUndefined();
+  });
+
+  it("nests ItemList with canonical ListItem urls and ascending positions", () => {
+    const page = CollectionPageSchemaBuilder.build(site, {
+      path: "/categories/anaokulu",
+      name: "Anaokulu kurumları",
+      description: "Türkiye genelinde anaokulu seçeneklerini keşfedin.",
+      items: [
+        { name: "Güneş Anaokulu", path: "/institutions/gunes-anaokulu" },
+        { name: "Yıldız Kreş", path: "https://eduatlas.com.tr/institutions/yildiz-kres?utm=1" },
+      ],
+    });
+
+    const list = page.mainEntity as Record<string, unknown>;
+    expect(list["@type"]).toBe(SchemaOrgType.ItemList);
+    expect(list.itemListOrder).toBe(ITEM_LIST_ORDER_ASCENDING);
+    expect(list.numberOfItems).toBe(2);
+    expect(list.itemListElement).toEqual([
+      {
+        "@type": SchemaOrgType.ListItem,
+        position: 1,
+        url: "https://eduatlas.com.tr/institutions/gunes-anaokulu",
+        name: "Güneş Anaokulu",
+      },
+      {
+        "@type": SchemaOrgType.ListItem,
+        position: 2,
+        url: "https://eduatlas.com.tr/institutions/yildiz-kres",
+        name: "Yıldız Kreş",
+      },
+    ]);
+  });
+
+  it("ItemListSchemaBuilder returns null for empty input", () => {
+    expect(ItemListSchemaBuilder.build(site, { items: [] })).toBeNull();
+  });
+});
+
 describe("WebSiteSchemaBuilder", () => {
   it("emits a single WebSite with publisher @id and metadata description", () => {
     const home = buildHomePageSeo(site);
@@ -150,10 +205,17 @@ describe("SchemaEngine home graph", () => {
     expect(SchemaEngine.build("search", site)).toEqual([]);
   });
 
-  it("builds breadcrumb graphs for hubs", () => {
-    const city = SchemaEngine.build("city", site, { cityName: "Ankara" });
-    expect(city).toHaveLength(1);
+  it("builds breadcrumb + CollectionPage graphs for hubs", () => {
+    const city = SchemaEngine.build("city", site, {
+      citySlug: "ankara",
+      cityName: "Ankara",
+      name: "Ankara eğitim kurumları",
+      description: "Ankara'da eğitim kurumlarını keşfedin.",
+    });
+    expect(city).toHaveLength(2);
     expect(city[0]?.["@type"]).toBe(SchemaOrgType.BreadcrumbList);
+    expect(city[1]?.["@type"]).toBe(SchemaOrgType.CollectionPage);
+    expect(city[1]?.mainEntity).toBeUndefined();
   });
 
   it("allows Open/Closed registration of a replacement builder", () => {

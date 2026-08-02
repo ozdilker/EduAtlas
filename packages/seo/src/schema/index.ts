@@ -10,10 +10,17 @@ export {
   staticSchemaAdapter,
 } from "./adapters";
 export {
+  CollectionPageSchemaBuilder,
+  ITEM_LIST_ORDER_ASCENDING,
+  ItemListSchemaBuilder,
+  normalizeListItems,
   OrganizationSchemaBuilder,
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
+  type CollectionPageSchemaBuildInput,
+  type ItemListSchemaBuildInput,
   type OrganizationSchemaBuildInput,
+  type SchemaListInstitutionItem,
   type WebSiteSchemaBuildInput,
 } from "./builders";
 export {
@@ -22,6 +29,7 @@ export {
   ORGANIZATION_KNOWS_ABOUT,
   type OrganizationKnowsAboutTopic,
 } from "./organization-constants";
+export { toSchemaListItems } from "./to-schema-list-items";
 export { SchemaEngine, type SchemaEngineOptions } from "./engine";
 export {
   resolveOrganizationSchemaId,

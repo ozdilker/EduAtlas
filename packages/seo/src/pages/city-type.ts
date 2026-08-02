@@ -1,6 +1,7 @@
 import { humanizeSlug } from "../humanize-slug";
 import { buildMetadata } from "../metadata";
 import { SchemaEngine } from "../schema";
+import type { SchemaListInstitutionItem } from "../schema/types";
 import type { SeoSiteConfig } from "../types";
 import { resolveCategorySeoContent } from "./category";
 import type { PageSeoResult } from "./home";
@@ -39,6 +40,7 @@ export function buildCityTypePageSeo(
     typeName?: string;
     title?: string;
     description?: string;
+    items?: readonly SchemaListInstitutionItem[];
   },
 ): PageSeoResult {
   const citySlug = options?.citySlug?.trim().toLowerCase() || "istanbul";
@@ -66,7 +68,11 @@ export function buildCityTypePageSeo(
       ...SchemaEngine.build("city-type", site, {
         citySlug,
         cityName,
+        typeSlug,
         typeLabel: plural,
+        name: title,
+        description,
+        items: options?.items,
       }),
     ],
   };
