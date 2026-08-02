@@ -152,6 +152,7 @@ export async function importInstitutionsAction(
   }
 
   const { fileName, content, uploadToken } = resolved;
+  const startedAt = Date.now();
 
   try {
     // Drop sticky/TTL read-fallback so Blaze / recovered quota is visible again.
@@ -222,12 +223,22 @@ export async function importInstitutionsAction(
         }
       }
 
+      console.info(
+        `[eduatlas] importInstitutionsAction execute ok file=${fileName} rows=${execution.result.totalRows} ms=${Date.now() - startedAt}`,
+      );
       return buildExecuteState(fileName, execution, dryRun, dryRun ? uploadToken : null, jobId);
     }
 
     const preview = await previewImport({ fileName, content }, deps);
+    console.info(
+      `[eduatlas] importInstitutionsAction preview ok file=${fileName} rows=${preview.result.totalRows} bytes=${content.byteLength} ms=${Date.now() - startedAt}`,
+    );
     return buildPreviewState(fileName, preview, uploadToken);
   } catch (error) {
+    console.error(
+      `[eduatlas] importInstitutionsAction failed mode=${mode} file=${fileName} bytes=${content.byteLength} ms=${Date.now() - startedAt}:`,
+      error,
+    );
     if (jobId) {
       await writeImportProgress({
         jobId,
@@ -246,7 +257,6 @@ export async function importInstitutionsAction(
     if (isImportFileError(error)) {
       return errorState(error.message, uploadToken, jobId);
     }
-    console.error("[eduatlas] importInstitutionsAction failed:", error);
     const message =
       error instanceof Error
         ? error.message
@@ -262,36 +272,63 @@ export async function importInstitutionsAction(
   }
 }
 
+function mapValidatedToRowView(
+  item: PreviewImportResult["rows"][number],
+): AdminImportRowView {
+  return {
+    rowNumber: item.row.rowNumber,
+    name: item.row.name,
+    slugPreview: item.slugPreview,
+    typeLabel: TYPE_LABELS[item.row.primaryType] ?? item.row.primaryType ?? "—",
+    cityId: item.row.cityId,
+    districtId: item.row.districtId,
+    status: item.status,
+    statusLabel: getAdminImportRowStatusLabel(item.status),
+    outcomeLabel: "",
+    qualityScore: item.qualityPreview?.score ?? null,
+    qualityGrade: item.qualityPreview?.grade ?? "",
+    issues: item.issues.map((issue) => issue.message),
+  };
+}
+
+function mapExecutedToRowView(
+  item: ExecuteImportResult["rows"][number],
+): AdminImportRowView {
+  return {
+    rowNumber: item.validated.row.rowNumber,
+    name: item.validated.row.name,
+    slugPreview: item.validated.slugPreview,
+    typeLabel:
+      TYPE_LABELS[item.validated.row.primaryType] ?? item.validated.row.primaryType ?? "—",
+    cityId: item.validated.row.cityId,
+    districtId: item.validated.row.districtId,
+    status: item.validated.status,
+    statusLabel: getAdminImportRowStatusLabel(item.validated.status),
+    outcomeLabel: getAdminImportOutcomeLabel(item.outcome),
+    qualityScore: item.validated.qualityPreview?.score ?? null,
+    qualityGrade: item.validated.qualityPreview?.grade ?? "",
+    issues: [
+      ...item.validated.issues.map((issue) => issue.message),
+      ...(item.errorMessage ? [item.errorMessage] : []),
+    ],
+  };
+}
+
 function buildPreviewState(
   fileName: string,
   preview: PreviewImportResult,
   uploadToken: string,
 ): AdminImportFormState {
-  const allRows = preview.rows.map((item): AdminImportRowView => {
-    return {
-      rowNumber: item.row.rowNumber,
-      name: item.row.name,
-      slugPreview: item.slugPreview,
-      typeLabel: TYPE_LABELS[item.row.primaryType] ?? item.row.primaryType ?? "—",
-      cityId: item.row.cityId,
-      districtId: item.row.districtId,
-      status: item.status,
-      statusLabel: getAdminImportRowStatusLabel(item.status),
-      outcomeLabel: "",
-      qualityScore: item.qualityPreview?.score ?? null,
-      qualityGrade: item.qualityPreview?.grade ?? "",
-      issues: item.issues.map((issue) => issue.message),
-    };
-  });
-  const rows = selectAdminImportDisplayRows(allRows);
-  const truncated = allRows.length > rows.length;
+  const displaySource = selectAdminImportDisplayRows(preview.rows);
+  const rows = displaySource.map(mapValidatedToRowView);
+  const truncated = preview.rows.length > rows.length;
 
   const skipped = preview.result.duplicateCount + preview.result.invalidCount;
 
   return {
     phase: "preview",
     message: truncated
-      ? `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Tabloda ${rows.length}/${allRows.length} örnek satır gösteriliyor (önce sorunlu satırlar). Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`
+      ? `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Tabloda ${rows.length}/${preview.rows.length} örnek satır gösteriliyor (önce sorunlu satırlar). Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`
       : `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`,
     summary: {
       fileName,
@@ -320,28 +357,17 @@ function buildExecuteState(
   uploadToken: string | null,
   jobId: string | null,
 ): AdminImportFormState {
-  const allRows = execution.rows.map((item): AdminImportRowView => {
-    return {
-      rowNumber: item.validated.row.rowNumber,
-      name: item.validated.row.name,
-      slugPreview: item.validated.slugPreview,
-      typeLabel:
-        TYPE_LABELS[item.validated.row.primaryType] ?? item.validated.row.primaryType ?? "—",
-      cityId: item.validated.row.cityId,
-      districtId: item.validated.row.districtId,
-      status: item.validated.status,
-      statusLabel: getAdminImportRowStatusLabel(item.validated.status),
-      outcomeLabel: getAdminImportOutcomeLabel(item.outcome),
-      qualityScore: item.validated.qualityPreview?.score ?? null,
-      qualityGrade: item.validated.qualityPreview?.grade ?? "",
-      issues: [
-        ...item.validated.issues.map((issue) => issue.message),
-        ...(item.errorMessage ? [item.errorMessage] : []),
-      ],
-    };
-  });
-  const rows = selectAdminImportDisplayRows(allRows);
-  const truncated = allRows.length > rows.length;
+  const displayValidated = selectAdminImportDisplayRows(
+    execution.rows.map((item) => item.validated),
+  );
+  const byRowNumber = new Map(
+    execution.rows.map((item) => [item.validated.row.rowNumber, item] as const),
+  );
+  const rows = displayValidated
+    .map((validated) => byRowNumber.get(validated.row.rowNumber))
+    .filter((item): item is ExecuteImportResult["rows"][number] => Boolean(item))
+    .map(mapExecutedToRowView);
+  const truncated = execution.rows.length > rows.length;
 
   const skipped = execution.result.duplicateCount + execution.result.invalidCount;
   const alreadyInDb =
@@ -355,7 +381,7 @@ function buildExecuteState(
       ? `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): 0 yeni kurum — ${execution.result.duplicateCount} satır zaten Firestore’da kayıtlı (yinelenen). /admin/published sayfasından kontrol edin.`
       : `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): ${execution.result.createdCount} kurum yayına alındı, ${skipped} satır atlandı${execution.result.failedCount ? `, ${execution.result.failedCount} hatalı` : ""}.`;
   const message = truncated
-    ? `${baseMessage} Tabloda ${rows.length}/${allRows.length} örnek satır gösteriliyor.`
+    ? `${baseMessage} Tabloda ${rows.length}/${execution.rows.length} örnek satır gösteriliyor.`
     : baseMessage;
 
   return {

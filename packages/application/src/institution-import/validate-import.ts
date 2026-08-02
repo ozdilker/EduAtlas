@@ -60,24 +60,22 @@ export type ValidateImportDependencies = Readonly<{
   readonly districtRepository?: DistrictRepository;
 }>;
 
-const EXISTING_SCAN_PAGE_SIZE = 1000;
-const EXISTING_SCAN_MAX_PAGES = 50;
+/**
+ * Upper bound for one duplicate-scan list call.
+ * FirestoreInstitutionRepository.list() currently loads the full collection per call
+ * (listAll + in-memory page slice). Paginating would re-download the whole set N times
+ * and OOM/timeout large MEB previews — so we request a single oversized page instead.
+ */
+const EXISTING_SCAN_MAX_ITEMS = 50_000;
 
 async function listExistingForDuplicateScan(
   repository: InstitutionRepository,
 ): Promise<Awaited<ReturnType<InstitutionRepository["list"]>>["items"]> {
-  const items: Array<Awaited<ReturnType<InstitutionRepository["list"]>>["items"][number]> = [];
-  for (let page = 1; page <= EXISTING_SCAN_MAX_PAGES; page += 1) {
-    const existing = await repository.list({
-      page,
-      pageSize: EXISTING_SCAN_PAGE_SIZE,
-    });
-    items.push(...existing.items);
-    if (items.length >= existing.totalItems || existing.items.length === 0) {
-      break;
-    }
-  }
-  return items;
+  const existing = await repository.list({
+    page: 1,
+    pageSize: EXISTING_SCAN_MAX_ITEMS,
+  });
+  return existing.items;
 }
 
 /**
@@ -131,7 +129,8 @@ export async function validateImport(
     }
   }
 
-  const seenSlugs = new Set<string>();
+  // One mutable set: existing + newly allocated. Do NOT rebuild per row (O(n²) copies).
+  const takenSlugs = new Set<string>(existingSlugs);
   const seenDuplicateKeys = new Set<string>();
   const results: ValidatedImportRow[] = [];
 
@@ -222,7 +221,6 @@ export async function validateImport(
     }
 
     const baseSlug = resolveImportSlug(row);
-    const takenSlugs = new Set<string>([...existingSlugs, ...seenSlugs]);
     const allocated = allocateUniqueImportSlug({
       baseSlug,
       districtSlug:
@@ -323,7 +321,7 @@ export async function validateImport(
       }
 
       if (slugPreview && effectiveStatus !== "duplicate" && effectiveStatus !== "invalid") {
-        seenSlugs.add(slugPreview);
+        takenSlugs.add(slugPreview);
         if (duplicateKey) {
           seenDuplicateKeys.add(duplicateKey);
         }
