@@ -1,4 +1,4 @@
-import { MetadataEngine } from "@eduatlas/seo";
+import { MetadataEngine, toInstitutionSchemaFields } from "@eduatlas/seo";
 import { getInstitutionTypeSlug, InstitutionVerification, institutionIdAsString } from "@eduatlas/domain";
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import {
@@ -66,6 +66,7 @@ export async function generateMetadata({ params }: InstitutionProfileRouteProps)
     district: geo.districtName,
     districtSlug: geo.districtSlug,
     description: profile.summary,
+    ...toInstitutionSchemaFields(profile),
   }).metadata;
 }
 
@@ -91,6 +92,7 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
       district: geo.districtName,
       districtSlug: geo.districtSlug,
       description: profile.summary,
+      ...toInstitutionSchemaFields(profile),
     });
 
     const relatedPromise: Promise<readonly InstitutionCardViewData[]> = loadRelatedInstitutions(

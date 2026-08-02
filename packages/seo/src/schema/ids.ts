@@ -13,6 +13,20 @@ export function resolveWebSiteSchemaId(site: Pick<SeoSiteConfig, "siteUrl">): st
 }
 
 /**
+ * Stable @id for an institution EducationalOrganization node.
+ */
+export function resolveEducationalOrganizationSchemaId(
+  site: Pick<SeoSiteConfig, "siteUrl">,
+  institutionPath: string,
+): string {
+  const url = CanonicalResolver.resolve({
+    siteUrl: site.siteUrl,
+    path: institutionPath,
+  });
+  return `${url}#educationalorganization`;
+}
+
+/**
  * Absolute site origin without trailing slash (except we never emit bare empty).
  */
 export function resolveSiteOriginUrl(site: Pick<SeoSiteConfig, "siteUrl">): string {

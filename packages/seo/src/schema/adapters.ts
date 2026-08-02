@@ -2,6 +2,7 @@ import type { JsonLdObject } from "../types";
 import {
   BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
+  EducationalOrganizationSchemaBuilder,
   OrganizationSchemaBuilder,
   WebSiteSchemaBuilder,
 } from "./builders";
@@ -164,6 +165,21 @@ export const institutionSchemaAdapter: SchemaBuilder<"institution"> = Object.fre
           { name: input.typeLabel, path: `/categories/${input.typeSlug}` },
           { name: input.name, path: input.path },
         ],
+      }),
+      EducationalOrganizationSchemaBuilder.build(site, {
+        name: input.name,
+        path: input.path,
+        description: input.description,
+        city: input.city,
+        district: input.district,
+        telephone: input.telephone,
+        email: input.email,
+        address: input.address,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        coverImageUrl: input.coverImageUrl,
+        logoUrl: input.logoUrl,
+        websiteUrl: input.websiteUrl,
       }),
     ]);
   },

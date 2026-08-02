@@ -12,6 +12,8 @@ export {
 export {
   BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
+  EducationalOrganizationBuilder,
+  EducationalOrganizationSchemaBuilder,
   ITEM_LIST_ORDER_ASCENDING,
   ItemListSchemaBuilder,
   normalizeListItems,
@@ -20,6 +22,7 @@ export {
   WebSiteSchemaBuilder,
   type BreadcrumbSchemaBuildInput,
   type CollectionPageSchemaBuildInput,
+  type EducationalOrganizationSchemaBuildInput,
   type ItemListSchemaBuildInput,
   type OrganizationSchemaBuildInput,
   type SchemaListInstitutionItem,
@@ -32,8 +35,10 @@ export {
   type OrganizationKnowsAboutTopic,
 } from "./organization-constants";
 export { toSchemaListItems } from "./to-schema-list-items";
+export { toInstitutionSchemaFields } from "./to-institution-schema-fields";
 export { SchemaEngine, type SchemaEngineOptions } from "./engine";
 export {
+  resolveEducationalOrganizationSchemaId,
   resolveOrganizationSchemaId,
   resolveSiteOriginUrl,
   resolveWebSiteSchemaId,

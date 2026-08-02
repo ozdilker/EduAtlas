@@ -26,6 +26,14 @@ export type InstitutionPageSeoContent = {
   readonly district: string;
   readonly districtSlug: string;
   readonly description: string;
+  readonly telephone?: string;
+  readonly email?: string;
+  readonly address?: string;
+  readonly latitude?: number;
+  readonly longitude?: number;
+  readonly coverImageUrl?: string;
+  readonly logoUrl?: string;
+  readonly websiteUrl?: string;
 };
 
 /**
@@ -73,6 +81,15 @@ export function buildInstitutionPageSeo(
         district,
         districtSlug,
         path,
+        description: metadata.description,
+        telephone: options?.telephone,
+        email: options?.email,
+        address: options?.address,
+        latitude: options?.latitude,
+        longitude: options?.longitude,
+        coverImageUrl: options?.coverImageUrl,
+        logoUrl: options?.logoUrl,
+        websiteUrl: options?.websiteUrl,
       }),
     ],
   };

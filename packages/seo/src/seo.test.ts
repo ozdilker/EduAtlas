@@ -178,7 +178,10 @@ describe("page SEO builders", () => {
     expect(dershane.metadata.title).toEqual({
       absolute: "Dershane kurumları | EduAtlas",
     });
-    expect(institution.jsonLd[0]?.["@type"]).toBe("BreadcrumbList");
+    expect(institution.jsonLd.map((n) => n["@type"])).toEqual([
+      "BreadcrumbList",
+      ["EducationalOrganization", "LocalBusiness"],
+    ]);
     const crumbs = institution.jsonLd[0]?.itemListElement as Array<Record<string, unknown>>;
     expect(crumbs).toHaveLength(5);
     expect(crumbs.every((c) => typeof c.item === "string" && typeof c.name === "string")).toBe(

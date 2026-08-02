@@ -5,6 +5,7 @@ import { homeSchemaAdapter, searchSchemaAdapter } from "./adapters";
 import {
   BreadcrumbSchemaBuilder,
   CollectionPageSchemaBuilder,
+  EducationalOrganizationSchemaBuilder,
   ITEM_LIST_ORDER_ASCENDING,
   ItemListSchemaBuilder,
   OrganizationSchemaBuilder,
@@ -12,7 +13,11 @@ import {
   WebSiteSchemaBuilder,
 } from "./builders";
 import { SchemaEngine } from "./engine";
-import { resolveOrganizationSchemaId, resolveWebSiteSchemaId } from "./ids";
+import {
+  resolveEducationalOrganizationSchemaId,
+  resolveOrganizationSchemaId,
+  resolveWebSiteSchemaId,
+} from "./ids";
 import {
   EDUATLAS_ALTERNATE_NAME,
   ORGANIZATION_AREA_SERVED,
@@ -142,6 +147,101 @@ describe("BreadcrumbSchemaBuilder", () => {
         item: "https://eduatlas.com.tr/institutions/abc-koleji",
       },
     ]);
+  });
+});
+
+describe("EducationalOrganizationSchemaBuilder", () => {
+  it("emits one EducationalOrganization+LocalBusiness with parentOrganization", () => {
+    const node = EducationalOrganizationSchemaBuilder.build(site, {
+      name: "ABC Koleji",
+      path: "/institutions/abc-koleji",
+      description: "Kadıköy'de eğitim kurumu.",
+      city: "İstanbul",
+      district: "Kadıköy",
+      address: "Örnek Sok. No:1",
+      telephone: "+90 216 000 00 00",
+      email: "info@abc.edu.tr",
+      latitude: 40.99,
+      longitude: 29.02,
+      coverImageUrl: "https://cdn.example.com/cover.jpg",
+      logoUrl: "https://cdn.example.com/logo.png",
+      websiteUrl: "https://www.abc.edu.tr/",
+    });
+
+    expect(node["@type"]).toEqual([
+      SchemaOrgType.EducationalOrganization,
+      SchemaOrgType.LocalBusiness,
+    ]);
+    expect(node["@id"]).toBe(
+      resolveEducationalOrganizationSchemaId(site, "/institutions/abc-koleji"),
+    );
+    expect(node.url).toBe("https://eduatlas.com.tr/institutions/abc-koleji");
+    expect(node.description).toBe("Kadıköy'de eğitim kurumu.");
+    expect(node.image).toBe("https://cdn.example.com/cover.jpg");
+    expect(node.telephone).toBe("+90 216 000 00 00");
+    expect(node.email).toBe("info@abc.edu.tr");
+    expect(node.sameAs).toEqual(["https://www.abc.edu.tr/"]);
+    expect(node.areaServed).toBe("İstanbul");
+    expect(node.parentOrganization).toEqual({
+      "@id": resolveOrganizationSchemaId(site),
+    });
+    expect(node.geo).toEqual({
+      "@type": "GeoCoordinates",
+      latitude: 40.99,
+      longitude: 29.02,
+    });
+    expect(node.address).toEqual({
+      "@type": "PostalAddress",
+      streetAddress: "Örnek Sok. No:1",
+      addressLocality: "Kadıköy",
+      addressRegion: "İstanbul",
+      addressCountry: "TR",
+    });
+  });
+
+  it("omits optional fields and prefers logo then default image", () => {
+    const withLogo = EducationalOrganizationSchemaBuilder.build(site, {
+      name: "Okul",
+      path: "/institutions/okul",
+      description: "Açıklama",
+      city: "Ankara",
+      logoUrl: "https://cdn.example.com/logo-only.png",
+    });
+    expect(withLogo.image).toBe("https://cdn.example.com/logo-only.png");
+    expect(withLogo.telephone).toBeUndefined();
+    expect(withLogo.email).toBeUndefined();
+    expect(withLogo.address).toBeUndefined();
+    expect(withLogo.geo).toBeUndefined();
+    expect(withLogo.sameAs).toBeUndefined();
+
+    const fallback = EducationalOrganizationSchemaBuilder.build(site, {
+      name: "Okul",
+      path: "/institutions/okul",
+      description: "Açıklama",
+      city: "Ankara",
+    });
+    expect(fallback.image).toBe(site.defaultImageUrl);
+  });
+
+  it("is emitted once on institution pages via SchemaEngine", () => {
+    const graphs = SchemaEngine.build("institution", site, {
+      name: "ABC Koleji",
+      typeLabel: "Özel Okul",
+      typeSlug: "ozel-okul",
+      city: "İstanbul",
+      citySlug: "istanbul",
+      district: "Kadıköy",
+      districtSlug: "kadikoy",
+      path: "/institutions/abc-koleji",
+      description: "Meta açıklama",
+    });
+    expect(graphs).toHaveLength(2);
+    expect(graphs[0]?.["@type"]).toBe(SchemaOrgType.BreadcrumbList);
+    expect(graphs[1]?.["@type"]).toEqual([
+      SchemaOrgType.EducationalOrganization,
+      SchemaOrgType.LocalBusiness,
+    ]);
+    expect(graphs[1]?.description).toBe("Meta açıklama");
   });
 });
 

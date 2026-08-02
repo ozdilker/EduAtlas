@@ -7,6 +7,11 @@ export {
   type CollectionPageSchemaBuildInput,
 } from "./collection-page";
 export {
+  EducationalOrganizationBuilder,
+  EducationalOrganizationSchemaBuilder,
+  type EducationalOrganizationSchemaBuildInput,
+} from "./educational-organization";
+export {
   ITEM_LIST_ORDER_ASCENDING,
   ItemListSchemaBuilder,
   normalizeListItems,

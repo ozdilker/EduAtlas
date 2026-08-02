@@ -104,8 +104,18 @@ export type SchemaInstitutionInput = {
   citySlug: string;
   district: string;
   districtSlug: string;
-  /** Institution profile path for the current ListItem.item. */
+  /** Institution profile path for breadcrumbs + EducationalOrganization URL. */
   path: string;
+  /** Meta description from MetadataEngine. */
+  description: string;
+  telephone?: string;
+  email?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  coverImageUrl?: string;
+  logoUrl?: string;
+  websiteUrl?: string;
 };
 
 export type SchemaSearchInput = Record<string, never>;
