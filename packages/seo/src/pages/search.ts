@@ -1,4 +1,5 @@
 import { buildMetadata } from "../metadata";
+import { SchemaEngine } from "../schema";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -20,6 +21,6 @@ export function buildSearchPageSeo(site: SeoSiteConfig): PageSeoResult {
 
   return {
     metadata,
-    jsonLd: [],
+    jsonLd: [...SchemaEngine.build("search", site)],
   };
 }

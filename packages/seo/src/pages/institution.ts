@@ -1,5 +1,5 @@
-import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
 import { buildMetadata } from "../metadata";
+import { SchemaEngine } from "../schema";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -64,16 +64,15 @@ export function buildInstitutionPageSeo(
   return {
     metadata,
     jsonLd: [
-      buildBreadcrumbJsonLd(
-        [
-          { name: "Ana sayfa", path: "/" },
-          { name: city, path: `/cities/${citySlug}` },
-          { name: district, path: `/cities/${citySlug}/${districtSlug}` },
-          { name: typeLabel, path: `/categories/${typeSlug}` },
-          { name },
-        ],
-        site,
-      ),
+      ...SchemaEngine.build("institution", site, {
+        name,
+        typeLabel,
+        typeSlug,
+        city,
+        citySlug,
+        district,
+        districtSlug,
+      }),
     ],
   };
 }

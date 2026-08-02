@@ -1,5 +1,5 @@
-import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
 import { buildMetadata } from "../metadata";
+import { SchemaEngine } from "../schema";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -106,10 +106,7 @@ export function buildStaticPageSeo(
   return {
     metadata,
     jsonLd: [
-      buildBreadcrumbJsonLd(
-        [{ name: "Ana sayfa", path: "/" }, { name: def.breadcrumbLabel }],
-        site,
-      ),
+      ...SchemaEngine.build("static", site, { breadcrumbLabel: def.breadcrumbLabel }),
     ],
   };
 }

@@ -1,6 +1,6 @@
-import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
 import { humanizeSlug } from "../humanize-slug";
 import { buildMetadata } from "../metadata";
+import { SchemaEngine } from "../schema";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -111,11 +111,6 @@ export function buildCategoryPageSeo(
 
   return {
     metadata,
-    jsonLd: [
-      buildBreadcrumbJsonLd(
-        [{ name: "Ana sayfa", path: "/" }, { name: "Kategoriler", path: "/categories" }, { name }],
-        site,
-      ),
-    ],
+    jsonLd: [...SchemaEngine.build("category", site, { categoryName: name })],
   };
 }

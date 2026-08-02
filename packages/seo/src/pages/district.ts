@@ -1,6 +1,6 @@
-import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
 import { humanizeSlug } from "../humanize-slug";
 import { buildMetadata } from "../metadata";
+import { SchemaEngine } from "../schema";
 import type { SeoSiteConfig } from "../types";
 import type { PageSeoResult } from "./home";
 
@@ -38,15 +38,11 @@ export function buildDistrictPageSeo(
   return {
     metadata,
     jsonLd: [
-      buildBreadcrumbJsonLd(
-        [
-          { name: "Ana sayfa", path: "/" },
-          { name: "Şehirler", path: "/cities" },
-          { name: cityName, path: `/cities/${citySlug}` },
-          { name: districtName },
-        ],
-        site,
-      ),
+      ...SchemaEngine.build("district", site, {
+        citySlug,
+        cityName,
+        districtName,
+      }),
     ],
   };
 }

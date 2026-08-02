@@ -49,6 +49,20 @@ export {
   type MetadataPageKind,
 } from "./engine";
 export {
+  DEFAULT_SCHEMA_ADAPTERS,
+  SchemaEngine,
+  SchemaOrgType,
+  SchemaRegistry,
+  SCHEMA_PAGE_KINDS,
+  defaultSchemaRegistry,
+  type SchemaBuilder,
+  type SchemaBuildContext,
+  type SchemaEngineOptions,
+  type SchemaInputMap,
+  type SchemaOrgTypeName,
+  type SchemaPageKind,
+} from "./schema";
+export {
   buildRobotsTxt,
   createBlockedRobotsPolicy,
   createProductionRobotsPolicy,

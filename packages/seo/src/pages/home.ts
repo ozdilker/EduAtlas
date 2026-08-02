@@ -1,6 +1,5 @@
-import { buildOrganizationJsonLd } from "../json-ld/organization";
-import { buildWebsiteJsonLd } from "../json-ld/website";
 import { buildMetadata } from "../metadata";
+import { SchemaEngine } from "../schema";
 import type { JsonLdObject, SeoMetadata, SeoSiteConfig } from "../types";
 
 export type PageSeoResult = {
@@ -25,6 +24,6 @@ export function buildHomePageSeo(site: SeoSiteConfig): PageSeoResult {
 
   return {
     metadata,
-    jsonLd: [buildOrganizationJsonLd(site), buildWebsiteJsonLd(site)],
+    jsonLd: [...SchemaEngine.build("home", site)],
   };
 }
