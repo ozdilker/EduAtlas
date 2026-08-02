@@ -55,6 +55,39 @@ export const ADMIN_IMPORT_INITIAL_STATE: AdminImportFormState = Object.freeze({
 
 export const ADMIN_IMPORT_ROWS_PAGE_SIZE = 25;
 
+/**
+ * Max rows returned in the server-action form state.
+ * Large MEB exports (5k–10k+) blow past Next.js action serialization limits if every row is returned.
+ */
+export const ADMIN_IMPORT_DISPLAY_ROWS_MAX = 200;
+
+const DISPLAY_STATUS_PRIORITY: Readonly<Record<AdminImportRowStatus, number>> = Object.freeze({
+  invalid: 0,
+  warning: 1,
+  duplicate: 2,
+  ready: 3,
+});
+
+/**
+ * Picks a UI sample of import rows: problems first, then ready rows, capped for payload size.
+ */
+export function selectAdminImportDisplayRows<T extends { readonly status: AdminImportRowStatus }>(
+  rows: readonly T[],
+  limit: number = ADMIN_IMPORT_DISPLAY_ROWS_MAX,
+): readonly T[] {
+  if (rows.length <= limit) {
+    return rows;
+  }
+  const ranked = [...rows].sort((a, b) => {
+    const pa = DISPLAY_STATUS_PRIORITY[a.status] ?? 99;
+    const pb = DISPLAY_STATUS_PRIORITY[b.status] ?? 99;
+    if (pa !== pb) return pa - pb;
+    return 0;
+  });
+  return Object.freeze(ranked.slice(0, Math.max(0, limit)));
+}
+
+
 export type AdminImportProgressView = Readonly<{
   readonly phase: string;
   readonly totalRows: number;

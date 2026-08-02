@@ -4,6 +4,8 @@ import {
   getAdminImportOutcomeLabel,
   getAdminImportRowStatusLabel,
   getAdminImportStepIndex,
+  selectAdminImportDisplayRows,
+  type AdminImportRowStatus,
 } from "./admin-import-content";
 
 describe("admin import content helpers", () => {
@@ -31,5 +33,23 @@ describe("admin import content helpers", () => {
     expect(getAdminImportRowStatusLabel("duplicate")).toBe("Yinelenen");
     expect(getAdminImportOutcomeLabel("created")).toBe("Oluşturuldu");
     expect(getAdminImportOutcomeLabel("skipped_duplicate")).toBe("Yinelenen — atlandı");
+  });
+
+  it("caps display rows and prioritizes invalid/warning/duplicate", () => {
+    const rows = [
+      ...Array.from({ length: 50 }, (_, i) => ({ id: `r${i}`, status: "ready" as AdminImportRowStatus })),
+      { id: "d1", status: "duplicate" as AdminImportRowStatus },
+      { id: "w1", status: "warning" as AdminImportRowStatus },
+      { id: "i1", status: "invalid" as AdminImportRowStatus },
+    ];
+    const selected = selectAdminImportDisplayRows(rows, 5);
+    expect(selected).toHaveLength(5);
+    expect(selected.map((row) => row.status)).toEqual([
+      "invalid",
+      "warning",
+      "duplicate",
+      "ready",
+      "ready",
+    ]);
   });
 });

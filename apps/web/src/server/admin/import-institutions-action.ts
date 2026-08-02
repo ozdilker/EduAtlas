@@ -12,6 +12,7 @@ import type { AdminImportFormState, AdminImportRowView } from "@eduatlas/ui";
 import {
   getAdminImportOutcomeLabel,
   getAdminImportRowStatusLabel,
+  selectAdminImportDisplayRows,
 } from "@eduatlas/ui";
 import { revalidatePath } from "next/cache";
 import { getSeededGeographyRepositories } from "../geography/repository";
@@ -266,7 +267,7 @@ function buildPreviewState(
   preview: PreviewImportResult,
   uploadToken: string,
 ): AdminImportFormState {
-  const rows = preview.rows.map((item): AdminImportRowView => {
+  const allRows = preview.rows.map((item): AdminImportRowView => {
     return {
       rowNumber: item.row.rowNumber,
       name: item.row.name,
@@ -282,12 +283,16 @@ function buildPreviewState(
       issues: item.issues.map((issue) => issue.message),
     };
   });
+  const rows = selectAdminImportDisplayRows(allRows);
+  const truncated = allRows.length > rows.length;
 
   const skipped = preview.result.duplicateCount + preview.result.invalidCount;
 
   return {
     phase: "preview",
-    message: `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`,
+    message: truncated
+      ? `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Tabloda ${rows.length}/${allRows.length} örnek satır gösteriliyor (önce sorunlu satırlar). Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`
+      : `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`,
     summary: {
       fileName,
       formatLabel: `${formatLabel(preview.job.sourceFormat)} · ${sourceLabel(preview.sourceId)}`,
@@ -315,7 +320,7 @@ function buildExecuteState(
   uploadToken: string | null,
   jobId: string | null,
 ): AdminImportFormState {
-  const rows = execution.rows.map((item): AdminImportRowView => {
+  const allRows = execution.rows.map((item): AdminImportRowView => {
     return {
       rowNumber: item.validated.row.rowNumber,
       name: item.validated.row.name,
@@ -335,6 +340,8 @@ function buildExecuteState(
       ],
     };
   });
+  const rows = selectAdminImportDisplayRows(allRows);
+  const truncated = allRows.length > rows.length;
 
   const skipped = execution.result.duplicateCount + execution.result.invalidCount;
   const alreadyInDb =
@@ -342,11 +349,14 @@ function buildExecuteState(
     execution.result.createdCount === 0 &&
     execution.result.duplicateCount > 0 &&
     execution.result.failedCount === 0;
-  const message = dryRun
+  const baseMessage = dryRun
     ? `Deneme tamamlandı (${sourceLabel(execution.sourceId)}): ${execution.result.wouldCreateCount} satır aktarılabilirdi. Hiçbir şey yazılmadı.`
     : alreadyInDb
       ? `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): 0 yeni kurum — ${execution.result.duplicateCount} satır zaten Firestore’da kayıtlı (yinelenen). /admin/published sayfasından kontrol edin.`
       : `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): ${execution.result.createdCount} kurum yayına alındı, ${skipped} satır atlandı${execution.result.failedCount ? `, ${execution.result.failedCount} hatalı` : ""}.`;
+  const message = truncated
+    ? `${baseMessage} Tabloda ${rows.length}/${allRows.length} örnek satır gösteriliyor.`
+    : baseMessage;
 
   return {
     phase: "done",
