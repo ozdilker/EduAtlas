@@ -72,7 +72,7 @@ describe("NotificationService", () => {
 });
 
 describe("email templates", () => {
-  it("renders semantic HTML and plain-text fallback", () => {
+  it("renders EMDS HTML and plain-text fallback", () => {
     const rendered = renderEmailTemplate({
       title: "Test subject",
       preview: "Preview text",
@@ -81,9 +81,14 @@ describe("email templates", () => {
       ctaHref: "https://eduatlas.example/owner",
     });
 
+    expect(rendered.subject).toBe("Test subject");
     expect(rendered.html).toContain("<!DOCTYPE html>");
     expect(rendered.html).toContain('lang="tr"');
     expect(rendered.html).toContain('role="presentation"');
+    expect(rendered.html).toContain("max-width:600px");
+    expect(rendered.html).toContain("#e62846");
+    expect(rendered.html).not.toContain("#0f766e");
+    expect(rendered.html).not.toContain("Georgia");
     expect(rendered.text).toContain("Line one");
     expect(rendered.text).toContain("https://eduatlas.example/owner");
   });
