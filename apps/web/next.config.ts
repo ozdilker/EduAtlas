@@ -49,6 +49,7 @@ const nextConfig: NextConfig = {
     "@eduatlas/config",
     "@eduatlas/domain",
     "@eduatlas/firebase",
+    "@eduatlas/seo",
     "@eduatlas/types",
     "@eduatlas/ui",
     "@eduatlas/utils",

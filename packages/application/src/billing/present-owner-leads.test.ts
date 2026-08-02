@@ -41,13 +41,16 @@ describe("presentOwnerLeads", () => {
     const presented = presentOwnerLeads(leads, freeAccess);
     const byId = Object.fromEntries(presented.map((p) => [p.lead.id.value, p]));
 
-    expect(byId.lead_1.locked).toBe(false);
-    expect(byId.lead_1.parentName).toBe("Ahmet Yılmaz");
-    expect(byId.lead_3.locked).toBe(false);
-    expect(byId.lead_4.locked).toBe(true);
-    expect(byId.lead_4.parentName).toBe("Ahmet Y*****");
-    expect(byId.lead_4.phone).toBe("05********");
-    expect(byId.lead_4.email).toBe("ah****@gmail.com");
+    expect(byId.lead_1).toBeDefined();
+    expect(byId.lead_3).toBeDefined();
+    expect(byId.lead_4).toBeDefined();
+    expect(byId.lead_1!.locked).toBe(false);
+    expect(byId.lead_1!.parentName).toBe("Ahmet Yılmaz");
+    expect(byId.lead_3!.locked).toBe(false);
+    expect(byId.lead_4!.locked).toBe(true);
+    expect(byId.lead_4!.parentName).toBe("Ahmet Y*****");
+    expect(byId.lead_4!.phone).toBe("05********");
+    expect(byId.lead_4!.email).toBe("ah****@gmail.com");
   });
 
   it("unlocks all when unlimitedLeads entitlement is present", () => {
