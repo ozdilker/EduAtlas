@@ -23,6 +23,13 @@ export {
   type OrganizationSchemaBuildInput,
 } from "./organization";
 export {
+  SEARCH_TERM_STRING,
+  SearchActionBuilder,
+  SearchActionSchemaBuilder,
+  resolveSearchUrlTemplate,
+  type SearchActionSchemaBuildInput,
+} from "./search-action";
+export {
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
   type WebSiteSchemaBuildInput,

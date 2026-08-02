@@ -19,6 +19,15 @@ export type SeoSiteConfig = {
   logoUrl?: string;
   defaultImageUrl?: string;
   twitterHandle?: string;
+  /**
+   * Public site-search pathname (no query), e.g. `/search`.
+   * Used by SearchAction urlTemplate — not hardcoded in builders.
+   */
+  searchPath?: string;
+  /**
+   * Query parameter bound to Schema.org `search_term_string` (live search uses `q`).
+   */
+  searchQueryParam?: string;
   /** Organization contact email — omitted from schema when unset. */
   organizationEmail?: string;
   /** Organization telephone — omitted when unset. */

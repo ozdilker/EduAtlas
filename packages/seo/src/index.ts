@@ -60,10 +60,14 @@ export {
   OrganizationSchemaBuilder,
   ORGANIZATION_AREA_SERVED,
   ORGANIZATION_KNOWS_ABOUT,
+  SEARCH_TERM_STRING,
+  SearchActionBuilder,
+  SearchActionSchemaBuilder,
   SchemaEngine,
   SchemaOrgType,
   SchemaRegistry,
   SCHEMA_PAGE_KINDS,
+  resolveSearchUrlTemplate,
   toSchemaListItems,
   toInstitutionSchemaFields,
   WEBSITE_ALTERNATE_NAME,
@@ -85,6 +89,7 @@ export {
   type SchemaListInstitutionItem,
   type SchemaOrgTypeName,
   type SchemaPageKind,
+  type SearchActionSchemaBuildInput,
   type WebSiteSchemaBuildInput,
 } from "./schema";
 export {

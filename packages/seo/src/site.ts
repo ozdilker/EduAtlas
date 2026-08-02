@@ -48,6 +48,8 @@ export function createSeoSiteConfig(
     logoUrl: overrides?.logoUrl ?? `${siteUrl}/brand/logo.png`,
     defaultImageUrl: overrides?.defaultImageUrl ?? `${siteUrl}/og/default.png`,
     twitterHandle: overrides?.twitterHandle,
+    searchPath: overrides?.searchPath?.trim() || "/search",
+    searchQueryParam: overrides?.searchQueryParam?.trim() || "q",
     organizationEmail: overrides?.organizationEmail,
     organizationTelephone: overrides?.organizationTelephone,
     organizationAddress: overrides?.organizationAddress,

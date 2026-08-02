@@ -9,6 +9,8 @@ import {
   ITEM_LIST_ORDER_ASCENDING,
   ItemListSchemaBuilder,
   OrganizationSchemaBuilder,
+  SEARCH_TERM_STRING,
+  SearchActionSchemaBuilder,
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
 } from "./builders";
@@ -316,10 +318,13 @@ describe("WebSiteSchemaBuilder", () => {
     expect(website.description).toBe(home.metadata.description);
     expect(website.inLanguage).toBe("tr-TR");
     expect(website.publisher).toEqual({ "@id": resolveOrganizationSchemaId(site) });
-    expect(website.potentialAction).toBeUndefined();
+    expect(website.potentialAction).toEqual(SearchActionSchemaBuilder.build(site));
+    expect((website.potentialAction as { target: { urlTemplate: string } }).target.urlTemplate).toBe(
+      `https://eduatlas.com.tr/search?q={${SEARCH_TERM_STRING}}`,
+    );
   });
 
-  it("accepts potentialAction when provided for future SearchAction", () => {
+  it("accepts potentialAction override for future Action types", () => {
     const action = {
       "@type": SchemaOrgType.SearchAction,
       target: "https://eduatlas.com.tr/search?q={search_term_string}",
@@ -329,6 +334,36 @@ describe("WebSiteSchemaBuilder", () => {
       input: { description: "Test açıklama", potentialAction: action },
     });
     expect(website.potentialAction).toEqual(action);
+  });
+});
+
+describe("SearchActionSchemaBuilder", () => {
+  it("builds SearchAction urlTemplate from SiteConfig search path", () => {
+    const configured = createSeoSiteConfig({
+      siteUrl: "https://eduatlas.com.tr",
+      searchPath: "/search",
+      searchQueryParam: "q",
+    });
+    const action = SearchActionSchemaBuilder.build(configured);
+    expect(action["@type"]).toBe(SchemaOrgType.SearchAction);
+    expect(action["query-input"]).toBe(`required name=${SEARCH_TERM_STRING}`);
+    expect(action.target).toEqual({
+      "@type": "EntryPoint",
+      urlTemplate: "https://eduatlas.com.tr/search?q={search_term_string}",
+    });
+  });
+
+  it("does not hardcode search path when SiteConfig overrides it", () => {
+    const configured = createSeoSiteConfig({
+      siteUrl: "https://eduatlas.com.tr",
+      searchPath: "/find",
+      searchQueryParam: "query",
+    });
+    const action = SearchActionSchemaBuilder.build(configured);
+    expect(action.target).toEqual({
+      "@type": "EntryPoint",
+      urlTemplate: "https://eduatlas.com.tr/find?query={search_term_string}",
+    });
   });
 });
 

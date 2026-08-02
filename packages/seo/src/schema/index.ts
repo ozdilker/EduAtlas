@@ -18,6 +18,10 @@ export {
   ItemListSchemaBuilder,
   normalizeListItems,
   OrganizationSchemaBuilder,
+  SEARCH_TERM_STRING,
+  SearchActionBuilder,
+  SearchActionSchemaBuilder,
+  resolveSearchUrlTemplate,
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
   type BreadcrumbSchemaBuildInput,
@@ -26,6 +30,7 @@ export {
   type ItemListSchemaBuildInput,
   type OrganizationSchemaBuildInput,
   type SchemaListInstitutionItem,
+  type SearchActionSchemaBuildInput,
   type WebSiteSchemaBuildInput,
 } from "./builders";
 export {

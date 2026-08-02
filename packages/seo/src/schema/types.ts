@@ -46,7 +46,7 @@ export type SchemaPageKind = (typeof SCHEMA_PAGE_KINDS)[number];
 export type SchemaHomeInput = {
   /** Home meta description from MetadataEngine / buildHomePageSeo. */
   description: string;
-  /** Optional SearchAction (or other Action) for potentialAction — unused this PRD. */
+  /** Optional SearchAction override — default filled by SearchActionBuilder on WebSite. */
   potentialAction?: JsonLdObject;
 };
 

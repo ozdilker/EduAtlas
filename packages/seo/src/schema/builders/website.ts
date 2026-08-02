@@ -3,19 +3,23 @@ import { resolveOrganizationSchemaId, resolveSiteOriginUrl, resolveWebSiteSchema
 import { EDUATLAS_ALTERNATE_NAME } from "../organization-constants";
 import type { SchemaBuildContext } from "../types";
 import { SchemaOrgType } from "../types";
+import { SearchActionSchemaBuilder } from "./search-action";
 
 /** @deprecated Prefer EDUATLAS_ALTERNATE_NAME — kept for existing imports. */
 export const WEBSITE_ALTERNATE_NAME = EDUATLAS_ALTERNATE_NAME;
 
 export type WebSiteSchemaBuildInput = Readonly<{
   readonly description: string;
-  /** Reserved for SearchAction — omit / undefined in this PRD. */
+  /**
+   * Optional override for potentialAction (future Action types).
+   * When omitted, SearchActionSchemaBuilder fills potentialAction from SiteConfig.
+   */
   readonly potentialAction?: JsonLdObject;
 }>;
 
 /**
  * Schema.org WebSite builder — home page only (one node per site).
- * Implements the schema-builder contract used by the home registry entry.
+ * potentialAction is SearchAction from SearchActionBuilder by default.
  */
 export const WebSiteSchemaBuilder = {
   build(
@@ -42,11 +46,8 @@ export const WebSiteSchemaBuilder = {
         "@id": resolveOrganizationSchemaId(site),
       },
       inLanguage: site.locale?.replace("_", "-") || "tr-TR",
+      potentialAction: input.potentialAction ?? SearchActionSchemaBuilder.build(site),
     };
-
-    if (input.potentialAction) {
-      website.potentialAction = input.potentialAction;
-    }
 
     return Object.freeze(website);
   },
