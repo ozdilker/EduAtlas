@@ -10,6 +10,8 @@ const publicEnvSchema = z.object({
 
 const serverEnvSchema = publicEnvSchema.extend({
   NODE_ENV: appEnvironmentSchema.default("development"),
+  /** When truthy, /robots.txt allows crawl + sitemap; otherwise Disallow: / */
+  EDUATLAS_ALLOW_ROBOTS: z.string().optional(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -28,6 +30,7 @@ function readServerEnvFromProcess(): Record<string, string | undefined> {
   return {
     ...readPublicEnvFromProcess(),
     NODE_ENV: process.env.NODE_ENV,
+    EDUATLAS_ALLOW_ROBOTS: process.env.EDUATLAS_ALLOW_ROBOTS,
   };
 }
 

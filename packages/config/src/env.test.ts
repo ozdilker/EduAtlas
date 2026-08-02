@@ -22,8 +22,10 @@ describe("env", () => {
     const env = getServerEnv({
       NODE_ENV: "test",
       NEXT_PUBLIC_APP_NAME: "EduAtlas",
+      EDUATLAS_ALLOW_ROBOTS: "true",
     });
 
     expect(env.NODE_ENV).toBe("test");
+    expect(env.EDUATLAS_ALLOW_ROBOTS).toBe("true");
   });
 });

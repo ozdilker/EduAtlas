@@ -26,6 +26,22 @@ export {
 } from "./pages";
 export { createSeoSiteConfig, DEFAULT_SEO_SITE_URL, resolveSiteOrigin } from "./site";
 export {
+  buildRobotsTxt,
+  createBlockedRobotsPolicy,
+  createProductionRobotsPolicy,
+  DEFAULT_PRODUCTION_DISALLOW_PATHS,
+  isRobotsCrawlAllowed,
+  resolveRobotsPolicy,
+  toRobotsMetadataDocument,
+  type BuildRobotsTxtOptions,
+  type RobotsDirectiveType,
+  type RobotsMetadataDocument,
+  type RobotsMetadataRules,
+  type RobotsPathRule,
+  type RobotsPolicy,
+  type RobotsUserAgentGroup,
+} from "./robots";
+export {
   buildSitemapDocuments,
   categoriesSitemapProvider,
   citiesSitemapProvider,
