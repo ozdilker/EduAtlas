@@ -24,6 +24,36 @@ describe("createCampaign", () => {
     expect(c.status).toBe("draft");
     expect(c.channel).toBe("email");
   });
+
+  it("persists subjectOverride and preheader when non-empty", () => {
+    const c = createCampaign({
+      id: "camp_2",
+      name: "Claim invite",
+      templateId: "tpl_1",
+      segmentId: "seg_1",
+      subjectOverride: "  {{institutionName}} için panel  ",
+      preheader: "  Velilerden gelen talepleri kaçırmayın.  ",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      createdBy: "admin_1",
+    });
+    expect(c.subjectOverride).toBe("{{institutionName}} için panel");
+    expect(c.preheader).toBe("Velilerden gelen talepleri kaçırmayın.");
+  });
+
+  it("omits empty subjectOverride and preheader", () => {
+    const c = createCampaign({
+      id: "camp_3",
+      name: "Claim invite",
+      templateId: "tpl_1",
+      segmentId: "seg_1",
+      subjectOverride: "   ",
+      preheader: "",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      createdBy: "admin_1",
+    });
+    expect(c.subjectOverride).toBeUndefined();
+    expect(c.preheader).toBeUndefined();
+  });
 });
 
 describe("createCampaignSegment", () => {

@@ -28,6 +28,7 @@ export function buildAdminNavItems(badges: AdminNavBadges = {}): readonly AdminS
     },
     { id: "visuals", label: "Site görselleri", href: "/admin/visuals" },
     { id: "billing", label: "Paketler", href: "/admin/billing" },
+    { id: "outreach", label: "Kampanyalar", href: "/admin/outreach" },
     {
       id: "review",
       label: "İnceleme kuyruğu",

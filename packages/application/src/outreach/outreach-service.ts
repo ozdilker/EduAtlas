@@ -10,14 +10,20 @@ import {
   type CampaignRecipient,
   type CreateCampaignInput,
 } from "@eduatlas/domain";
+import type { EmailService } from "../notifications/email-service";
 import type { RenderedEmail } from "../notifications/email-templates";
+import { applyMailTokens } from "./apply-mail-tokens";
 import type { CampaignLogRepository } from "./campaign-log-repository";
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
 import type { CampaignTemplateRepository } from "./campaign-template-repository";
+import {
+  renderClaimInvitationMail,
+} from "./claim-invitation-mail";
 import { OutreachNotFoundError, OutreachValidationError } from "./errors";
 import type { OutreachQueue } from "./outreach-queue";
+import { CLAIM_INVITATION_TEMPLATE_ID } from "./outreach-seeds";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
 
 export type OutreachServiceDependencies = Readonly<{
@@ -31,6 +37,7 @@ export type OutreachServiceDependencies = Readonly<{
 
 let logSeq = 0;
 let recipientSeq = 0;
+let testJobSeq = 0;
 
 function nextLogId(): string {
   logSeq += 1;
@@ -42,8 +49,36 @@ function nextRecipientId(): string {
   return `crec_${recipientSeq}`;
 }
 
+function nextTestRecipientId(): string {
+  testJobSeq += 1;
+  return `test_${testJobSeq}`;
+}
+
+function toCreateInput(
+  campaign: Campaign,
+  overrides: Partial<CreateCampaignInput> = {},
+): CreateCampaignInput {
+  return {
+    id: campaignIdAsString(campaign.id),
+    name: campaign.name,
+    description: campaign.description,
+    status: campaign.status,
+    channel: campaign.channel,
+    templateId: campaign.templateId,
+    segmentId: campaign.segmentId,
+    subjectOverride: campaign.subjectOverride,
+    preheader: campaign.preheader,
+    createdAt: campaign.createdAt,
+    createdBy: campaign.createdBy,
+    startedAt: campaign.startedAt,
+    completedAt: campaign.completedAt,
+    ...overrides,
+  };
+}
+
 /**
- * Institution outreach orchestration — queue only, never sends mail.
+ * Institution outreach orchestration.
+ * Bulk delivery remains queue-only; test send is the only path that calls EmailService.
  */
 export class OutreachService {
   constructor(private readonly deps: OutreachServiceDependencies) {}
@@ -56,6 +91,57 @@ export class OutreachService {
     await this.deps.campaignRepository.save(campaign);
     await this.log(campaignIdAsString(campaign.id), "Campaign created.", input.createdAt);
     return campaign;
+  }
+
+  async updateCampaign(input: {
+    campaignId: string;
+    name: string;
+    description?: string;
+    templateId: string;
+    segmentId: string;
+    subjectOverride: string;
+    preheader: string;
+    now: string;
+  }): Promise<Campaign> {
+    const campaign = await this.requireCampaign(input.campaignId);
+    if (
+      campaign.status !== CampaignStatus.Draft &&
+      campaign.status !== CampaignStatus.Ready
+    ) {
+      throw new OutreachValidationError("Only draft or ready campaigns can be updated.");
+    }
+
+    const subjectOverride = input.subjectOverride.trim();
+    const preheader = input.preheader.trim();
+    if (!subjectOverride) {
+      throw new OutreachValidationError("Campaign subject is required.");
+    }
+    if (!preheader) {
+      throw new OutreachValidationError("Campaign preheader is required.");
+    }
+
+    const template = await this.deps.templateRepository.getById(input.templateId.trim());
+    if (!template) {
+      throw new OutreachValidationError("Campaign template is missing.");
+    }
+    const segment = await this.deps.segmentRepository.getById(input.segmentId.trim());
+    if (!segment) {
+      throw new OutreachValidationError("Campaign segment is missing.");
+    }
+
+    const updated = createCampaign(
+      toCreateInput(campaign, {
+        name: input.name,
+        description: input.description,
+        templateId: input.templateId,
+        segmentId: input.segmentId,
+        subjectOverride,
+        preheader,
+      }),
+    );
+    await this.deps.campaignRepository.update(updated);
+    await this.log(campaignIdAsString(updated.id), "Campaign updated.", input.now);
+    return updated;
   }
 
   async markReady(campaignId: string, now: string): Promise<Campaign> {
@@ -72,19 +158,9 @@ export class OutreachService {
       throw new OutreachValidationError("Campaign segment is missing.");
     }
 
-    const updated = createCampaign({
-      id: campaignIdAsString(campaign.id),
-      name: campaign.name,
-      description: campaign.description,
-      status: CampaignStatus.Ready,
-      channel: campaign.channel,
-      templateId: campaign.templateId,
-      segmentId: campaign.segmentId,
-      createdAt: campaign.createdAt,
-      createdBy: campaign.createdBy,
-      startedAt: campaign.startedAt,
-      completedAt: campaign.completedAt,
-    });
+    const updated = createCampaign(
+      toCreateInput(campaign, { status: CampaignStatus.Ready }),
+    );
     await this.deps.campaignRepository.update(updated);
     await this.log(campaignIdAsString(updated.id), "Campaign marked ready.", now);
     return updated;
@@ -95,19 +171,12 @@ export class OutreachService {
     if (campaign.status !== CampaignStatus.Ready && campaign.status !== CampaignStatus.Paused) {
       throw new OutreachValidationError("Only ready or paused campaigns can start/resume running.");
     }
-    const updated = createCampaign({
-      id: campaignIdAsString(campaign.id),
-      name: campaign.name,
-      description: campaign.description,
-      status: CampaignStatus.Running,
-      channel: campaign.channel,
-      templateId: campaign.templateId,
-      segmentId: campaign.segmentId,
-      createdAt: campaign.createdAt,
-      createdBy: campaign.createdBy,
-      startedAt: campaign.startedAt ?? now,
-      completedAt: campaign.completedAt,
-    });
+    const updated = createCampaign(
+      toCreateInput(campaign, {
+        status: CampaignStatus.Running,
+        startedAt: campaign.startedAt ?? now,
+      }),
+    );
     await this.deps.campaignRepository.update(updated);
     await this.log(campaignIdAsString(updated.id), "Campaign running.", now);
     return updated;
@@ -133,19 +202,12 @@ export class OutreachService {
     ) {
       throw new OutreachValidationError("Campaign is already terminal.");
     }
-    const updated = createCampaign({
-      id: campaignIdAsString(campaign.id),
-      name: campaign.name,
-      description: campaign.description,
-      status: CampaignStatus.Cancelled,
-      channel: campaign.channel,
-      templateId: campaign.templateId,
-      segmentId: campaign.segmentId,
-      createdAt: campaign.createdAt,
-      createdBy: campaign.createdBy,
-      startedAt: campaign.startedAt,
-      completedAt: now,
-    });
+    const updated = createCampaign(
+      toCreateInput(campaign, {
+        status: CampaignStatus.Cancelled,
+        completedAt: now,
+      }),
+    );
     await this.deps.campaignRepository.update(updated);
     await this.log(campaignIdAsString(updated.id), "Campaign cancelled.", now);
     return updated;
@@ -228,6 +290,68 @@ export class OutreachService {
   }
 
   /**
+   * Renders campaign email for admin preview (no send).
+   */
+  async previewCampaignMail(input: {
+    campaignId: string;
+    institutionName: string;
+    ctaHref: string;
+  }): Promise<RenderedEmail> {
+    const campaign = await this.requireCampaign(input.campaignId);
+    return this.renderCampaignMail(campaign, {
+      institutionName: input.institutionName,
+      ctaHref: input.ctaHref,
+    });
+  }
+
+  /**
+   * Sends exactly one test email. Does not start the campaign or enqueue segment recipients.
+   */
+  async sendTestEmail(input: {
+    campaignId: string;
+    to: string;
+    institutionName: string;
+    ctaHref: string;
+    now: string;
+    emailService: EmailService;
+  }): Promise<{ messageId: string; rendered: RenderedEmail }> {
+    const to = input.to.trim();
+    if (!to || !to.includes("@")) {
+      throw new OutreachValidationError("Test email recipient is required.");
+    }
+
+    const campaign = await this.requireCampaign(input.campaignId);
+    const rendered = await this.renderCampaignMail(campaign, {
+      institutionName: input.institutionName,
+      ctaHref: input.ctaHref,
+    });
+
+    await this.deps.queue.enqueue({
+      campaignId: campaignIdAsString(campaign.id),
+      recipientId: nextTestRecipientId(),
+      channel: campaign.channel,
+      createdAt: input.now,
+      availableAt: input.now,
+    });
+
+    const result = await input.emailService.send({
+      to,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+    });
+
+    await this.log(
+      campaignIdAsString(campaign.id),
+      `Test email sent to ${to}.`,
+      input.now,
+      { to, messageId: result.messageId },
+    );
+
+    return { messageId: result.messageId, rendered };
+  }
+
+  /**
    * Marks all non-claimed recipients for an institution as claimed (conversion hook).
    * Not wired into claim approval in this PRD.
    */
@@ -265,25 +389,53 @@ export class OutreachService {
     return Object.freeze(counts);
   }
 
+  private async renderCampaignMail(
+    campaign: Campaign,
+    tokens: { institutionName: string; ctaHref: string },
+  ): Promise<RenderedEmail> {
+    const template = await this.deps.templateRepository.getById(campaign.templateId);
+    if (!template) {
+      throw new OutreachValidationError("Campaign template is missing.");
+    }
+
+    const subject = campaign.subjectOverride?.trim() || template.subject;
+    const preheader = campaign.preheader?.trim() || template.preview;
+    if (!subject.trim()) {
+      throw new OutreachValidationError("Campaign subject is required.");
+    }
+    if (!preheader.trim()) {
+      throw new OutreachValidationError("Campaign preheader is required.");
+    }
+
+    if (template.id === CLAIM_INVITATION_TEMPLATE_ID) {
+      return renderClaimInvitationMail({
+        subject,
+        preheader,
+        institutionName: tokens.institutionName,
+        ctaHref: tokens.ctaHref,
+        bodyLines: template.bodyLines,
+      });
+    }
+
+    const personalized = {
+      institutionName: tokens.institutionName,
+    };
+    const rendered = renderCampaignTemplatePreview({
+      ...template,
+      subject: applyMailTokens(subject, personalized),
+      preview: applyMailTokens(preheader, personalized),
+      bodyLines: template.bodyLines.map((line) => applyMailTokens(line, personalized)),
+    });
+    return rendered;
+  }
+
   private async setStatus(
     campaign: Campaign,
     status: typeof CampaignStatus.Paused | typeof CampaignStatus.Running,
     now: string,
     message: string,
   ): Promise<Campaign> {
-    const updated = createCampaign({
-      id: campaignIdAsString(campaign.id),
-      name: campaign.name,
-      description: campaign.description,
-      status,
-      channel: campaign.channel,
-      templateId: campaign.templateId,
-      segmentId: campaign.segmentId,
-      createdAt: campaign.createdAt,
-      createdBy: campaign.createdBy,
-      startedAt: campaign.startedAt,
-      completedAt: campaign.completedAt,
-    });
+    const updated = createCampaign(toCreateInput(campaign, { status }));
     await this.deps.campaignRepository.update(updated);
     await this.log(campaignIdAsString(updated.id), message, now);
     return updated;

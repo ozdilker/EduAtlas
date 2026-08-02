@@ -84,6 +84,13 @@ export type {
 } from "./admin/admin-billing-page";
 export { AdminBillingPage } from "./admin/admin-billing-page";
 export type {
+  AdminOutreachCampaignOption,
+  AdminOutreachFormValues,
+  AdminOutreachPageProps,
+  AdminOutreachSelectOption,
+} from "./admin/admin-outreach-page";
+export { AdminOutreachPage } from "./admin/admin-outreach-page";
+export type {
   AdminOperationsActivityView,
   AdminOperationsBucketView,
   AdminOperationsHealthView,

@@ -18,6 +18,10 @@ export type Campaign = Readonly<{
   readonly channel: CampaignChannelType;
   readonly templateId: string;
   readonly segmentId: string;
+  /** When set, overrides the linked template subject at preview/send time. */
+  readonly subjectOverride?: string;
+  /** Inbox preview text (preheader). */
+  readonly preheader?: string;
   readonly createdAt: string;
   readonly createdBy: string;
   readonly startedAt?: string;
@@ -32,6 +36,8 @@ export type CreateCampaignInput = {
   channel?: CampaignChannelType | string;
   templateId: string;
   segmentId: string;
+  subjectOverride?: string;
+  preheader?: string;
   createdAt: string;
   createdBy: string;
   startedAt?: string;
@@ -47,6 +53,8 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
   const templateId = input.templateId.trim();
   const segmentId = input.segmentId.trim();
   const createdBy = input.createdBy.trim();
+  const subjectOverride = input.subjectOverride?.trim();
+  const preheader = input.preheader?.trim();
   const status =
     typeof input.status === "string"
       ? parseCampaignStatus(input.status)
@@ -72,6 +80,8 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
     channel,
     templateId,
     segmentId,
+    ...(subjectOverride ? { subjectOverride } : {}),
+    ...(preheader ? { preheader } : {}),
     createdAt: input.createdAt,
     createdBy,
     ...(input.startedAt ? { startedAt: input.startedAt } : {}),
