@@ -66,7 +66,6 @@
   display: none;
   align-items: center;
   gap: var(--ea-space-2);
-  margin-left: auto;
   min-height: var(--ea-density-control-md);
   padding-inline: var(--ea-space-3);
   color: var(--ea-color-text);
@@ -152,6 +151,8 @@
   display: none;
   align-items: center;
   gap: var(--ea-space-3);
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .ea-header__login {
@@ -267,7 +268,6 @@
   /* Desktop only — on smaller viewports Favorilerim lives inside the mobile menu. */
   .ea-header__favorites {
     display: inline-flex;
-    margin-left: auto;
   }
 }
 
