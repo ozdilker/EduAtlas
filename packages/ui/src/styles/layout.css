@@ -250,12 +250,6 @@
   text-decoration: none;
 }
 
-@media (min-width: 768px) {
-  .ea-header__favorites {
-    display: inline-flex;
-  }
-}
-
 @media (min-width: 1024px) {
   .ea-header__nav {
     display: block;
@@ -270,7 +264,9 @@
     display: none;
   }
 
+  /* Desktop only — on smaller viewports Favorilerim lives inside the mobile menu. */
   .ea-header__favorites {
+    display: inline-flex;
     margin-left: auto;
   }
 }

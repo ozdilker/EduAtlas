@@ -10,6 +10,8 @@ export type PublicPageShellProps = {
   currentPath?: string;
   className?: string;
   mainClassName?: string;
+  /** Show Favorilerim in header/mobile nav only after parent login. */
+  isParentLoggedIn?: boolean;
 };
 
 /**
@@ -21,11 +23,16 @@ export function PublicPageShell({
   currentPath,
   className,
   mainClassName,
+  isParentLoggedIn = false,
 }: PublicPageShellProps) {
   return (
     <div className={cn("ea-page-shell", className)} data-surface="public">
       <SkipLink />
-      <SiteHeader appName={appName} currentPath={currentPath} />
+      <SiteHeader
+        appName={appName}
+        currentPath={currentPath}
+        isParentLoggedIn={isParentLoggedIn}
+      />
       <main id="main-content" className={cn("ea-main", mainClassName)} tabIndex={-1}>
         {children}
       </main>

@@ -16,12 +16,19 @@ export type SiteHeaderProps = {
   appName?: string;
   currentPath?: string;
   className?: string;
+  /** Show Favorilerim only after parent (veli) login. */
+  isParentLoggedIn?: boolean;
 };
 
 /**
  * Public site header — official logo, nav, CTAs (concept board).
  */
-export function SiteHeader({ appName = "EduAtlas", currentPath, className }: SiteHeaderProps) {
+export function SiteHeader({
+  appName = "EduAtlas",
+  currentPath,
+  className,
+  isParentLoggedIn = false,
+}: SiteHeaderProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavId = useId();
   const navItems = getPrimaryNavItems();
@@ -55,27 +62,29 @@ export function SiteHeader({ appName = "EduAtlas", currentPath, className }: Sit
           </ul>
         </nav>
 
-        <a
-          href="/veli"
-          className={cn(
-            "ea-header__favorites",
-            isNavItemActive("/veli", currentPath) && "ea-header__favorites--current",
-          )}
-          aria-label="Favorilerim ve veli profili"
-        >
-          <span className="ea-header__favorites-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className="ea-header__favorites-label">Favorilerim</span>
-        </a>
+        {isParentLoggedIn ? (
+          <a
+            href="/veli"
+            className={cn(
+              "ea-header__favorites",
+              isNavItemActive("/veli", currentPath) && "ea-header__favorites--current",
+            )}
+            aria-label="Favorilerim ve veli profili"
+          >
+            <span className="ea-header__favorites-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="ea-header__favorites-label">Favorilerim</span>
+          </a>
+        ) : null}
 
         <div className="ea-header__actions">
           <a
@@ -117,14 +126,16 @@ export function SiteHeader({ appName = "EduAtlas", currentPath, className }: Sit
         <Container size="xl">
           <nav aria-label="Mobil birincil">
             <ul className="ea-header__mobile-list">
-              <li>
-                <a
-                  href="/veli"
-                  aria-current={isNavItemActive("/veli", currentPath) ? "page" : undefined}
-                >
-                  Favorilerim
-                </a>
-              </li>
+              {isParentLoggedIn ? (
+                <li>
+                  <a
+                    href="/veli"
+                    aria-current={isNavItemActive("/veli", currentPath) ? "page" : undefined}
+                  >
+                    Favorilerim
+                  </a>
+                </li>
+              ) : null}
               <li>
                 <a
                   href="/search"
