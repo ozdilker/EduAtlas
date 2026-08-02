@@ -1,7 +1,6 @@
 import { buildBreadcrumbJsonLd } from "../json-ld/breadcrumb";
-import { buildOrganizationJsonLd } from "../json-ld/organization";
-import { buildWebsiteJsonLd } from "../json-ld/website";
 import type { JsonLdObject } from "../types";
+import { OrganizationSchemaBuilder, WebSiteSchemaBuilder } from "./builders";
 import type {
   SchemaBuilder,
   SchemaBuildContext,
@@ -9,14 +8,21 @@ import type {
 } from "./types";
 
 /**
- * Temporary adapters — wrap legacy json-ld helpers so behavior stays identical.
- * Later PRDs replace these with first-class SchemaBuilder implementations.
+ * Home: Organization (@id) + exactly one WebSite (publisher references Organization).
  */
-
 export const homeSchemaAdapter: SchemaBuilder<"home"> = Object.freeze({
   kind: "home",
-  build({ site }: SchemaBuildContext<"home">): readonly JsonLdObject[] {
-    return Object.freeze([buildOrganizationJsonLd(site), buildWebsiteJsonLd(site)]);
+  build({ site, input }: SchemaBuildContext<"home">): readonly JsonLdObject[] {
+    return Object.freeze([
+      OrganizationSchemaBuilder.build(site),
+      WebSiteSchemaBuilder.build({
+        site,
+        input: {
+          description: input.description ?? site.defaultDescription ?? "",
+          ...(input.potentialAction ? { potentialAction: input.potentialAction } : {}),
+        },
+      }),
+    ]);
   },
 });
 

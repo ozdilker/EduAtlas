@@ -43,7 +43,12 @@ export const SCHEMA_PAGE_KINDS = [
 
 export type SchemaPageKind = (typeof SCHEMA_PAGE_KINDS)[number];
 
-export type SchemaHomeInput = Record<string, never>;
+export type SchemaHomeInput = {
+  /** Home meta description from MetadataEngine / buildHomePageSeo. */
+  description: string;
+  /** Optional SearchAction (or other Action) for potentialAction — unused this PRD. */
+  potentialAction?: JsonLdObject;
+};
 
 export type SchemaStaticInput = {
   breadcrumbLabel: string;

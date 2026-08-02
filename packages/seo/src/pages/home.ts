@@ -24,6 +24,10 @@ export function buildHomePageSeo(site: SeoSiteConfig): PageSeoResult {
 
   return {
     metadata,
-    jsonLd: [...SchemaEngine.build("home", site)],
+    jsonLd: [
+      ...SchemaEngine.build("home", site, {
+        description: metadata.description,
+      }),
+    ],
   };
 }

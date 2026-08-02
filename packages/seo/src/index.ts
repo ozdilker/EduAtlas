@@ -50,17 +50,24 @@ export {
 } from "./engine";
 export {
   DEFAULT_SCHEMA_ADAPTERS,
+  OrganizationSchemaBuilder,
   SchemaEngine,
   SchemaOrgType,
   SchemaRegistry,
   SCHEMA_PAGE_KINDS,
+  WEBSITE_ALTERNATE_NAME,
+  WebSiteSchemaBuilder,
   defaultSchemaRegistry,
+  resolveOrganizationSchemaId,
+  resolveSiteOriginUrl,
+  resolveWebSiteSchemaId,
   type SchemaBuilder,
   type SchemaBuildContext,
   type SchemaEngineOptions,
   type SchemaInputMap,
   type SchemaOrgTypeName,
   type SchemaPageKind,
+  type WebSiteSchemaBuildInput,
 } from "./schema";
 export {
   buildRobotsTxt,

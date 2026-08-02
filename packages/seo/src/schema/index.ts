@@ -9,7 +9,18 @@ export {
   searchSchemaAdapter,
   staticSchemaAdapter,
 } from "./adapters";
+export {
+  OrganizationSchemaBuilder,
+  WEBSITE_ALTERNATE_NAME,
+  WebSiteSchemaBuilder,
+  type WebSiteSchemaBuildInput,
+} from "./builders";
 export { SchemaEngine, type SchemaEngineOptions } from "./engine";
+export {
+  resolveOrganizationSchemaId,
+  resolveSiteOriginUrl,
+  resolveWebSiteSchemaId,
+} from "./ids";
 export { defaultSchemaRegistry, SchemaRegistry } from "./registry";
 export {
   SCHEMA_PAGE_KINDS,
