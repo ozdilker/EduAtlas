@@ -3,6 +3,14 @@
  * Compatible with Next.js Metadata shapes without depending on Next.js.
  */
 
+export type SeoPostalAddress = Readonly<{
+  readonly streetAddress?: string;
+  readonly addressLocality?: string;
+  readonly addressRegion?: string;
+  readonly postalCode?: string;
+  readonly addressCountry?: string;
+}>;
+
 export type SeoSiteConfig = {
   siteName: string;
   siteUrl: string;
@@ -11,6 +19,16 @@ export type SeoSiteConfig = {
   logoUrl?: string;
   defaultImageUrl?: string;
   twitterHandle?: string;
+  /** Organization contact email — omitted from schema when unset. */
+  organizationEmail?: string;
+  /** Organization telephone — omitted when unset. */
+  organizationTelephone?: string;
+  /** Organization postal address — omitted when unset / empty. */
+  organizationAddress?: SeoPostalAddress;
+  /** ISO date (YYYY-MM-DD) — omitted when unset. */
+  organizationFoundingDate?: string;
+  /** Official social profile URLs for sameAs — empty entries ignored. */
+  organizationSameAs?: readonly string[];
 };
 
 export type SeoRobots = {

@@ -1,4 +1,7 @@
-export { OrganizationSchemaBuilder } from "./organization";
+export {
+  OrganizationSchemaBuilder,
+  type OrganizationSchemaBuildInput,
+} from "./organization";
 export {
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,

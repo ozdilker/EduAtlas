@@ -50,7 +50,10 @@ export {
 } from "./engine";
 export {
   DEFAULT_SCHEMA_ADAPTERS,
+  EDUATLAS_ALTERNATE_NAME,
   OrganizationSchemaBuilder,
+  ORGANIZATION_AREA_SERVED,
+  ORGANIZATION_KNOWS_ABOUT,
   SchemaEngine,
   SchemaOrgType,
   SchemaRegistry,
@@ -61,6 +64,8 @@ export {
   resolveOrganizationSchemaId,
   resolveSiteOriginUrl,
   resolveWebSiteSchemaId,
+  type OrganizationKnowsAboutTopic,
+  type OrganizationSchemaBuildInput,
   type SchemaBuilder,
   type SchemaBuildContext,
   type SchemaEngineOptions,
@@ -121,6 +126,7 @@ export type {
   SeoMetadataInput,
   SeoOpenGraph,
   SeoOpenGraphInput,
+  SeoPostalAddress,
   SeoRobots,
   SeoSiteConfig,
   SeoTwitterCard,

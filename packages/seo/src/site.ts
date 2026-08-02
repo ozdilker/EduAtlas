@@ -48,5 +48,10 @@ export function createSeoSiteConfig(
     logoUrl: overrides?.logoUrl ?? `${siteUrl}/brand/logo.png`,
     defaultImageUrl: overrides?.defaultImageUrl ?? `${siteUrl}/og/default.png`,
     twitterHandle: overrides?.twitterHandle,
+    organizationEmail: overrides?.organizationEmail,
+    organizationTelephone: overrides?.organizationTelephone,
+    organizationAddress: overrides?.organizationAddress,
+    organizationFoundingDate: overrides?.organizationFoundingDate,
+    organizationSameAs: overrides?.organizationSameAs,
   };
 }

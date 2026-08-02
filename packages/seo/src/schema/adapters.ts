@@ -13,12 +13,13 @@ import type {
 export const homeSchemaAdapter: SchemaBuilder<"home"> = Object.freeze({
   kind: "home",
   build({ site, input }: SchemaBuildContext<"home">): readonly JsonLdObject[] {
+    const description = input.description ?? site.defaultDescription ?? "";
     return Object.freeze([
-      OrganizationSchemaBuilder.build(site),
+      OrganizationSchemaBuilder.build(site, { description }),
       WebSiteSchemaBuilder.build({
         site,
         input: {
-          description: input.description ?? site.defaultDescription ?? "",
+          description,
           ...(input.potentialAction ? { potentialAction: input.potentialAction } : {}),
         },
       }),

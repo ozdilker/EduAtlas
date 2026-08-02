@@ -2,15 +2,102 @@ import { describe, expect, it } from "vitest";
 import { buildHomePageSeo } from "../pages/home";
 import { createSeoSiteConfig } from "../site";
 import { homeSchemaAdapter, searchSchemaAdapter } from "./adapters";
-import { WEBSITE_ALTERNATE_NAME, WebSiteSchemaBuilder } from "./builders";
+import {
+  OrganizationSchemaBuilder,
+  WEBSITE_ALTERNATE_NAME,
+  WebSiteSchemaBuilder,
+} from "./builders";
 import { SchemaEngine } from "./engine";
 import { resolveOrganizationSchemaId, resolveWebSiteSchemaId } from "./ids";
+import {
+  EDUATLAS_ALTERNATE_NAME,
+  ORGANIZATION_AREA_SERVED,
+  ORGANIZATION_KNOWS_ABOUT,
+} from "./organization-constants";
 import { SchemaRegistry } from "./registry";
 import { SchemaOrgType } from "./types";
 
 const site = createSeoSiteConfig({
   siteName: "EduAtlas",
   siteUrl: "https://eduatlas.com.tr",
+});
+
+describe("OrganizationSchemaBuilder", () => {
+  it("emits full Organization from SiteConfig + home description", () => {
+    const home = buildHomePageSeo(site);
+    const organizations = home.jsonLd.filter(
+      (node) => node["@type"] === SchemaOrgType.Organization,
+    );
+
+    expect(organizations).toHaveLength(1);
+    const organization = organizations[0]!;
+
+    expect(organization["@id"]).toBe(resolveOrganizationSchemaId(site));
+    expect(organization.name).toBe("EduAtlas");
+    expect(organization.alternateName).toBe(EDUATLAS_ALTERNATE_NAME);
+    expect(organization.url).toBe("https://eduatlas.com.tr");
+    expect(organization.logo).toBe(site.logoUrl);
+    expect(organization.image).toBe(site.defaultImageUrl);
+    expect(organization.description).toBe(home.metadata.description);
+    expect(organization.knowsAbout).toEqual([...ORGANIZATION_KNOWS_ABOUT]);
+    expect(organization.areaServed).toBe(ORGANIZATION_AREA_SERVED);
+    expect(organization.inLanguage).toBe("tr-TR");
+    expect(organization.email).toBeUndefined();
+    expect(organization.telephone).toBeUndefined();
+    expect(organization.address).toBeUndefined();
+    expect(organization.foundingDate).toBeUndefined();
+    expect(organization.sameAs).toBeUndefined();
+  });
+
+  it("includes optional contact and sameAs only when set on SiteConfig", () => {
+    const configured = createSeoSiteConfig({
+      siteName: "EduAtlas",
+      siteUrl: "https://eduatlas.com.tr",
+      organizationEmail: "info@eduatlas.com.tr",
+      organizationTelephone: "+90 212 000 00 00",
+      organizationFoundingDate: "2024-01-01",
+      organizationAddress: {
+        addressLocality: "İstanbul",
+        addressCountry: "TR",
+      },
+      organizationSameAs: [
+        "https://www.instagram.com/eduatlas",
+        "https://www.linkedin.com/company/eduatlas",
+        "  ",
+      ],
+    });
+
+    const organization = OrganizationSchemaBuilder.build(configured, {
+      description: "Ana sayfa açıklaması",
+    });
+
+    expect(organization.email).toBe("info@eduatlas.com.tr");
+    expect(organization.telephone).toBe("+90 212 000 00 00");
+    expect(organization.foundingDate).toBe("2024-01-01");
+    expect(organization.address).toEqual({
+      "@type": "PostalAddress",
+      addressLocality: "İstanbul",
+      addressCountry: "TR",
+    });
+    expect(organization.sameAs).toEqual([
+      "https://www.instagram.com/eduatlas",
+      "https://www.linkedin.com/company/eduatlas",
+    ]);
+  });
+
+  it("does not hardcode absolute logo or image paths", () => {
+    const configured = createSeoSiteConfig({
+      siteUrl: "https://cdn.example.com",
+      logoUrl: "https://cdn.example.com/custom-logo.svg",
+      defaultImageUrl: "https://cdn.example.com/share.jpg",
+    });
+    const organization = OrganizationSchemaBuilder.build(configured, {
+      description: "Açıklama",
+    });
+    expect(organization.logo).toBe("https://cdn.example.com/custom-logo.svg");
+    expect(organization.image).toBe("https://cdn.example.com/share.jpg");
+    expect(organization.url).toBe("https://cdn.example.com");
+  });
 });
 
 describe("WebSiteSchemaBuilder", () => {
@@ -55,6 +142,7 @@ describe("SchemaEngine home graph", () => {
     });
     expect(graphs).toHaveLength(2);
     expect(graphs[0]?.["@type"]).toBe(SchemaOrgType.Organization);
+    expect(graphs[0]?.description).toBe("Türkiye genelinde eğitim kurumlarını keşfedin.");
     expect(graphs[1]?.["@type"]).toBe(SchemaOrgType.WebSite);
   });
 
@@ -80,6 +168,6 @@ describe("SchemaEngine home graph", () => {
       { description: "x" },
       { registry },
     );
-    expect(graphs[0]?.["@type"]).toBe(SchemaOrgType.WebPage);
+    expect(graphs[0]?.["@type"]).toBe("WebPage");
   });
 });

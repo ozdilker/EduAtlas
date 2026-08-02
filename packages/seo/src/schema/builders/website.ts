@@ -1,9 +1,11 @@
 import type { JsonLdObject } from "../../types";
 import { resolveOrganizationSchemaId, resolveSiteOriginUrl, resolveWebSiteSchemaId } from "../ids";
+import { EDUATLAS_ALTERNATE_NAME } from "../organization-constants";
 import type { SchemaBuildContext } from "../types";
 import { SchemaOrgType } from "../types";
 
-export const WEBSITE_ALTERNATE_NAME = "Türkiye'nin Eğitim Atlası";
+/** @deprecated Prefer EDUATLAS_ALTERNATE_NAME — kept for existing imports. */
+export const WEBSITE_ALTERNATE_NAME = EDUATLAS_ALTERNATE_NAME;
 
 export type WebSiteSchemaBuildInput = Readonly<{
   readonly description: string;
@@ -31,7 +33,7 @@ export const WebSiteSchemaBuilder = {
       "@id": resolveWebSiteSchemaId(site),
       url: origin,
       name: site.siteName,
-      alternateName: WEBSITE_ALTERNATE_NAME,
+      alternateName: EDUATLAS_ALTERNATE_NAME,
       description:
         description ||
         site.defaultDescription ||

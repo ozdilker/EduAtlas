@@ -13,8 +13,15 @@ export {
   OrganizationSchemaBuilder,
   WEBSITE_ALTERNATE_NAME,
   WebSiteSchemaBuilder,
+  type OrganizationSchemaBuildInput,
   type WebSiteSchemaBuildInput,
 } from "./builders";
+export {
+  EDUATLAS_ALTERNATE_NAME,
+  ORGANIZATION_AREA_SERVED,
+  ORGANIZATION_KNOWS_ABOUT,
+  type OrganizationKnowsAboutTopic,
+} from "./organization-constants";
 export { SchemaEngine, type SchemaEngineOptions } from "./engine";
 export {
   resolveOrganizationSchemaId,

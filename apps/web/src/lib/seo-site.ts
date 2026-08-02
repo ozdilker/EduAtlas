@@ -10,5 +10,7 @@ export function getSeoSiteConfig() {
   return createSeoSiteConfig({
     siteName: env.NEXT_PUBLIC_APP_NAME,
     siteUrl: env.NEXT_PUBLIC_APP_URL,
+    // Public contact used across legal/UI surfaces — omit schema field if removed.
+    organizationEmail: "info@eduatlas.com.tr",
   });
 }
