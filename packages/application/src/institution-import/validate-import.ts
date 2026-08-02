@@ -52,6 +52,16 @@ export type ValidatedImportRow = Readonly<{
 export type ValidateImportInput = Readonly<{
   readonly rows: readonly InstitutionImport[];
   readonly now?: string;
+  /**
+   * Skip per-row quality engine (createPublishedInstitution + evaluateInstitutionQuality).
+   * Needed for large MEB previews — quality dominates CPU/memory on 5k+ rows.
+   */
+  readonly skipQualityPreview?: boolean;
+  /**
+   * Skip Firestore/catalog duplicate scan (still detects in-file duplicates).
+   * Needed when the live catalog is large and listAll would OOM the serverless preview.
+   */
+  readonly skipExistingDuplicateScan?: boolean;
 }>;
 
 export type ValidateImportDependencies = Readonly<{
@@ -88,16 +98,19 @@ export async function validateImport(
   deps: ValidateImportDependencies,
 ): Promise<readonly ValidatedImportRow[]> {
   const now = input.now ?? new Date().toISOString();
+  const skipQualityPreview = Boolean(input.skipQualityPreview);
 
   // Best-effort duplicate scan — never burn the whole import on a quota/list failure.
   let existingItems: Awaited<ReturnType<InstitutionRepository["list"]>>["items"] = [];
-  try {
-    existingItems = await listExistingForDuplicateScan(deps.institutionRepository);
-  } catch (error) {
-    console.warn(
-      "[eduatlas] validateImport skipped existing-institution scan:",
-      error instanceof Error ? error.message : error,
-    );
+  if (!input.skipExistingDuplicateScan) {
+    try {
+      existingItems = await listExistingForDuplicateScan(deps.institutionRepository);
+    } catch (error) {
+      console.warn(
+        "[eduatlas] validateImport skipped existing-institution scan:",
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   const existingSlugs = new Set(existingItems.map((item) => item.slug));
@@ -284,28 +297,16 @@ export async function validateImport(
     let effectiveStatus = status;
 
     if (!hasErrors) {
-      try {
-        qualityPreview = evaluateInstitutionQuality({
-          institution: buildImportCandidate(effectiveRow, slugPreview, now, {
-            latitude: typeof latitude === "number" ? latitude : undefined,
-            longitude: typeof longitude === "number" ? longitude : undefined,
-          }),
-          now,
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (/InstitutionSocialLinks\./.test(message)) {
-          // Drop bad social URLs rather than failing the whole preview/import.
-          effectiveRow = clearImportSocialUrls(row);
-          issues.push(
-            importIssueWarning(
-              "websiteUrl",
-              "Geçersiz web/sosyal medya adresi yok sayıldı.",
-            ),
-          );
-          if (effectiveStatus === "ready") {
-            effectiveStatus = "warning";
+      if (skipQualityPreview) {
+        // Large-file preview path: skip heavy quality scoring; still claim the slug.
+        if (slugPreview && effectiveStatus !== "duplicate") {
+          takenSlugs.add(slugPreview);
+          if (duplicateKey) {
+            seenDuplicateKeys.add(duplicateKey);
           }
+        }
+      } else {
+        try {
           qualityPreview = evaluateInstitutionQuality({
             institution: buildImportCandidate(effectiveRow, slugPreview, now, {
               latitude: typeof latitude === "number" ? latitude : undefined,
@@ -313,33 +314,63 @@ export async function validateImport(
             }),
             now,
           });
-        } else {
-          issues.push(importIssueError("name", message));
-          effectiveStatus = "invalid";
-          qualityPreview = null;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (/InstitutionSocialLinks\./.test(message)) {
+            // Drop bad social URLs rather than failing the whole preview/import.
+            effectiveRow = clearImportSocialUrls(row);
+            issues.push(
+              importIssueWarning(
+                "websiteUrl",
+                "Geçersiz web/sosyal medya adresi yok sayıldı.",
+              ),
+            );
+            if (effectiveStatus === "ready") {
+              effectiveStatus = "warning";
+            }
+            qualityPreview = evaluateInstitutionQuality({
+              institution: buildImportCandidate(effectiveRow, slugPreview, now, {
+                latitude: typeof latitude === "number" ? latitude : undefined,
+                longitude: typeof longitude === "number" ? longitude : undefined,
+              }),
+              now,
+            });
+          } else {
+            issues.push(importIssueError("name", message));
+            effectiveStatus = "invalid";
+            qualityPreview = null;
+          }
         }
-      }
 
-      if (slugPreview && effectiveStatus !== "duplicate" && effectiveStatus !== "invalid") {
-        takenSlugs.add(slugPreview);
-        if (duplicateKey) {
-          seenDuplicateKeys.add(duplicateKey);
+        if (slugPreview && effectiveStatus !== "duplicate" && effectiveStatus !== "invalid") {
+          takenSlugs.add(slugPreview);
+          if (duplicateKey) {
+            seenDuplicateKeys.add(duplicateKey);
+          }
         }
       }
     }
 
     results.push(
-      Object.freeze({
-        row: effectiveRow,
-        slugPreview,
-        status: effectiveStatus,
-        issues: Object.freeze(issues),
-        qualityPreview,
-      }),
+      skipQualityPreview
+        ? {
+            row: effectiveRow,
+            slugPreview,
+            status: effectiveStatus,
+            issues,
+            qualityPreview,
+          }
+        : Object.freeze({
+            row: effectiveRow,
+            slugPreview,
+            status: effectiveStatus,
+            issues: Object.freeze(issues),
+            qualityPreview,
+          }),
     );
   }
 
-  return Object.freeze(results);
+  return skipQualityPreview ? results : Object.freeze(results);
 }
 
 function clearImportSocialUrls(row: InstitutionImport): InstitutionImport {

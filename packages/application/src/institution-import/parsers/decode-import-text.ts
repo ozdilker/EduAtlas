@@ -58,6 +58,12 @@ export function decodeImportTextBytes(bytes: Uint8Array): string {
   const headAscii = decodeWith("utf-8", bytes.subarray(0, Math.min(bytes.length, 512)));
   const hinted = charsetFromMeta(headAscii);
 
+  // Large MEB HTML exports: honor the meta charset and skip scoring all encodings
+  // (each full decode can hold a multi‑MB UTF-16 string in memory).
+  if (hinted && bytes.length >= 512_000) {
+    return decodeWith(hinted, bytes);
+  }
+
   const candidates: CandidateEncoding[] = hinted
     ? [hinted, ...CANDIDATE_ENCODINGS.filter((item) => item !== hinted)]
     : [...CANDIDATE_ENCODINGS];

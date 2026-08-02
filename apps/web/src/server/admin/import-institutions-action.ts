@@ -155,8 +155,11 @@ export async function importInstitutionsAction(
   const startedAt = Date.now();
 
   try {
-    // Drop sticky/TTL read-fallback so Blaze / recovered quota is visible again.
-    resetInstitutionRepository();
+    // Only wipe the singleton before execute (quota recovery). Preview must keep
+    // the in-process listAll cache — resetting forces a full catalog download.
+    if (mode === "execute") {
+      resetInstitutionRepository();
+    }
 
     const [institutionRepository, geography] = await Promise.all([
       getInstitutionRepository(),
@@ -321,15 +324,24 @@ function buildPreviewState(
 ): AdminImportFormState {
   const displaySource = selectAdminImportDisplayRows(preview.rows);
   const rows = displaySource.map(mapValidatedToRowView);
-  const truncated = preview.rows.length > rows.length;
+  const totalRows = preview.result.totalRows;
+  const truncated = totalRows > rows.length;
 
   const skipped = preview.result.duplicateCount + preview.result.invalidCount;
+  const largeFileNotes: string[] = [];
+  if (preview.qualityPreviewSkipped) {
+    largeFileNotes.push("kalite skoru atlandı");
+  }
+  if (preview.existingDuplicateScanSkipped) {
+    largeFileNotes.push("katalog yinelenme taraması içe aktarmada yapılacak");
+  }
+  const noteSuffix = largeFileNotes.length > 0 ? ` (${largeFileNotes.join("; ")})` : "";
 
   return {
     phase: "preview",
     message: truncated
-      ? `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Tabloda ${rows.length}/${preview.rows.length} örnek satır gösteriliyor (önce sorunlu satırlar). Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`
-      : `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak. Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`,
+      ? `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak${noteSuffix}. Tabloda ${rows.length}/${totalRows} örnek satır gösteriliyor (önce sorunlu satırlar). Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`
+      : `Önizleme hazır (${sourceLabel(preview.sourceId)}): ${preview.result.wouldCreateCount} satır yayına alınabilir, ${skipped} atlanacak${noteSuffix}. Dosya sunucuda tutuluyor — yeniden seçmeden “İçe aktar”a basabilirsiniz.`,
     summary: {
       fileName,
       formatLabel: `${formatLabel(preview.job.sourceFormat)} · ${sourceLabel(preview.sourceId)}`,
