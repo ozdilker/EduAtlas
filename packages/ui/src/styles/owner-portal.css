@@ -669,6 +669,16 @@
   gap: var(--ea-space-4);
 }
 
+.ea-owner-recommendations-widget__intro {
+  margin: 0 0 var(--ea-space-4);
+  padding: 0 0 var(--ea-space-4);
+  border-bottom: 1px solid var(--ea-color-border);
+}
+
+.ea-owner-recommendations-widget__intro .ea-owner-widget__description {
+  margin-bottom: 0;
+}
+
 .ea-owner-recommendations-list__item {
   padding-top: var(--ea-space-3);
   border-top: 1px solid var(--ea-color-border);
@@ -702,11 +712,16 @@
 }
 
 .ea-owner-recommendations-list__meta {
-  margin: var(--ea-space-2) 0 0;
-  color: var(--ea-color-text-muted);
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  visibility: hidden;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .ea-owner-portal__stat {

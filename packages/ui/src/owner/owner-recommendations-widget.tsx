@@ -48,13 +48,15 @@ export function OwnerRecommendationsWidget({
       className={cn("ea-owner-widget", "ea-owner-widget--recommendations", className)}
       aria-labelledby="owner-recommendations-heading"
     >
-      <header className="ea-owner-widget__header">
-        <h2 id="owner-recommendations-heading" className="ea-owner-widget__title">
-          {recommendations.title}
-        </h2>
-        <span className="ea-owner-pipeline__column-count">{recommendations.count}</span>
+      <header className="ea-owner-recommendations-widget__intro">
+        <div className="ea-owner-widget__header">
+          <h2 id="owner-recommendations-heading" className="ea-owner-widget__title">
+            {recommendations.title}
+          </h2>
+          <span className="ea-owner-pipeline__column-count">{recommendations.count}</span>
+        </div>
+        <p className="ea-owner-widget__description">{recommendations.description}</p>
       </header>
-      <p className="ea-owner-widget__description">{recommendations.description}</p>
 
       {recommendations.items.length === 0 ? (
         <p className="ea-owner-leads-empty" role="status">
@@ -69,7 +71,6 @@ export function OwnerRecommendationsWidget({
                 <Badge tone={priorityTone(item.priority)}>{item.priorityLabel}</Badge>
               </div>
               <p className="ea-owner-recommendations-list__message">{item.message}</p>
-              <p className="ea-owner-recommendations-list__meta">{item.ruleId}</p>
             </li>
           ))}
         </ul>
