@@ -313,13 +313,20 @@ export {
 export {
   emptyHomepageVisualsFallback,
   getHomepageVisuals,
+  getOrganizationContact,
   type GetHomepageVisualsDependencies,
+  type GetOrganizationContactDependencies,
   type HomepageVisualsRepository,
   HomepageVisualValidationError,
   isHomepageVisualValidationError,
+  type OrganizationContactRepository,
+  resolveImageContentType,
   type UpdateHomepageVisualDependencies,
   type UpdateHomepageVisualInput,
+  type UpdateOrganizationContactDependencies,
+  type UpdateOrganizationContactInput,
   updateHomepageVisual,
+  updateOrganizationContact,
 } from "./site";
 export {
   type BillingPlanRepository,

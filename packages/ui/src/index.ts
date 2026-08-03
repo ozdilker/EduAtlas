@@ -86,6 +86,11 @@ export type {
 } from "./admin/admin-billing-page";
 export { AdminBillingPage } from "./admin/admin-billing-page";
 export type {
+  AdminSiteContactFormValues,
+  AdminSiteContactPageProps,
+} from "./admin/admin-site-contact-page";
+export { AdminSiteContactPage } from "./admin/admin-site-contact-page";
+export type {
   AdminOutreachCampaignOption,
   AdminOutreachFormValues,
   AdminOutreachPageProps,
@@ -405,7 +410,7 @@ export type {
   PublicStatusTone,
 } from "./layout/public-status";
 export { NotFoundPageView, PublicLoadingState, PublicStatusBlock } from "./layout/public-status";
-export type { SiteFooterProps } from "./layout/site-footer";
+export type { SiteFooterContact, SiteFooterProps } from "./layout/site-footer";
 export { SiteFooter } from "./layout/site-footer";
 export type { SiteHeaderProps } from "./layout/site-header";
 export { SiteHeader } from "./layout/site-header";

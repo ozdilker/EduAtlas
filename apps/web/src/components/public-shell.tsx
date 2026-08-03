@@ -1,6 +1,6 @@
 "use client";
 
-import { PublicPageShell } from "@eduatlas/ui";
+import { PublicPageShell, type SiteFooterContact } from "@eduatlas/ui";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -9,6 +9,7 @@ export type PublicShellProps = {
   appName: string;
   /** Favorilerim only after parent (veli) session. */
   isParentLoggedIn?: boolean;
+  organizationContact?: SiteFooterContact;
 };
 
 /**
@@ -18,6 +19,7 @@ export function PublicShell({
   children,
   appName,
   isParentLoggedIn = false,
+  organizationContact,
 }: PublicShellProps) {
   const pathname = usePathname();
 
@@ -30,6 +32,7 @@ export function PublicShell({
       appName={appName}
       currentPath={pathname ?? undefined}
       isParentLoggedIn={isParentLoggedIn}
+      {...(organizationContact ? { organizationContact } : {})}
     >
       {children}
     </PublicPageShell>

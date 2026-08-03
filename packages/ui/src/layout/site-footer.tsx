@@ -3,19 +3,32 @@ import { Container } from "../components/container";
 import { cn } from "../lib/cn";
 import { getFooterSections, getSocialPlaceholders, isNavItemActive } from "./navigation";
 
+export type SiteFooterContact = Readonly<{
+  email: string;
+  phone?: string;
+  addressLine?: string;
+}>;
+
 export type SiteFooterProps = {
   appName?: string;
   currentPath?: string;
   className?: string;
+  contact?: SiteFooterContact;
 };
 
 /**
  * Public site footer — explore, cities, categories, company, legal.
  */
-export function SiteFooter({ appName = "EduAtlas", currentPath, className }: SiteFooterProps) {
+export function SiteFooter({
+  appName = "EduAtlas",
+  currentPath,
+  className,
+  contact,
+}: SiteFooterProps) {
   const sections = getFooterSections();
   const socialLinks = getSocialPlaceholders();
   const year = new Date().getFullYear();
+  const phoneHref = contact?.phone?.replace(/[^\d+]/g, "");
 
   return (
     <footer className={cn("ea-footer", className)}>
@@ -27,6 +40,15 @@ export function SiteFooter({ appName = "EduAtlas", currentPath, className }: Sit
           <p className="ea-footer__brand-tagline">
             Türkiye’nin eğitim atlası — ailelere güvenli karar, kurumlara daha iyi erişim.
           </p>
+          {contact ? (
+            <div className="ea-footer__contact">
+              <a href={`mailto:${contact.email}`}>{contact.email}</a>
+              {contact.phone && phoneHref ? (
+                <a href={`tel:${phoneHref}`}>{contact.phone}</a>
+              ) : null}
+              {contact.addressLine ? <p>{contact.addressLine}</p> : null}
+            </div>
+          ) : null}
           <div className="ea-footer__brand-actions">
             <a href="/search">Arama</a>
             <a href="/register">Kurumunu Sahiplen</a>

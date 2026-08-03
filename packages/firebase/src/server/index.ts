@@ -133,12 +133,17 @@ export {
 } from "../billing";
 export {
   createFirestoreHomepageVisualsRepository,
+  createFirestoreOrganizationContactRepository,
   createInMemoryHomepageVisualsRepository,
+  createInMemoryOrganizationContactRepository,
   createLocalFilesystemHomepageVisualsRepository,
   FirestoreHomepageVisualsRepository,
+  FirestoreOrganizationContactRepository,
   HOMEPAGE_VISUALS_DOC_ID,
   InMemoryHomepageVisualsRepository,
+  InMemoryOrganizationContactRepository,
   LocalFilesystemHomepageVisualsRepository,
+  ORGANIZATION_CONTACT_DOC_ID,
   SITE_SETTINGS_COLLECTION,
 } from "../site";
 export {

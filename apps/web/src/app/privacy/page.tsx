@@ -1,18 +1,19 @@
 import {
   ContentPageView,
-  LEGAL_CONTACT_EMAIL,
   LEGAL_PAGE_NEXT_STEPS,
   LEGAL_UPDATED_AT_LABEL,
   LegalDocument,
 } from "@eduatlas/ui";
 import { MetadataEngine } from "@eduatlas/seo";
 import { getSeoSiteConfig } from "@/lib/seo-site";
+import { getPublicOrganizationContact } from "@/server/site/get-public-organization-contact";
 
 export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
   pageId: "privacy",
 }).metadata;
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { email: LEGAL_CONTACT_EMAIL } = await getPublicOrganizationContact();
   return (
     <ContentPageView
       title="Gizlilik Politikası"

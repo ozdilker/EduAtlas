@@ -1158,6 +1158,41 @@
   color: var(--ea-color-text-ink);
 }
 
+.ea-admin-site-contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-4);
+  max-width: 32rem;
+  padding: var(--ea-space-5);
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+  border-radius: var(--ea-radius-md);
+  background: var(--ea-color-surface);
+}
+
+.ea-admin-site-contact .ea-admin-visuals__hint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-2);
+  margin-top: 0;
+  color: var(--ea-color-text-muted);
+  font-size: 0.9rem;
+}
+
+.ea-admin-site-contact .ea-admin-visuals__input {
+  position: static;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 85%, transparent);
+  border-radius: var(--ea-radius-sm);
+  background: var(--ea-color-bg, #fff);
+  color: var(--ea-color-text);
+  font: inherit;
+}
+
 @media (max-width: 1023px) {
   .ea-admin-visuals__grid-hero .ea-admin-visuals__card {
     display: flex;

@@ -1,16 +1,23 @@
-import {
-  ContentPageView,
-  LEGAL_CONTACT_EMAIL,
-  LEGAL_PAGE_NEXT_STEPS,
-} from "@eduatlas/ui";
+import { formatOrganizationAddressMultiline } from "@eduatlas/domain";
 import { MetadataEngine } from "@eduatlas/seo";
+import { ContentPageView, LEGAL_PAGE_NEXT_STEPS } from "@eduatlas/ui";
 import { getSeoSiteConfig } from "@/lib/seo-site";
+import { getPublicOrganizationContact } from "@/server/site/get-public-organization-contact";
 
 export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
   pageId: "contact",
 }).metadata;
 
-export default function ContactPage() {
+function telHref(phone: string): string {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return digits ? `tel:${digits}` : "";
+}
+
+export default async function ContactPage() {
+  const contact = await getPublicOrganizationContact();
+  const address = formatOrganizationAddressMultiline(contact);
+  const phoneHref = telHref(contact.phone);
+
   return (
     <ContentPageView
       title="İletişim"
@@ -26,14 +33,36 @@ export default function ContactPage() {
       ]}
     >
       <p>
-        EduAtlas ekibine e-posta ile ulaşabilirsiniz. Kurum sahiplenme, teknik destek, iş birliği
-        ve KVKK başvuruları için:
+        <strong>{contact.displayName}</strong>
       </p>
       <p>
-        <a className="ea-contact-email" href={`mailto:${LEGAL_CONTACT_EMAIL}`}>
-          {LEGAL_CONTACT_EMAIL}
+        E-posta:{" "}
+        <a className="ea-contact-email" href={`mailto:${contact.email}`}>
+          {contact.email}
         </a>
       </p>
+      {contact.phone ? (
+        <p>
+          Telefon:{" "}
+          {phoneHref ? (
+            <a className="ea-contact-email" href={phoneHref}>
+              {contact.phone}
+            </a>
+          ) : (
+            contact.phone
+          )}
+        </p>
+      ) : null}
+      {address.trim() ? (
+        <address className="ea-contact-address">
+          {address.split("\n").map((line) => (
+            <span key={line}>
+              {line}
+              <br />
+            </span>
+          ))}
+        </address>
+      ) : null}
       <p>
         Mümkün olduğunca kısa sürede dönüş yapmaya çalışırız. Kurum profili ve lead yönetimi için{" "}
         <a href="/login">Kurum Girişi</a> veya <a href="/register">Kurumunu Sahiplen</a>{" "}

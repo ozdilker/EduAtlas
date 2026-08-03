@@ -1,7 +1,10 @@
 "use server";
 
 import { startPaytrCheckout } from "@eduatlas/application";
-import { BillingPeriod } from "@eduatlas/domain";
+import {
+  BillingPeriod,
+  formatOrganizationAddressForPaytr,
+} from "@eduatlas/domain";
 import { headers } from "next/headers";
 import { createPaytrTokenGateway } from "../billing/paytr-client";
 import { isPaytrConfigured } from "../billing/paytr-env";
@@ -10,6 +13,7 @@ import {
   getPaymentOrderRepository,
 } from "../billing/repository";
 import { getSeoSiteConfig } from "@/lib/seo-site";
+import { getPublicOrganizationContact } from "../site/get-public-organization-contact";
 import { requireOwnerContext } from "./require-owner-context";
 
 export type StartPaytrCheckoutActionResult =
@@ -68,10 +72,15 @@ export async function startPaytrCheckoutAction(input: {
     const origin = site.siteUrl.replace(/\/+$/, "");
     const headerList = await headers();
 
-    const [plans, paymentOrders] = await Promise.all([
+    const [plans, paymentOrders, orgContact] = await Promise.all([
       getBillingPlanRepository(),
       getPaymentOrderRepository(),
+      getPublicOrganizationContact(),
     ]);
+
+    const userPhone = orgContact.phone.trim() || "05000000000";
+    const userAddress =
+      formatOrganizationAddressForPaytr(orgContact).trim() || "Türkiye";
 
     const result = await startPaytrCheckout(
       {
@@ -80,6 +89,8 @@ export async function startPaytrCheckoutAction(input: {
         billingPeriod,
         email: user.email,
         userName: user.displayName,
+        userPhone,
+        userAddress,
         userIp: clientIpFromHeaders(headerList),
         merchantOkUrl: `${origin}/owner/billing/result?status=ok`,
         merchantFailUrl: `${origin}/owner/billing/result?status=fail`,
