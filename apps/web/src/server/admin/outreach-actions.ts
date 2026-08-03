@@ -20,6 +20,17 @@ function formString(formData: FormData, key: string): string {
   return String(formData.get(key) ?? "").trim();
 }
 
+/** Next.js `redirect()` throws; must not be treated as a business error. */
+function isRedirectError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    String((error as { digest: string }).digest).startsWith("NEXT_REDIRECT")
+  );
+}
+
 function outreachRedirect(params: {
   id?: string;
   notice?: string;
@@ -82,6 +93,7 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
       notice: "Kampanya oluşturuldu.",
     });
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message =
       isOutreachValidationError(error) || error instanceof Error
         ? error.message
@@ -121,6 +133,7 @@ export async function sendOutreachTestEmailAction(formData: FormData): Promise<v
       notice: `Test e-postası gönderildi: ${to}`,
     });
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message =
       isOutreachValidationError(error) || error instanceof Error
         ? error.message
@@ -143,6 +156,7 @@ async function campaignAction(
     const result = await run(campaignId, now);
     outreachRedirect({ id: result.id, notice: result.notice });
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message =
       isOutreachValidationError(error) || error instanceof Error
         ? error.message
@@ -214,6 +228,7 @@ export async function tickOutreachDeliveryAction(formData: FormData): Promise<vo
       notice: `Worker tick: ${result.processed} işlendi.`,
     });
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     const message = error instanceof Error ? error.message : "Tick başarısız.";
     outreachRedirect({ id: campaignId || undefined, error: message });
   }
