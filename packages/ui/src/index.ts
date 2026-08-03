@@ -470,6 +470,7 @@ export type {
 export type { OwnerInsightsPageProps } from "./owner/owner-insights-page";
 export { OwnerInsightsPage } from "./owner/owner-insights-page";
 export type {
+  OwnerBillingCheckoutResult,
   OwnerBillingPageData,
   OwnerBillingPageProps,
   OwnerBillingPlanCardView,

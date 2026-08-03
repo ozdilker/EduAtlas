@@ -1,6 +1,7 @@
 import type {
   BillingPlanRepository,
   InstitutionSubscriptionRepository,
+  PaymentOrderRepository,
 } from "@eduatlas/application";
 import {
   getFirebaseServerEnv,
@@ -8,21 +9,26 @@ import {
   shouldUseFirebaseEmulators,
 } from "@eduatlas/config";
 import {
+  BillingPeriod,
   createBillingPlan,
   createInstitutionSubscription,
+  createPaymentOrder,
   DefaultBillingPlanCode,
   type BillingPlan,
   type InstitutionSubscription,
+  type PaymentOrder,
 } from "@eduatlas/domain";
 import {
   buildDefaultBillingPlans,
   createFirestoreBillingPlanRepository,
   createFirestoreInstitutionSubscriptionRepository,
+  createFirestorePaymentOrderRepository,
   getAdminFirestore,
 } from "@eduatlas/firebase/server";
 
 let planRepoPromise: Promise<BillingPlanRepository> | undefined;
 let subscriptionRepoPromise: Promise<InstitutionSubscriptionRepository> | undefined;
+let paymentOrderRepoPromise: Promise<PaymentOrderRepository> | undefined;
 
 function canUseFirebaseBackend(): boolean {
   const env = getFirebaseServerEnv();
@@ -72,6 +78,19 @@ class InMemorySubscriptionRepository implements InstitutionSubscriptionRepositor
   }
 }
 
+class InMemoryPaymentOrderRepository implements PaymentOrderRepository {
+  private byOid = new Map<string, PaymentOrder>();
+
+  async getByMerchantOid(merchantOid: string) {
+    return this.byOid.get(merchantOid.trim()) ?? null;
+  }
+
+  async save(order: PaymentOrder) {
+    this.byOid.set(order.merchantOid, order);
+    return order;
+  }
+}
+
 export function getBillingPlanRepository(): Promise<BillingPlanRepository> {
   if (!planRepoPromise) {
     planRepoPromise = Promise.resolve(
@@ -94,9 +113,21 @@ export function getInstitutionSubscriptionRepository(): Promise<InstitutionSubsc
   return subscriptionRepoPromise;
 }
 
+export function getPaymentOrderRepository(): Promise<PaymentOrderRepository> {
+  if (!paymentOrderRepoPromise) {
+    paymentOrderRepoPromise = Promise.resolve(
+      canUseFirebaseBackend()
+        ? createFirestorePaymentOrderRepository(getAdminFirestore())
+        : new InMemoryPaymentOrderRepository(),
+    );
+  }
+  return paymentOrderRepoPromise;
+}
+
 export function resetBillingRepositoriesForTests(): void {
   planRepoPromise = undefined;
   subscriptionRepoPromise = undefined;
+  paymentOrderRepoPromise = undefined;
 }
 
 /** Ensure seed plans exist (idempotent upsert). */
@@ -126,5 +157,15 @@ export function emptyPlanForTests(): BillingPlan {
     code: DefaultBillingPlanCode.Free,
     name: "Free",
     entitlements: { freeLeadQuota: 3 },
+  });
+}
+
+export function emptyPaymentOrderForTests(merchantOid: string, institutionId: string): PaymentOrder {
+  return createPaymentOrder({
+    merchantOid,
+    institutionId,
+    planCode: "pro",
+    billingPeriod: BillingPeriod.Monthly,
+    amountTry: 499,
   });
 }

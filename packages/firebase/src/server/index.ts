@@ -124,9 +124,12 @@ export {
   buildDefaultBillingPlans,
   createFirestoreBillingPlanRepository,
   createFirestoreInstitutionSubscriptionRepository,
+  createFirestorePaymentOrderRepository,
   FirestoreBillingPlanRepository,
   FirestoreInstitutionSubscriptionRepository,
+  FirestorePaymentOrderRepository,
   INSTITUTION_SUBSCRIPTIONS_COLLECTION,
+  PAYMENT_ORDERS_COLLECTION,
 } from "../billing";
 export {
   createFirestoreHomepageVisualsRepository,

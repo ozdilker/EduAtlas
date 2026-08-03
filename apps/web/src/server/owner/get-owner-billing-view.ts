@@ -7,6 +7,7 @@ import {
   getBillingPlanRepository,
   getInstitutionSubscriptionRepository,
 } from "../billing/repository";
+import { isPaytrConfigured } from "../billing/paytr-env";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getOwnerDemoInstitutionId } from "./owner-demo-context";
 import { createInstitutionId, institutionIdAsString } from "@eduatlas/domain";
@@ -33,13 +34,15 @@ export async function getOwnerBillingView(
     subscriptionRepository,
   });
   const plans = await billingPlanRepository.listActive();
+  const checkoutEnabled = isPaytrConfigured();
 
   return {
     institutionName: institution.name,
     ...(institution.logoUrl ? { institutionLogoUrl: institution.logoUrl } : {}),
     currentPlanCode: access.planCode,
     currentPlanName: access.planName,
-    paymentComingSoonMessage: PAYMENT_COMING_SOON,
+    paymentComingSoonMessage: checkoutEnabled ? "" : PAYMENT_COMING_SOON,
+    checkoutEnabled,
     plans: plans.map((plan) => ({
       code: plan.code,
       name: plan.name,

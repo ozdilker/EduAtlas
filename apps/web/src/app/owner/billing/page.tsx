@@ -2,6 +2,7 @@ import { OwnerBillingPage } from "@eduatlas/ui";
 import { redirect } from "next/navigation";
 import { getOwnerBillingView } from "@/server/owner/get-owner-billing-view";
 import { requireOwnerContext } from "@/server/owner/require-owner-context";
+import { startPaytrCheckoutAction } from "@/server/owner/start-paytr-checkout-action";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +12,5 @@ export default async function OwnerBillingRoute() {
   if (!data) {
     redirect("/owner/onboarding?reason=missing_institution");
   }
-  return <OwnerBillingPage data={data} />;
+  return <OwnerBillingPage data={data} onStartCheckout={startPaytrCheckoutAction} />;
 }

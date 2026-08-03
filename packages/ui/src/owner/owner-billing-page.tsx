@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Container } from "../components/container";
 import { cn } from "../lib/cn";
 import { OwnerPortalShell } from "./owner-portal-shell";
@@ -22,11 +22,20 @@ export type OwnerBillingPageData = Readonly<{
   currentPlanCode: string;
   currentPlanName: string;
   paymentComingSoonMessage: string;
+  checkoutEnabled: boolean;
   plans: readonly OwnerBillingPlanCardView[];
 }>;
 
+export type OwnerBillingCheckoutResult =
+  | { readonly ok: true; readonly merchantOid: string; readonly iframeToken: string }
+  | { readonly ok: false; readonly message: string };
+
 export type OwnerBillingPageProps = {
   data: OwnerBillingPageData;
+  onStartCheckout?: (input: {
+    planCode: string;
+    billingPeriod: "monthly" | "yearly";
+  }) => Promise<OwnerBillingCheckoutResult>;
   className?: string;
 };
 
@@ -41,10 +50,46 @@ function formatTry(amount: number): string {
 }
 
 /**
- * Owner plan picker — checkout disabled until payment provider is live.
+ * Owner plan picker — PayTR iframe checkout when configured.
  */
-export function OwnerBillingPage({ data, className }: OwnerBillingPageProps) {
+export function OwnerBillingPage({ data, onStartCheckout, className }: OwnerBillingPageProps) {
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const [busyCode, setBusyCode] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [iframeToken, setIframeToken] = useState<string | null>(null);
+  const [modalTitle, setModalTitle] = useState("");
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  async function handlePurchase(plan: OwnerBillingPlanCardView) {
+    if (!data.checkoutEnabled || !onStartCheckout || plan.code === "free" || plan.isCurrent) {
+      return;
+    }
+    setError(null);
+    setBusyCode(plan.code);
+    try {
+      const result = await onStartCheckout({ planCode: plan.code, billingPeriod: period });
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+      const isYearly = period === "yearly" && plan.yearlyPriceTry > 0;
+      const amount = isYearly ? plan.yearlyPriceTry : plan.monthlyPriceTry;
+      setModalTitle(
+        `${plan.name} · ${isYearly ? "Yıllık" : "Aylık"} · ${formatTry(amount)}`,
+      );
+      setIframeToken(result.iframeToken);
+      dialogRef.current?.showModal();
+    } catch {
+      setError("Ödeme başlatılamadı. Lütfen tekrar deneyin.");
+    } finally {
+      setBusyCode(null);
+    }
+  }
+
+  function closeModal() {
+    dialogRef.current?.close();
+    setIframeToken(null);
+  }
 
   return (
     <OwnerPortalShell
@@ -63,9 +108,17 @@ export function OwnerBillingPage({ data, className }: OwnerBillingPageProps) {
             </p>
           </header>
 
-          <p className="ea-owner-billing__muted" role="status">
-            {data.paymentComingSoonMessage}
-          </p>
+          {!data.checkoutEnabled && data.paymentComingSoonMessage ? (
+            <p className="ea-owner-billing__muted" role="status">
+              {data.paymentComingSoonMessage}
+            </p>
+          ) : null}
+
+          {error ? (
+            <p className="ea-owner-billing__error" role="alert">
+              {error}
+            </p>
+          ) : null}
 
           <div
             className="ea-owner-billing__period"
@@ -114,6 +167,17 @@ export function OwnerBillingPage({ data, className }: OwnerBillingPageProps) {
                 isYearly && plan.yearlyPriceTry > 0
                   ? Math.round(plan.yearlyPriceTry / 12)
                   : null;
+              const isFree = plan.code === "free";
+              const canBuy =
+                data.checkoutEnabled &&
+                Boolean(onStartCheckout) &&
+                !isFree &&
+                !plan.isCurrent &&
+                primaryAmount > 0;
+              let ctaLabel = "Ödeme yakında";
+              if (plan.isCurrent) ctaLabel = "Mevcut paket";
+              else if (isFree) ctaLabel = "Ücretsiz";
+              else if (canBuy) ctaLabel = busyCode === plan.code ? "Hazırlanıyor…" : "Satın al";
 
               return (
                 <li
@@ -148,11 +212,16 @@ export function OwnerBillingPage({ data, className }: OwnerBillingPageProps) {
                   <button
                     type="button"
                     className="ea-button ea-button--primary ea-owner-billing__cta"
-                    disabled
-                    aria-disabled="true"
-                    title={data.paymentComingSoonMessage}
+                    disabled={!canBuy || busyCode === plan.code}
+                    aria-disabled={!canBuy || busyCode === plan.code}
+                    title={
+                      canBuy
+                        ? undefined
+                        : data.paymentComingSoonMessage || undefined
+                    }
+                    onClick={() => void handlePurchase(plan)}
                   >
-                    {plan.isCurrent ? "Mevcut paket" : "Ödeme yakında"}
+                    {ctaLabel}
                   </button>
                 </li>
               );
@@ -160,6 +229,33 @@ export function OwnerBillingPage({ data, className }: OwnerBillingPageProps) {
           </ul>
         </div>
       </Container>
+
+      <dialog
+        ref={dialogRef}
+        className="ea-owner-billing__pay-dialog"
+        onClose={() => setIframeToken(null)}
+      >
+        <div className="ea-owner-billing__pay-dialog-panel">
+          <div className="ea-owner-billing__pay-dialog-header">
+            <h2 className="ea-owner-billing__pay-dialog-title">{modalTitle || "Ödeme"}</h2>
+            <button
+              type="button"
+              className="ea-button ea-button--secondary"
+              onClick={closeModal}
+            >
+              Kapat
+            </button>
+          </div>
+          {iframeToken ? (
+            <iframe
+              title="PayTR güvenli ödeme"
+              src={`https://www.paytr.com/odeme/guvenli/${iframeToken}`}
+              className="ea-owner-billing__pay-iframe"
+              allow="payment"
+            />
+          ) : null}
+        </div>
+      </dialog>
     </OwnerPortalShell>
   );
 }

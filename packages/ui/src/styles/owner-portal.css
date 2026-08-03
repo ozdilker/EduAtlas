@@ -1102,6 +1102,74 @@
   cursor: not-allowed;
 }
 
+.ea-owner-billing__error {
+  margin: 0 0 var(--ea-space-4);
+  color: var(--ea-color-danger, #b42318);
+}
+
+.ea-owner-billing__pay-dialog {
+  width: min(40rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+  border-radius: var(--ea-radius-md);
+  background: var(--ea-color-surface);
+  color: var(--ea-color-text);
+  box-shadow: var(--ea-shadow-lg, 0 12px 40px rgb(15 23 42 / 18%));
+}
+
+.ea-owner-billing__pay-dialog::backdrop {
+  background: color-mix(in srgb, #0f172a 45%, transparent);
+}
+
+.ea-owner-billing__pay-dialog-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-3);
+  padding: var(--ea-space-4);
+}
+
+.ea-owner-billing__pay-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ea-space-3);
+}
+
+.ea-owner-billing__pay-dialog-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.ea-owner-billing__pay-iframe {
+  width: 100%;
+  min-height: 420px;
+  height: min(70vh, 560px);
+  border: 0;
+  border-radius: var(--ea-radius-sm, 0.5rem);
+  background: #fff;
+}
+
+.ea-owner-billing-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-4);
+  padding: var(--ea-space-8) 0;
+}
+
+.ea-owner-billing-result h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.ea-owner-billing-result p {
+  margin: 0;
+  color: var(--ea-color-text-muted);
+  line-height: 1.5;
+}
+
 .ea-owner-lead-list__meta {
   display: flex;
   justify-content: space-between;
