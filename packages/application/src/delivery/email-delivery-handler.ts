@@ -21,6 +21,7 @@ export type EmailDeliveryHandlerOptions = Readonly<{
   readonly templateRepository: CampaignTemplateRepository;
   readonly ctaHref: string;
   readonly resolveInstitutionName: (institutionId: string) => Promise<string>;
+  readonly mailLogoUrl?: string;
 }>;
 
 /**
@@ -62,6 +63,9 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
               institutionName,
               ctaHref: this.options.ctaHref,
               bodyLines: template.bodyLines,
+              ...(this.options.mailLogoUrl
+                ? { logoUrl: this.options.mailLogoUrl }
+                : {}),
             })
           : renderCampaignTemplatePreview({
               ...template,

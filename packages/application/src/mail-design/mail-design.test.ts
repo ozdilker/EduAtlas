@@ -3,11 +3,14 @@ import {
   escapeAttribute,
   escapeHtml,
   mailTheme,
+  MAIL_LOGO_PATH,
   renderMailDocument,
+  renderMailHeader,
   renderMailInfoBox,
   renderMailPrimaryCta,
   renderMailSuccessBox,
   renderMailWarningBox,
+  resolveMailLogoUrl,
 } from "./index";
 
 describe("mailTheme", () => {
@@ -55,5 +58,17 @@ describe("renderMailDocument", () => {
     expect(html).toContain('role="presentation"');
     expect(html).not.toContain("Georgia");
     expect(html).not.toContain("#0f766e");
+  });
+
+  it("places mark image left of EduAtlas + badge when logoUrl is set", () => {
+    const logoUrl = resolveMailLogoUrl("https://eduatlas.com.tr");
+    expect(logoUrl).toBe(`https://eduatlas.com.tr${MAIL_LOGO_PATH}`);
+    const header = renderMailHeader({
+      badge: "Kurum daveti",
+      logoUrl,
+    });
+    expect(header.indexOf("<img")).toBeLessThan(header.indexOf("Edu"));
+    expect(header).toContain(MAIL_LOGO_PATH);
+    expect(header).toContain("Kurum daveti");
   });
 });

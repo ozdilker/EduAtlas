@@ -8,6 +8,7 @@ import {
   createOutreachService,
   ensureOutreachSeeds,
   loadOutreachDeliveryConfig,
+  resolveMailLogoUrl,
   type CampaignRepository,
   type CampaignRecipientRepository,
   type CampaignSegmentRepository,
@@ -58,6 +59,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
   const queue = createInMemoryOutreachQueue();
   const site = getSeoSiteConfig();
   const ctaHref = `${site.siteUrl.replace(/\/+$/, "")}/login`;
+  const mailLogoUrl = resolveMailLogoUrl(site.siteUrl);
   const institutionRepository = await getInstitutionRepository();
 
   if (canUseFirestoreBackend()) {
@@ -74,6 +76,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
       deliveryJobRepository: repos.deliveryJobRepository,
       institutionRepository,
       deliveryConfig: config,
+      mailLogoUrl,
     });
     const worker = createDeliveryWorker({
       config,
@@ -86,6 +89,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
           emailService,
           templateRepository: repos.templateRepository,
           ctaHref,
+          mailLogoUrl,
           resolveInstitutionName: async (institutionId) => {
             const inst = await institutionRepository.getById(
               createInstitutionId(institutionId),
@@ -122,6 +126,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
     deliveryJobRepository: jobs,
     institutionRepository,
     deliveryConfig: config,
+    mailLogoUrl,
   });
   const worker = createDeliveryWorker({
     config,
@@ -134,6 +139,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
         emailService,
         templateRepository: stores.templateRepository,
         ctaHref,
+        mailLogoUrl,
         resolveInstitutionName: async (institutionId) => {
           const inst = await institutionRepository.getById(createInstitutionId(institutionId));
           return inst?.name ?? "Kurumunuz";

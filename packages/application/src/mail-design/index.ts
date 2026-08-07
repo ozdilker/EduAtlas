@@ -23,8 +23,11 @@ export {
   renderMailSuccessBox,
   renderMailTitle,
   renderMailWarningBox,
+  MAIL_LOGO_PATH,
+  resolveMailLogoUrl,
   type MailFooterOptions,
   type MailHeaderOptions,
   type MailLegalFooterOptions,
+  type MailLogoOptions,
   type MailSocialLink,
 } from "./components";

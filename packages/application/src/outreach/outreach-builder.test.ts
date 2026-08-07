@@ -45,6 +45,8 @@ describe("renderClaimInvitationMail", () => {
     expect(rendered.html).toContain("max-width:600px");
     expect(rendered.html).toContain(CLAIM_INVITATION_CTA_LABEL);
     expect(rendered.html).toContain("Kurum daveti");
+    expect(rendered.html).toContain("/brand/eduatlas-mark.png");
+    expect(rendered.html).toContain('alt="EduAtlas"');
     expect(rendered.html).toContain("Örnek Anaokulu");
     expect(rendered.subject).toContain("Örnek Anaokulu");
     expect(rendered.html).not.toContain("{{institutionName}}");

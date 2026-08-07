@@ -9,7 +9,12 @@ export {
   renderMailWarningBox,
 } from "./info-box";
 export { renderMailLegalFooter, type MailLegalFooterOptions } from "./legal-footer";
-export { renderMailLogo } from "./logo";
+export {
+  MAIL_LOGO_PATH,
+  renderMailLogo,
+  resolveMailLogoUrl,
+  type MailLogoOptions,
+} from "./logo";
 export { renderMailPrimaryCta } from "./primary-cta";
 export { renderMailSecondaryCta } from "./secondary-cta";
 export { renderMailSection } from "./section";

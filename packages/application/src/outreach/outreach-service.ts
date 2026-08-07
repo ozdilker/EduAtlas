@@ -48,6 +48,8 @@ export type OutreachServiceDependencies = Readonly<{
   readonly deliveryJobRepository?: DeliveryJobRepository;
   readonly institutionRepository?: InstitutionRepository;
   readonly deliveryConfig?: OutreachDeliveryConfig;
+  /** Absolute URL for campaign email header mark. */
+  readonly mailLogoUrl?: string;
 }>;
 
 let logSeq = 0;
@@ -362,6 +364,16 @@ export class OutreachService {
     if (!template) {
       throw new OutreachNotFoundError(`Template not found: ${templateId}`);
     }
+    if (template.id === CLAIM_INVITATION_TEMPLATE_ID) {
+      return renderClaimInvitationMail({
+        subject: template.subject,
+        preheader: template.preview,
+        institutionName: "Örnek Kurum",
+        ctaHref: "https://eduatlas.com.tr/login",
+        bodyLines: template.bodyLines,
+        ...(this.deps.mailLogoUrl ? { logoUrl: this.deps.mailLogoUrl } : {}),
+      });
+    }
     return renderCampaignTemplatePreview(template);
   }
 
@@ -490,6 +502,7 @@ export class OutreachService {
         institutionName: tokens.institutionName,
         ctaHref: tokens.ctaHref,
         bodyLines: template.bodyLines,
+        ...(this.deps.mailLogoUrl ? { logoUrl: this.deps.mailLogoUrl } : {}),
       });
     }
 

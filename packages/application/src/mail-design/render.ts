@@ -7,6 +7,7 @@ export type MailDocumentInput = Readonly<{
   readonly bodyHtml: string;
   readonly text: string;
   readonly badge?: string;
+  readonly logoUrl?: string;
   readonly footer?: MailFooterOptions;
   readonly legalNotice?: string;
   readonly unsubscribeUrl?: string;
@@ -26,6 +27,7 @@ export function renderMailDocument(input: MailDocumentInput): MailDocumentResult
     preview: input.preview,
     bodyHtml: input.bodyHtml,
     badge: input.badge,
+    logoUrl: input.logoUrl,
     footer: input.footer,
     legalNotice: input.legalNotice,
     unsubscribeUrl: input.unsubscribeUrl,

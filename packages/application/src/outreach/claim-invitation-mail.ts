@@ -7,6 +7,7 @@ import {
   renderMailSection,
   renderMailSubtitle,
   renderMailTitle,
+  resolveMailLogoUrl,
 } from "../mail-design";
 import type { RenderedEmail } from "../notifications/email-templates";
 import { applyMailTokens } from "./apply-mail-tokens";
@@ -31,6 +32,8 @@ export type RenderClaimInvitationMailInput = Readonly<{
   readonly institutionName: string;
   readonly ctaHref: string;
   readonly bodyLines?: readonly string[];
+  /** Absolute URL for header mark; defaults to production brand asset. */
+  readonly logoUrl?: string;
 }>;
 
 /**
@@ -54,6 +57,7 @@ export function renderClaimInvitationMail(
   const institutionLabel = tokens.institutionName.trim() || "Kurumunuz";
   const title = `${institutionLabel} için EduAtlas kurum paneli hazır`;
   const subtitle = "Velilerden gelen talepleri kaçırmayın — kurumunuzu ücretsiz sahiplenin.";
+  const logoUrl = input.logoUrl?.trim() || resolveMailLogoUrl("https://eduatlas.com.tr");
 
   const introText = bodyLines.join(" ");
   const benefitsHtml = BENEFITS.map(
@@ -91,6 +95,7 @@ export function renderClaimInvitationMail(
     bodyHtml,
     text,
     badge: "Kurum daveti",
+    logoUrl,
   });
 
   return Object.freeze({

@@ -13,6 +13,7 @@ export type MailLayoutSlots = Readonly<{
   readonly preview: string;
   readonly bodyHtml: string;
   readonly badge?: string;
+  readonly logoUrl?: string;
   readonly footer?: MailFooterOptions;
   readonly legalNotice?: string;
   readonly unsubscribeUrl?: string;
@@ -30,7 +31,10 @@ export function renderMailLayout(slots: MailLayoutSlots): string {
     unsubscribeUrl: slots.unsubscribeUrl ?? slots.footer?.unsubscribeUrl,
   };
 
-  const header = renderMailHeader({ badge: slots.badge });
+  const header = renderMailHeader({
+    badge: slots.badge,
+    logoUrl: slots.logoUrl,
+  });
   const card = renderMailCard(slots.bodyHtml);
   const footer = renderMailFooter(footerOpts);
   const legal = renderMailLegalFooter({
