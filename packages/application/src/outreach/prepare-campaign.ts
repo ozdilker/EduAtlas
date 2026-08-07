@@ -21,8 +21,12 @@ import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
 
 export type PrepareCampaignResult = Readonly<{
+  /** Newly created recipients in this call. */
   readonly recipientCount: number;
   readonly skippedDuplicates: number;
+  /** Total recipients after this call. */
+  readonly totalRecipients: number;
+  readonly targetLimit: number;
 }>;
 
 export type PrepareCampaignDependencies = Readonly<{
@@ -32,6 +36,8 @@ export type PrepareCampaignDependencies = Readonly<{
   readonly deliveryJobRepository: DeliveryJobRepository;
   readonly institutionRepository: InstitutionRepository;
   readonly config: OutreachDeliveryConfig;
+  /** Platform warm-up stage cap (overrides config.warmupBatchSize when set). */
+  readonly targetLimit?: number;
   readonly nextRecipientId?: () => string;
   readonly nextJobId?: () => string;
 }>;
@@ -44,8 +50,8 @@ function defaultId(prefix: string): string {
 }
 
 /**
- * Selects up to warm-up institutions from the campaign segment and enqueues DeliveryJobs.
- * Jobs remain idle until campaign is approved + running.
+ * Incremental prepare: creates recipients/jobs up to targetLimit for a draft campaign.
+ * Skips institutions that already have an idempotent DeliveryJob.
  */
 export async function prepareCampaign(
   input: { campaignId: string; now: string },
@@ -59,11 +65,19 @@ export async function prepareCampaign(
     throw new OutreachValidationError("Only draft campaigns can be prepared.");
   }
 
-  const existingRecipients = await deps.recipientRepository.listByCampaignId(
-    campaignIdAsString(campaign.id),
+  const targetLimit = Math.max(
+    1,
+    deps.targetLimit ?? deps.config.warmupBatchSize,
   );
-  if (existingRecipients.length > 0) {
-    throw new OutreachValidationError("Campaign already prepared.");
+  const campaignId = campaignIdAsString(campaign.id);
+  const existingRecipients = await deps.recipientRepository.listByCampaignId(campaignId);
+  if (existingRecipients.length >= targetLimit) {
+    return Object.freeze({
+      recipientCount: 0,
+      skippedDuplicates: 0,
+      totalRecipients: existingRecipients.length,
+      targetLimit,
+    });
   }
 
   const segment = await deps.segmentRepository.getById(campaign.segmentId);
@@ -85,14 +99,21 @@ export async function prepareCampaign(
     pageSize: 500,
   });
 
+  const existingInstitutionIds = new Set(
+    existingRecipients.map((r) => r.institutionId),
+  );
   const matched = page.items.filter((inst) => institutionMatchesSegment(inst, segment));
-  const selected = matched.slice(0, deps.config.warmupBatchSize);
+  const slots = targetLimit - existingRecipients.length;
+  const candidates = matched.filter(
+    (inst) => !existingInstitutionIds.has(institutionIdAsString(inst.id)),
+  );
 
   let recipientCount = 0;
   let skippedDuplicates = 0;
-  const campaignId = campaignIdAsString(campaign.id);
 
-  for (const institution of selected) {
+  for (const institution of candidates) {
+    if (recipientCount >= slots) break;
+
     const institutionId = institutionIdAsString(institution.id);
     const email = institution.contact.email?.trim();
     if (!email) {
@@ -141,7 +162,12 @@ export async function prepareCampaign(
     recipientCount += 1;
   }
 
-  return Object.freeze({ recipientCount, skippedDuplicates });
+  return Object.freeze({
+    recipientCount,
+    skippedDuplicates,
+    totalRecipients: existingRecipients.length + recipientCount,
+    targetLimit,
+  });
 }
 
 export function assertCampaignReadyForRun(campaign: Campaign): void {

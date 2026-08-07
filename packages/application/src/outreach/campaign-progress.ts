@@ -8,17 +8,20 @@ export type CampaignProgress = Readonly<{
   readonly total: number;
   readonly sent: number;
   readonly queued: number;
+  readonly locked: number;
   readonly failed: number;
   readonly bounced: number;
   readonly percent: number;
 }>;
 
 /**
- * Aggregates DeliveryJob statuses into admin progress counters.
+ * Aggregates DeliveryJob statuses into admin progress / live-delivery counters.
+ * Queued = pending; Locked = locked (shown separately for Live Delivery).
  */
 export function computeCampaignProgress(jobs: readonly DeliveryJob[]): CampaignProgress {
   let sent = 0;
   let queued = 0;
+  let locked = 0;
   let failed = 0;
   let bounced = 0;
   for (const job of jobs) {
@@ -27,8 +30,10 @@ export function computeCampaignProgress(jobs: readonly DeliveryJob[]): CampaignP
         sent += 1;
         break;
       case DeliveryJobStatus.Pending:
-      case DeliveryJobStatus.Locked:
         queued += 1;
+        break;
+      case DeliveryJobStatus.Locked:
+        locked += 1;
         break;
       case DeliveryJobStatus.Failed:
       case DeliveryJobStatus.Cancelled:
@@ -43,7 +48,7 @@ export function computeCampaignProgress(jobs: readonly DeliveryJob[]): CampaignP
   }
   const total = jobs.length;
   const percent = total === 0 ? 0 : Math.round((sent / total) * 100);
-  return Object.freeze({ total, sent, queued, failed, bounced, percent });
+  return Object.freeze({ total, sent, queued, locked, failed, bounced, percent });
 }
 
 export async function getCampaignProgress(

@@ -6,7 +6,15 @@ import {
   createCampaign,
   createCampaignLog,
   createCampaignRecipient,
+  createDeliveryJob,
+  DeliveryJobStatus,
+  emptyPreSendChecklist,
+  isPreSendChecklistComplete,
+  mergePreSendChecklist,
   type Campaign,
+  type CampaignLearnings,
+  type CampaignLog,
+  type CampaignPreSendChecklist,
   type CampaignRecipient,
   type CreateCampaignInput,
 } from "@eduatlas/domain";
@@ -37,6 +45,13 @@ import {
   type PrepareCampaignResult,
 } from "./prepare-campaign";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
+import {
+  createDefaultWarmupSettings,
+  currentWarmupLimit,
+  elevateWarmupSettings,
+  type OutreachWarmupSettings,
+} from "./warmup-settings";
+import type { OutreachWarmupSettingsRepository } from "./warmup-settings-repository";
 
 export type OutreachServiceDependencies = Readonly<{
   readonly campaignRepository: CampaignRepository;
@@ -50,6 +65,7 @@ export type OutreachServiceDependencies = Readonly<{
   readonly deliveryConfig?: OutreachDeliveryConfig;
   /** Absolute URL for campaign email header mark. */
   readonly mailLogoUrl?: string;
+  readonly warmupSettingsRepository?: OutreachWarmupSettingsRepository;
 }>;
 
 let logSeq = 0;
@@ -89,6 +105,10 @@ function toCreateInput(
     createdBy: campaign.createdBy,
     startedAt: campaign.startedAt,
     completedAt: campaign.completedAt,
+    preSendChecklist: campaign.preSendChecklist,
+    execution: campaign.execution,
+    postSummary: campaign.postSummary,
+    learnings: campaign.learnings,
     ...overrides,
   };
 }
@@ -189,7 +209,14 @@ export class OutreachService {
     }
 
     const updated = createCampaign(
-      toCreateInput(campaign, { status: CampaignStatus.Ready }),
+      toCreateInput(campaign, {
+        status: CampaignStatus.Ready,
+        execution: {
+          ...campaign.execution,
+          approvedAt: now,
+          preparedAt: campaign.execution?.preparedAt,
+        },
+      }),
     );
     await this.deps.campaignRepository.update(updated);
     await this.log(campaignIdAsString(updated.id), "Campaign approved (ready).", now);
@@ -200,6 +227,10 @@ export class OutreachService {
     if (!this.deps.deliveryJobRepository || !this.deps.institutionRepository) {
       throw new OutreachValidationError("Delivery repositories are not configured.");
     }
+    const config = this.deps.deliveryConfig ?? loadOutreachDeliveryConfig();
+    const targetLimit = this.deps.warmupSettingsRepository
+      ? currentWarmupLimit(await this.getWarmupSettings())
+      : config.warmupBatchSize;
     const result = await prepareCampaignAction(
       { campaignId, now },
       {
@@ -208,15 +239,71 @@ export class OutreachService {
         recipientRepository: this.deps.recipientRepository,
         deliveryJobRepository: this.deps.deliveryJobRepository,
         institutionRepository: this.deps.institutionRepository,
-        config: this.deps.deliveryConfig ?? loadOutreachDeliveryConfig(),
+        config,
+        targetLimit,
       },
     );
     await this.log(
       campaignId.trim(),
-      `Prepared ${result.recipientCount} recipient(s); skipped ${result.skippedDuplicates}.`,
+      `Prepared ${result.recipientCount} recipient(s) (total ${result.totalRecipients}/${result.targetLimit}); skipped ${result.skippedDuplicates}.`,
       now,
     );
+    if (result.recipientCount > 0 || result.totalRecipients > 0) {
+      const campaign = await this.requireCampaign(campaignId);
+      await this.deps.campaignRepository.update(
+        createCampaign(
+          toCreateInput(campaign, {
+            execution: {
+              ...campaign.execution,
+              preparedAt: campaign.execution?.preparedAt ?? now,
+            },
+            preSendChecklist: campaign.preSendChecklist ?? emptyPreSendChecklist(),
+          }),
+        ),
+      );
+    }
     return result;
+  }
+
+  /**
+   * Draft-only incremental prepare up to the current platform warm-up stage limit.
+   */
+  async expandWarmup(campaignId: string, now: string): Promise<PrepareCampaignResult> {
+    return this.prepareCampaign(campaignId, now);
+  }
+
+  async getWarmupSettings(): Promise<OutreachWarmupSettings> {
+    if (!this.deps.warmupSettingsRepository) {
+      return createDefaultWarmupSettings();
+    }
+    return this.deps.warmupSettingsRepository.get();
+  }
+
+  async elevateWarmupStage(input: {
+    now: string;
+    by?: string;
+    note?: string;
+  }): Promise<OutreachWarmupSettings> {
+    if (!this.deps.warmupSettingsRepository) {
+      throw new OutreachValidationError("Warm-up settings repository is not configured.");
+    }
+    const current = await this.deps.warmupSettingsRepository.get();
+    const elevated = elevateWarmupSettings(current, {
+      now: input.now,
+      by: input.by,
+      note: input.note,
+    });
+    if (!elevated) {
+      throw new OutreachValidationError("Warm-up stage is already at maximum (4).");
+    }
+    const saved = await this.deps.warmupSettingsRepository.save(elevated);
+    await this.log(
+      "platform",
+      `Warm-up stage elevated to ${saved.stage} (limit ${currentWarmupLimit(saved)}).`,
+      input.now,
+      { stage: String(saved.stage) },
+    );
+    return saved;
   }
 
   async getProgress(campaignId: string): Promise<CampaignProgress> {
@@ -225,6 +312,7 @@ export class OutreachService {
         total: 0,
         sent: 0,
         queued: 0,
+        locked: 0,
         failed: 0,
         bounced: 0,
         percent: 0,
@@ -237,6 +325,14 @@ export class OutreachService {
     const campaign = await this.requireCampaign(campaignId);
     if (campaign.status !== CampaignStatus.Ready && campaign.status !== CampaignStatus.Paused) {
       throw new OutreachValidationError("Only ready or paused campaigns can start/resume running.");
+    }
+    if (
+      campaign.status === CampaignStatus.Ready &&
+      !isPreSendChecklistComplete(campaign.preSendChecklist)
+    ) {
+      throw new OutreachValidationError(
+        "Pre-send checklist must be completed before Run.",
+      );
     }
 
     const all = await this.deps.campaignRepository.list();
@@ -253,6 +349,10 @@ export class OutreachService {
       toCreateInput(campaign, {
         status: CampaignStatus.Running,
         startedAt: campaign.startedAt ?? now,
+        execution: {
+          ...campaign.execution,
+          startedAt: campaign.execution?.startedAt ?? now,
+        },
       }),
     );
     await this.deps.campaignRepository.update(updated);
@@ -284,9 +384,37 @@ export class OutreachService {
       toCreateInput(campaign, {
         status: CampaignStatus.Cancelled,
         completedAt: now,
+        execution: {
+          ...campaign.execution,
+          cancelledAt: now,
+        },
       }),
     );
     await this.deps.campaignRepository.update(updated);
+
+    if (this.deps.deliveryJobRepository) {
+      const jobs = await this.deps.deliveryJobRepository.listByCampaignId(
+        campaignIdAsString(campaign.id),
+      );
+      for (const job of jobs) {
+        if (
+          job.status !== DeliveryJobStatus.Pending &&
+          job.status !== DeliveryJobStatus.Locked
+        ) {
+          continue;
+        }
+        await this.deps.deliveryJobRepository.update(
+          createDeliveryJob({
+            ...job,
+            status: DeliveryJobStatus.Cancelled,
+            lockedAt: undefined,
+            lockedBy: undefined,
+            updatedAt: now,
+          }),
+        );
+      }
+    }
+
     await this.log(campaignIdAsString(updated.id), "Campaign cancelled.", now);
     return updated;
   }
@@ -436,7 +564,88 @@ export class OutreachService {
       { to, messageId: result.messageId },
     );
 
+    await this.deps.campaignRepository.update(
+      createCampaign(
+        toCreateInput(campaign, {
+          execution: {
+            ...campaign.execution,
+            lastTestMailAt: input.now,
+          },
+          preSendChecklist: mergePreSendChecklist(campaign.preSendChecklist, {
+            testMailSent: true,
+          }),
+        }),
+      ),
+    );
+
     return { messageId: result.messageId, rendered };
+  }
+
+  async updatePreSendChecklist(input: {
+    campaignId: string;
+    patch: Partial<CampaignPreSendChecklist>;
+    now: string;
+  }): Promise<Campaign> {
+    const campaign = await this.requireCampaign(input.campaignId);
+    const preSendChecklist = mergePreSendChecklist(campaign.preSendChecklist, input.patch);
+    const updated = createCampaign(toCreateInput(campaign, { preSendChecklist }));
+    await this.deps.campaignRepository.update(updated);
+    await this.log(
+      campaignIdAsString(updated.id),
+      "Pre-send checklist updated.",
+      input.now,
+    );
+    return updated;
+  }
+
+  async updateLearnings(input: {
+    campaignId: string;
+    notes: string;
+    now: string;
+    updatedBy?: string;
+  }): Promise<Campaign> {
+    const campaign = await this.requireCampaign(input.campaignId);
+    if (
+      campaign.status !== CampaignStatus.Completed &&
+      campaign.status !== CampaignStatus.Cancelled &&
+      campaign.status !== CampaignStatus.Failed
+    ) {
+      throw new OutreachValidationError(
+        "Learnings can only be saved on completed/cancelled/failed campaigns.",
+      );
+    }
+    const learnings: CampaignLearnings = {
+      notes: input.notes,
+      updatedAt: input.now,
+      ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+    };
+    const updated = createCampaign(toCreateInput(campaign, { learnings }));
+    await this.deps.campaignRepository.update(updated);
+    await this.log(campaignIdAsString(updated.id), "Campaign learnings saved.", input.now);
+    return updated;
+  }
+
+  async listCampaignLearnings(): Promise<
+    readonly Readonly<{
+      campaignId: string;
+      name: string;
+      notes: string;
+      updatedAt?: string;
+    }>[]
+  > {
+    const campaigns = await this.deps.campaignRepository.list();
+    return Object.freeze(
+      campaigns
+        .filter((c) => Boolean(c.learnings?.notes?.trim()))
+        .map((c) =>
+          Object.freeze({
+            campaignId: campaignIdAsString(c.id),
+            name: c.name,
+            notes: c.learnings!.notes,
+            ...(c.learnings?.updatedAt ? { updatedAt: c.learnings.updatedAt } : {}),
+          }),
+        ),
+    );
   }
 
   /**
@@ -475,6 +684,11 @@ export class OutreachService {
       counts[row.status] = (counts[row.status] ?? 0) + 1;
     }
     return Object.freeze(counts);
+  }
+
+  async listCampaignLogs(campaignId: string): Promise<readonly CampaignLog[]> {
+    const rows = await this.deps.logRepository.listByCampaignId(campaignId.trim());
+    return Object.freeze([...rows].sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)));
   }
 
   private async renderCampaignMail(

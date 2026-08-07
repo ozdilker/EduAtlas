@@ -7,6 +7,9 @@ import {
 import { AdminOutreachPage } from "@eduatlas/ui";
 import {
   approveOutreachCampaignAction,
+  cancelOutreachCampaignAction,
+  elevateOutreachWarmupStageAction,
+  expandOutreachWarmupAction,
   pauseOutreachCampaignAction,
   prepareOutreachCampaignAction,
   resumeOutreachCampaignAction,
@@ -14,6 +17,8 @@ import {
   saveOutreachCampaignAction,
   sendOutreachTestEmailAction,
   tickOutreachDeliveryAction,
+  updateOutreachLearningsAction,
+  updateOutreachPreSendChecklistAction,
 } from "@/server/admin/outreach-actions";
 import { getAdminOutreachPageData } from "@/server/admin/get-admin-outreach";
 import { getCurrentUser } from "@/server/auth/current-session";
@@ -59,6 +64,9 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         id: c.id,
         name: c.name,
         status: c.status,
+        recipientCount: c.recipientCount,
+        listBucket: c.listBucket,
+        listBucketLabel: c.listBucketLabel,
       }))}
       templates={data.templates}
       segments={data.segments}
@@ -69,6 +77,16 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       defaultTestEmail={user?.email ?? ""}
       progress={data.progress}
       recipients={data.recipients}
+      segmentPreview={data.segmentPreview}
+      summary={data.summary}
+      warmup={data.warmup}
+      preSendChecklist={data.preSendChecklist}
+      preSendComplete={data.preSendComplete}
+      recipientChecklist={data.recipientChecklist}
+      postSummary={data.postSummary}
+      learnings={data.learnings}
+      growthLearnings={data.growthLearnings}
+      logs={data.logs}
       notice={data.notice}
       error={data.error}
       saveAction={saveOutreachCampaignAction}
@@ -79,6 +97,11 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       pauseAction={pauseOutreachCampaignAction}
       resumeAction={resumeOutreachCampaignAction}
       tickAction={tickOutreachDeliveryAction}
+      expandWarmupAction={expandOutreachWarmupAction}
+      elevateWarmupAction={elevateOutreachWarmupStageAction}
+      cancelAction={cancelOutreachCampaignAction}
+      checklistAction={updateOutreachPreSendChecklistAction}
+      learningsAction={updateOutreachLearningsAction}
     />
   );
 }

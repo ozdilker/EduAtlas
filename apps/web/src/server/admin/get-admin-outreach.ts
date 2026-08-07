@@ -1,5 +1,27 @@
-import { campaignIdAsString } from "@eduatlas/domain";
+import {
+  CLAIM_INVITATION_TEMPLATE_ID,
+  buildRecipientChecklist,
+  computeCampaignQualityScore,
+  currentWarmupLimit,
+  estimateDeliveryEtaMinutes,
+  loadOutreachDeliveryConfig,
+  previewSegmentInstitutions,
+  remainingDeliveryJobs,
+  resolveCampaignListBucket,
+  campaignListBucketLabel,
+  type CampaignQualityScore,
+  type SegmentInstitutionPreview,
+} from "@eduatlas/application";
+import {
+  campaignIdAsString,
+  emptyPreSendChecklist,
+  isPreSendChecklistComplete,
+  type CampaignLearnings,
+  type CampaignPostSummary,
+  type CampaignPreSendChecklist,
+} from "@eduatlas/domain";
 import { getSeoSiteConfig } from "@/lib/seo-site";
+import { getInstitutionRepository } from "@/server/institutions/repository";
 import { getOutreachService, getOutreachStores } from "@/server/outreach/store";
 
 export type AdminOutreachCampaignRow = Readonly<{
@@ -11,6 +33,9 @@ export type AdminOutreachCampaignRow = Readonly<{
   subjectOverride: string;
   preheader: string;
   description: string;
+  recipientCount: number;
+  listBucket: string;
+  listBucketLabel: string;
 }>;
 
 export type AdminOutreachOption = Readonly<{
@@ -22,6 +47,7 @@ export type AdminOutreachProgress = Readonly<{
   total: number;
   sent: number;
   queued: number;
+  locked: number;
   failed: number;
   bounced: number;
   percent: number;
@@ -32,6 +58,45 @@ export type AdminOutreachRecipientRow = Readonly<{
   institutionId: string;
   email: string;
   status: string;
+}>;
+
+export type AdminOutreachLogRow = Readonly<{
+  id: string;
+  level: string;
+  message: string;
+  at: string;
+}>;
+
+export type AdminOutreachSummary = Readonly<{
+  segmentMatchCount: number;
+  preparedRecipientCount: number;
+  warmupBatchSize: number;
+  warmupStage: number;
+  warmupLimit: number;
+  remaining: number;
+  etaMinutes: number;
+  ratePerMinute: number;
+  qualityScore: CampaignQualityScore;
+}>;
+
+export type AdminOutreachWarmupView = Readonly<{
+  stage: number;
+  limit: number;
+  canElevate: boolean;
+}>;
+
+export type AdminOutreachLearningRow = Readonly<{
+  campaignId: string;
+  name: string;
+  notes: string;
+  updatedAt?: string;
+}>;
+
+export type AdminOutreachRecipientCheckItem = Readonly<{
+  id: string;
+  label: string;
+  ok: boolean;
+  detail?: string;
 }>;
 
 export type AdminOutreachPageData = Readonly<{
@@ -45,6 +110,16 @@ export type AdminOutreachPageData = Readonly<{
   defaultCtaHref: string;
   progress: AdminOutreachProgress | null;
   recipients: readonly AdminOutreachRecipientRow[];
+  segmentPreview: readonly SegmentInstitutionPreview[];
+  summary: AdminOutreachSummary | null;
+  warmup: AdminOutreachWarmupView;
+  preSendChecklist: CampaignPreSendChecklist;
+  preSendComplete: boolean;
+  recipientChecklist: readonly AdminOutreachRecipientCheckItem[];
+  postSummary: CampaignPostSummary | null;
+  learnings: CampaignLearnings | null;
+  growthLearnings: readonly AdminOutreachLearningRow[];
+  logs: readonly AdminOutreachLogRow[];
   notice?: string;
   error?: string;
 }>;
@@ -57,7 +132,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 }
 
 /**
- * Loads campaign builder + delivery view data.
+ * Loads Growth Center campaign builder + delivery view data.
  */
 export async function getAdminOutreachPageData(searchParams: {
   id?: string | string[];
@@ -66,8 +141,17 @@ export async function getAdminOutreachPageData(searchParams: {
 }): Promise<AdminOutreachPageData> {
   const stores = await getOutreachStores();
   const service = await getOutreachService();
+  const institutionRepository = await getInstitutionRepository();
   const site = getSeoSiteConfig();
   const ctaHref = `${site.siteUrl.replace(/\/+$/, "")}/login`;
+  const deliveryConfig = loadOutreachDeliveryConfig();
+  const warmupSettings = await service.getWarmupSettings();
+  const warmupLimit = currentWarmupLimit(warmupSettings);
+  const warmup: AdminOutreachWarmupView = {
+    stage: warmupSettings.stage,
+    limit: warmupLimit,
+    canElevate: warmupSettings.stage < 4,
+  };
 
   const [campaigns, templates, segments] = await Promise.all([
     stores.campaignRepository.list(),
@@ -75,11 +159,23 @@ export async function getAdminOutreachPageData(searchParams: {
     stores.segmentRepository.list(),
   ]);
 
+  const templateById = new Map(templates.map((t) => [t.id, t] as const));
   const templateSubjectById = new Map(templates.map((t) => [t.id, t.subject] as const));
   const templatePreviewById = new Map(templates.map((t) => [t.id, t.preview] as const));
 
+  const recipientCounts = await Promise.all(
+    campaigns.map(async (c) => {
+      const id = campaignIdAsString(c.id);
+      const rows = await stores.recipientRepository.listByCampaignId(id);
+      return [id, rows.length] as const;
+    }),
+  );
+  const recipientCountById = new Map(recipientCounts);
+
   const rows: AdminOutreachCampaignRow[] = campaigns.map((c) => {
     const id = campaignIdAsString(c.id);
+    const recipientCount = recipientCountById.get(id) ?? 0;
+    const listBucket = resolveCampaignListBucket(c.status, recipientCount);
     return {
       id,
       name: c.name,
@@ -90,6 +186,9 @@ export async function getAdminOutreachPageData(searchParams: {
         c.subjectOverride?.trim() || templateSubjectById.get(c.templateId) || "",
       preheader: c.preheader?.trim() || templatePreviewById.get(c.templateId) || "",
       description: c.description ?? "",
+      recipientCount,
+      listBucket,
+      listBucketLabel: campaignListBucketLabel(listBucket),
     };
   });
 
@@ -102,8 +201,42 @@ export async function getAdminOutreachPageData(searchParams: {
   let previewSubject = "";
   let progress: AdminOutreachProgress | null = null;
   let recipients: AdminOutreachRecipientRow[] = [];
+  let segmentPreview: SegmentInstitutionPreview[] = [];
+  let summary: AdminOutreachSummary | null = null;
+  let logs: AdminOutreachLogRow[] = [];
+  let preSendChecklist = emptyPreSendChecklist();
+  let preSendComplete = false;
+  let recipientChecklist: AdminOutreachRecipientCheckItem[] = [];
+  let postSummary: CampaignPostSummary | null = null;
+  let learnings: CampaignLearnings | null = null;
+
+  const growthLearnings = (await service.listCampaignLearnings()).map((row) => ({
+    campaignId: row.campaignId,
+    name: row.name,
+    notes: row.notes,
+    ...(row.updatedAt ? { updatedAt: row.updatedAt } : {}),
+  }));
 
   if (selected) {
+    const selectedDomain = campaigns.find(
+      (c) => campaignIdAsString(c.id) === selected.id,
+    );
+    preSendChecklist = selectedDomain?.preSendChecklist ?? emptyPreSendChecklist();
+    preSendComplete = isPreSendChecklistComplete(preSendChecklist);
+    postSummary = selectedDomain?.postSummary ?? null;
+    learnings = selectedDomain?.learnings ?? null;
+    const template = templateById.get(selected.templateId);
+    const subject = selected.subjectOverride;
+    const preheader = selected.preheader;
+    const bodyLines = template?.bodyLines ?? [];
+    const qualityScore = computeCampaignQualityScore({
+      subject,
+      preheader,
+      bodyLines,
+      hasCta: template?.id === CLAIM_INVITATION_TEMPLATE_ID || bodyLines.length > 0,
+      hasTemplate: Boolean(template),
+    });
+
     try {
       const preview = await service.previewCampaignMail({
         campaignId: selected.id,
@@ -116,13 +249,81 @@ export async function getAdminOutreachPageData(searchParams: {
       previewHtml = "";
       previewSubject = "";
     }
-    progress = await service.getProgress(selected.id);
+
+    const progressRaw = await service.getProgress(selected.id);
+    progress = {
+      total: progressRaw.total,
+      sent: progressRaw.sent,
+      queued: progressRaw.queued,
+      locked: progressRaw.locked,
+      failed: progressRaw.failed,
+      bounced: progressRaw.bounced,
+      percent: progressRaw.percent,
+    };
+    const remaining = remainingDeliveryJobs(progressRaw);
+    const etaMinutes = estimateDeliveryEtaMinutes(
+      remaining,
+      deliveryConfig.ratePerMinute,
+    );
+
     const recipientRows = await stores.recipientRepository.listByCampaignId(selected.id);
     recipients = recipientRows.map((r) => ({
       id: r.id,
       institutionId: r.institutionId,
       email: r.email,
       status: r.status,
+    }));
+    const check = buildRecipientChecklist({
+      recipients: recipientRows,
+      warmupLimit,
+    });
+    recipientChecklist = check.items.map((item) => ({
+      id: item.id,
+      label: item.label,
+      ok: item.ok,
+      ...(item.detail ? { detail: item.detail } : {}),
+    }));
+
+    try {
+      const segPreview = await previewSegmentInstitutions(
+        { segmentId: selected.segmentId, limit: 25 },
+        {
+          segmentRepository: stores.segmentRepository,
+          institutionRepository,
+        },
+      );
+      segmentPreview = [...segPreview.items];
+      summary = {
+        segmentMatchCount: segPreview.matchCount,
+        preparedRecipientCount: selected.recipientCount,
+        warmupBatchSize: warmupLimit,
+        warmupStage: warmupSettings.stage,
+        warmupLimit,
+        remaining,
+        etaMinutes,
+        ratePerMinute: deliveryConfig.ratePerMinute,
+        qualityScore,
+      };
+    } catch {
+      summary = {
+        segmentMatchCount: 0,
+        preparedRecipientCount: selected.recipientCount,
+        warmupBatchSize: warmupLimit,
+        warmupStage: warmupSettings.stage,
+        warmupLimit,
+        remaining,
+        etaMinutes,
+        ratePerMinute: deliveryConfig.ratePerMinute,
+        qualityScore,
+      };
+    }
+
+    const logRows = await service.listCampaignLogs(selected.id);
+    logs = logRows.slice(0, 40).map((log) => ({
+      id: log.id,
+      level: log.level,
+      message: log.message,
+      at: log.at,
     }));
   }
 
@@ -141,6 +342,16 @@ export async function getAdminOutreachPageData(searchParams: {
     defaultCtaHref: ctaHref,
     progress,
     recipients: Object.freeze(recipients),
+    segmentPreview: Object.freeze(segmentPreview),
+    summary,
+    warmup,
+    preSendChecklist,
+    preSendComplete,
+    recipientChecklist: Object.freeze(recipientChecklist),
+    postSummary,
+    learnings,
+    growthLearnings: Object.freeze(growthLearnings),
+    logs: Object.freeze(logs),
     notice: firstParam(searchParams.notice)?.trim() || undefined,
     error: firstParam(searchParams.error)?.trim() || undefined,
   });

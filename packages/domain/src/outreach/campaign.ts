@@ -5,6 +5,14 @@ import {
 } from "./campaign-channel";
 import { campaignIdAsString, createCampaignId, type CampaignId } from "./campaign-id";
 import {
+  type CampaignExecution,
+  type CampaignLearnings,
+  type CampaignPostSummary,
+  type CampaignPreSendChecklist,
+  emptyPreSendChecklist,
+  mergePreSendChecklist,
+} from "./campaign-kit";
+import {
   CampaignStatus,
   parseCampaignStatus,
   type CampaignStatus as CampaignStatusType,
@@ -26,6 +34,10 @@ export type Campaign = Readonly<{
   readonly createdBy: string;
   readonly startedAt?: string;
   readonly completedAt?: string;
+  readonly preSendChecklist?: CampaignPreSendChecklist;
+  readonly execution?: CampaignExecution;
+  readonly postSummary?: CampaignPostSummary;
+  readonly learnings?: CampaignLearnings;
 }>;
 
 export type CreateCampaignInput = {
@@ -42,6 +54,10 @@ export type CreateCampaignInput = {
   createdBy: string;
   startedAt?: string;
   completedAt?: string;
+  preSendChecklist?: CampaignPreSendChecklist;
+  execution?: CampaignExecution;
+  postSummary?: CampaignPostSummary;
+  learnings?: CampaignLearnings;
 };
 
 /**
@@ -72,6 +88,13 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
   if (input.startedAt) assertIso(input.startedAt, "startedAt");
   if (input.completedAt) assertIso(input.completedAt, "completedAt");
 
+  const preSendChecklist = input.preSendChecklist
+    ? mergePreSendChecklist(emptyPreSendChecklist(), input.preSendChecklist)
+    : undefined;
+  const execution = normalizeExecution(input.execution);
+  const postSummary = normalizePostSummary(input.postSummary);
+  const learnings = normalizeLearnings(input.learnings);
+
   return Object.freeze({
     id: createCampaignId(input.id),
     name,
@@ -86,11 +109,68 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
     createdBy,
     ...(input.startedAt ? { startedAt: input.startedAt } : {}),
     ...(input.completedAt ? { completedAt: input.completedAt } : {}),
+    ...(preSendChecklist ? { preSendChecklist } : {}),
+    ...(execution ? { execution } : {}),
+    ...(postSummary ? { postSummary } : {}),
+    ...(learnings ? { learnings } : {}),
   });
 }
 
 export function campaignKey(campaign: Campaign): string {
   return campaignIdAsString(campaign.id);
+}
+
+function normalizeExecution(
+  execution: CampaignExecution | undefined,
+): CampaignExecution | undefined {
+  if (!execution) return undefined;
+  const preparedAt = execution.preparedAt?.trim();
+  const approvedAt = execution.approvedAt?.trim();
+  const startedAt = execution.startedAt?.trim();
+  const completedAt = execution.completedAt?.trim();
+  const cancelledAt = execution.cancelledAt?.trim();
+  const lastTestMailAt = execution.lastTestMailAt?.trim();
+  const next: CampaignExecution = Object.freeze({
+    ...(preparedAt ? { preparedAt } : {}),
+    ...(approvedAt ? { approvedAt } : {}),
+    ...(startedAt ? { startedAt } : {}),
+    ...(completedAt ? { completedAt } : {}),
+    ...(cancelledAt ? { cancelledAt } : {}),
+    ...(lastTestMailAt ? { lastTestMailAt } : {}),
+  });
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function normalizePostSummary(
+  summary: CampaignPostSummary | undefined,
+): CampaignPostSummary | undefined {
+  if (!summary) return undefined;
+  return Object.freeze({
+    recipientCount: Math.max(0, summary.recipientCount),
+    sent: Math.max(0, summary.sent),
+    failed: Math.max(0, summary.failed),
+    bounced: Math.max(0, summary.bounced),
+    claimed: Math.max(0, summary.claimed),
+    premium: Math.max(0, summary.premium),
+    ...(typeof summary.durationMs === "number" && summary.durationMs >= 0
+      ? { durationMs: summary.durationMs }
+      : {}),
+  });
+}
+
+function normalizeLearnings(
+  learnings: CampaignLearnings | undefined,
+): CampaignLearnings | undefined {
+  if (!learnings) return undefined;
+  const notes = learnings.notes.trim();
+  if (!notes) return undefined;
+  const updatedAt = learnings.updatedAt?.trim();
+  const updatedBy = learnings.updatedBy?.trim();
+  return Object.freeze({
+    notes,
+    ...(updatedAt ? { updatedAt } : {}),
+    ...(updatedBy ? { updatedBy } : {}),
+  });
 }
 
 function assertIso(value: string, field: string): void {

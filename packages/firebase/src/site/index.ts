@@ -14,6 +14,11 @@ export {
   ORGANIZATION_CONTACT_DOC_ID,
 } from "./firestore-organization-contact-repository";
 export {
+  createFirestoreOutreachWarmupSettingsRepository,
+  FirestoreOutreachWarmupSettingsRepository,
+  OUTREACH_WARMUP_DOC_ID,
+} from "./firestore-outreach-warmup-repository";
+export {
   createLocalFilesystemHomepageVisualsRepository,
   LocalFilesystemHomepageVisualsRepository,
 } from "./local-filesystem-homepage-visuals-repository";

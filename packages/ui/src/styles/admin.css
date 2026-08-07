@@ -1243,15 +1243,15 @@
 }
 
 .ea-admin-outreach__test {
-  margin-top: var(--ea-space-5);
-  padding-top: var(--ea-space-4);
-  border-top: 1px solid color-mix(in srgb, var(--ea-color-border) 70%, transparent);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 
 .ea-admin-outreach__delivery {
-  margin-top: var(--ea-space-5);
-  padding-top: var(--ea-space-4);
-  border-top: 1px solid color-mix(in srgb, var(--ea-color-border) 70%, transparent);
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
   display: flex;
   flex-direction: column;
   gap: var(--ea-space-3);
@@ -1280,6 +1280,194 @@
   border: 1px solid var(--ea-color-border);
   border-radius: var(--ea-radius-sm);
   background: #fff;
+}
+
+.ea-admin-outreach__iframe--compact {
+  min-height: 16rem;
+}
+
+.ea-growth-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: var(--ea-space-3);
+}
+
+.ea-growth-filters__btn {
+  border: 1px solid var(--ea-color-border);
+  background: transparent;
+  border-radius: var(--ea-radius-sm);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.ea-growth-filters__btn--active {
+  border-color: color-mix(in srgb, var(--ea-color-primary-600) 50%, var(--ea-color-border));
+  background: color-mix(in srgb, var(--ea-color-primary-600) 12%, transparent);
+}
+
+.ea-growth-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0 0 var(--ea-space-4);
+  padding: 0;
+  list-style: none;
+}
+
+.ea-growth-steps__btn {
+  border: 1px solid var(--ea-color-border);
+  background: transparent;
+  border-radius: var(--ea-radius-sm);
+  padding: 0.3rem 0.45rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+.ea-growth-steps__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ea-growth-steps__btn--active {
+  border-color: color-mix(in srgb, var(--ea-color-primary-600) 50%, var(--ea-color-border));
+  background: color-mix(in srgb, var(--ea-color-primary-600) 12%, transparent);
+  font-weight: 600;
+}
+
+.ea-growth-step-panel {
+  min-height: 12rem;
+}
+
+.ea-growth-step-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: var(--ea-space-4);
+}
+
+.ea-growth-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-4);
+}
+
+.ea-growth-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-2);
+}
+
+.ea-growth-summary {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ea-growth-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.ea-growth-quality {
+  font-size: 0.85rem;
+}
+
+.ea-growth-audit {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 18rem;
+  overflow: auto;
+  font-size: 0.85rem;
+}
+
+.ea-growth-audit__meta {
+  display: block;
+  color: color-mix(in srgb, var(--ea-color-text) 55%, transparent);
+  font-size: 0.75rem;
+}
+
+.ea-growth-progress__track {
+  height: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ea-color-border) 80%, transparent);
+  overflow: hidden;
+}
+
+.ea-growth-progress__fill {
+  height: 100%;
+  background: var(--ea-color-primary-600);
+}
+
+.ea-growth-progress__label {
+  margin: 0.35rem 0 0;
+}
+
+.ea-growth-kit-block {
+  margin-top: 1.25rem;
+}
+
+.ea-growth-checklist {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.ea-growth-checklist li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.ea-growth-checklist__item--ok {
+  color: var(--ea-admin-success, #1b6b3a);
+}
+
+.ea-growth-checklist__item--bad {
+  color: var(--ea-admin-danger, #9b2c2c);
+}
+
+.ea-growth-checklist-form,
+.ea-growth-learnings-form {
+  display: grid;
+  gap: 0.65rem;
+  max-width: 28rem;
+}
+
+.ea-growth-check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.ea-growth-learning-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.ea-growth-learnings-notes {
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.ea-growth-inline-form {
+  margin: 0.35rem 0 0.75rem;
 }
 
 @media (max-width: 1100px) {

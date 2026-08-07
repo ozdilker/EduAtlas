@@ -5,16 +5,19 @@ import {
   createInMemoryDeliverySendBudget,
   createInMemoryOutreachQueue,
   createInMemoryOutreachStores,
+  createInMemoryOutreachWarmupSettingsRepository,
   createOutreachService,
   ensureOutreachSeeds,
   loadOutreachDeliveryConfig,
   resolveMailLogoUrl,
+  type CampaignLogRepository,
   type CampaignRepository,
   type CampaignRecipientRepository,
   type CampaignSegmentRepository,
   type CampaignTemplateRepository,
   type DeliveryWorker,
   type OutreachService,
+  type OutreachWarmupSettingsRepository,
 } from "@eduatlas/application";
 import {
   getFirebaseServerEnv,
@@ -22,7 +25,11 @@ import {
   shouldUseFirebaseEmulators,
 } from "@eduatlas/config";
 import { createInstitutionId } from "@eduatlas/domain";
-import { createFirestoreOutreachRepositories, getAdminFirestore } from "@eduatlas/firebase/server";
+import {
+  createFirestoreOutreachRepositories,
+  createFirestoreOutreachWarmupSettingsRepository,
+  getAdminFirestore,
+} from "@eduatlas/firebase/server";
 import { getSeoSiteConfig } from "@/lib/seo-site";
 import { getEmailService } from "@/server/notifications/repository";
 import { getInstitutionRepository } from "@/server/institutions/repository";
@@ -32,6 +39,7 @@ type OutreachStores = Readonly<{
   recipientRepository: CampaignRecipientRepository;
   templateRepository: CampaignTemplateRepository;
   segmentRepository: CampaignSegmentRepository;
+  logRepository: CampaignLogRepository;
 }>;
 
 type OutreachRuntime = Readonly<{
@@ -39,6 +47,7 @@ type OutreachRuntime = Readonly<{
   worker: DeliveryWorker;
   seeded: Promise<void>;
   getStores: () => Promise<OutreachStores>;
+  warmupSettingsRepository: OutreachWarmupSettingsRepository;
 }>;
 
 declare global {
@@ -65,6 +74,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
   if (canUseFirestoreBackend()) {
     const db = getAdminFirestore();
     const repos = createFirestoreOutreachRepositories(db);
+    const warmupSettingsRepository = createFirestoreOutreachWarmupSettingsRepository(db);
     const emailService = await getEmailService();
     const service = createOutreachService({
       campaignRepository: repos.campaignRepository,
@@ -77,6 +87,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
       institutionRepository,
       deliveryConfig: config,
       mailLogoUrl,
+      warmupSettingsRepository,
     });
     const worker = createDeliveryWorker({
       config,
@@ -102,16 +113,19 @@ async function buildRuntime(): Promise<OutreachRuntime> {
     const seeded = ensureOutreachSeeds({
       templateRepository: repos.templateRepository,
       segmentRepository: repos.segmentRepository,
+      campaignRepository: repos.campaignRepository,
     });
     return {
       service,
       worker,
       seeded,
+      warmupSettingsRepository,
       getStores: async () => ({
         campaignRepository: repos.campaignRepository,
         recipientRepository: repos.recipientRepository,
         templateRepository: repos.templateRepository,
         segmentRepository: repos.segmentRepository,
+        logRepository: repos.logRepository,
       }),
     };
   }
@@ -119,6 +133,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
   const stores = createInMemoryOutreachStores();
   const jobs = createInMemoryDeliveryJobRepository();
   const budget = createInMemoryDeliverySendBudget();
+  const warmupSettingsRepository = createInMemoryOutreachWarmupSettingsRepository();
   const emailService = await getEmailService();
   const service = createOutreachService({
     ...stores,
@@ -127,6 +142,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
     institutionRepository,
     deliveryConfig: config,
     mailLogoUrl,
+    warmupSettingsRepository,
   });
   const worker = createDeliveryWorker({
     config,
@@ -150,11 +166,13 @@ async function buildRuntime(): Promise<OutreachRuntime> {
   const seeded = ensureOutreachSeeds({
     templateRepository: stores.templateRepository,
     segmentRepository: stores.segmentRepository,
+    campaignRepository: stores.campaignRepository,
   });
   return {
     service,
     worker,
     seeded,
+    warmupSettingsRepository,
     getStores: async () => stores,
   };
 }

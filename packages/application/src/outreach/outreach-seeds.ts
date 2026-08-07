@@ -1,12 +1,17 @@
 import {
+  createCampaign,
   createCampaignSegment,
   createCampaignTemplate,
+  CampaignStatus,
+  emptyPreSendChecklist,
 } from "@eduatlas/domain";
+import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
 import type { CampaignTemplateRepository } from "./campaign-template-repository";
 
 export const CLAIM_INVITATION_TEMPLATE_ID = "tpl_claim_invitation";
 export const ISTANBUL_UNCLAIMED_SEGMENT_ID = "seg_istanbul_unclaimed_email";
+export const SEED_CLAIM_INVITATION_CAMPAIGN_ID = "camp_seed_claim_invitation_istanbul";
 
 /** Catalog city id for İstanbul (geo slug, not legacy tr-34 / city_istanbul). */
 export const ISTANBUL_CITY_ID = "istanbul";
@@ -17,11 +22,12 @@ export const CLAIM_INVITATION_DEFAULT_PREHEADER =
   "Velilerden gelen talepleri kaçırmayın — kurumunuzu ücretsiz sahiplenin.";
 
 /**
- * Ensures seed template + segment exist (idempotent).
+ * Ensures seed template + segment + draft first-campaign kit exist (idempotent).
  */
 export async function ensureOutreachSeeds(deps: {
   templateRepository: CampaignTemplateRepository;
   segmentRepository: CampaignSegmentRepository;
+  campaignRepository?: CampaignRepository;
   now?: string;
 }): Promise<void> {
   const now = deps.now ?? new Date().toISOString();
@@ -60,5 +66,29 @@ export async function ensureOutreachSeeds(deps: {
         updatedAt: now,
       }),
     );
+  }
+
+  if (deps.campaignRepository) {
+    const existingCampaign = await deps.campaignRepository.getById(
+      SEED_CLAIM_INVITATION_CAMPAIGN_ID,
+    );
+    if (!existingCampaign) {
+      await deps.campaignRepository.save(
+        createCampaign({
+          id: SEED_CLAIM_INVITATION_CAMPAIGN_ID,
+          name: "İlk kampanya — İstanbul Claim Invitation",
+          description:
+            "Growth Center First Campaign Kit seed (draft). Prepare → checklist → Approve → Run.",
+          status: CampaignStatus.Draft,
+          templateId: CLAIM_INVITATION_TEMPLATE_ID,
+          segmentId: ISTANBUL_UNCLAIMED_SEGMENT_ID,
+          subjectOverride: CLAIM_INVITATION_DEFAULT_SUBJECT,
+          preheader: CLAIM_INVITATION_DEFAULT_PREHEADER,
+          createdAt: now,
+          createdBy: "system_seed",
+          preSendChecklist: emptyPreSendChecklist(),
+        }),
+      );
+    }
   }
 }

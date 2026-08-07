@@ -233,3 +233,80 @@ export async function tickOutreachDeliveryAction(formData: FormData): Promise<vo
     outreachRedirect({ id: campaignId || undefined, error: message });
   }
 }
+
+export async function expandOutreachWarmupAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    const result = await service.expandWarmup(campaignId, now);
+    return {
+      id: campaignId,
+      notice: `Expand: +${result.recipientCount} (toplam ${result.totalRecipients}/${result.targetLimit}).`,
+    };
+  });
+}
+
+export async function elevateOutreachWarmupStageAction(formData: FormData): Promise<void> {
+  const session = await requireAdminSession();
+  const service = await getOutreachService();
+  const campaignId = formString(formData, "campaignId");
+  const now = new Date().toISOString();
+  try {
+    const settings = await service.elevateWarmupStage({
+      now,
+      by: session.user.uid,
+      note: "Admin Stage Yükselt",
+    });
+    outreachRedirect({
+      id: campaignId || undefined,
+      notice: `Warm-up stage ${settings.stage} (limit ${settings.limits[settings.stage]}).`,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Stage yükseltilemedi.";
+    outreachRedirect({ id: campaignId || undefined, error: message });
+  }
+}
+
+export async function cancelOutreachCampaignAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.cancel(campaignId, now);
+    return { id: campaignId, notice: "Kampanya iptal edildi." };
+  });
+}
+
+export async function updateOutreachPreSendChecklistAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.updatePreSendChecklist({
+      campaignId,
+      now,
+      patch: {
+        subjectOk: formString(formData, "subjectOk") === "on",
+        ctaOk: formString(formData, "ctaOk") === "on",
+        testMailSent: formString(formData, "testMailSent") === "on",
+        recipientsReviewed: formString(formData, "recipientsReviewed") === "on",
+        warmupOk: formString(formData, "warmupOk") === "on",
+        sendApproved: formString(formData, "sendApproved") === "on",
+      },
+    });
+    return { id: campaignId, notice: "Pre-send checklist kaydedildi." };
+  });
+}
+
+export async function updateOutreachLearningsAction(formData: FormData): Promise<void> {
+  const session = await requireAdminSession();
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    await service.updateLearnings({
+      campaignId,
+      notes: formString(formData, "notes"),
+      now,
+      updatedBy: session.user.uid,
+    });
+    return { id: campaignId, notice: "Learning notu kaydedildi." };
+  });
+}

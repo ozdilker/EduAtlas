@@ -11,6 +11,7 @@ import {
   type CreateCampaignInput,
   type DeliveryJob,
 } from "@eduatlas/domain";
+import { buildCampaignPostSummary } from "../outreach/campaign-kit-helpers";
 import type { CampaignRecipientRepository } from "../outreach/campaign-recipient-repository";
 import type { CampaignRepository } from "../outreach/campaign-repository";
 import type { OutreachDeliveryConfig } from "./delivery-config";
@@ -50,6 +51,10 @@ function toCreateInput(
     createdBy: campaign.createdBy,
     startedAt: campaign.startedAt,
     completedAt: campaign.completedAt,
+    preSendChecklist: campaign.preSendChecklist,
+    execution: campaign.execution,
+    postSummary: campaign.postSummary,
+    learnings: campaign.learnings,
     ...overrides,
   };
 }
@@ -259,11 +264,25 @@ export class ProcessLocalDeliveryWorker implements DeliveryWorker {
     const campaign = await this.deps.campaignRepository.getById(campaignId);
     if (!campaign || campaign.status !== CampaignStatus.Running) return;
 
+    const recipients = await this.deps.recipientRepository.listByCampaignId(campaignId);
+    const postSummary = buildCampaignPostSummary({
+      campaign,
+      jobs,
+      recipients,
+      completedAt: now,
+    });
+
     await this.deps.campaignRepository.update(
       createCampaign(
         toCreateInput(campaign, {
           status: CampaignStatus.Completed,
           completedAt: now,
+          postSummary,
+          execution: {
+            ...campaign.execution,
+            completedAt: now,
+            startedAt: campaign.execution?.startedAt ?? campaign.startedAt,
+          },
         }),
       ),
     );

@@ -497,11 +497,18 @@ export {
   type CampaignSegment,
   type CampaignSegmentFilters,
   type CampaignTemplate,
+  type CampaignExecution,
+  type CampaignLearnings,
+  type CampaignPostSummary,
+  type CampaignPreSendChecklist,
   type CreateCampaignInput,
   type CreateCampaignLogInput,
   type CreateCampaignRecipientInput,
   type CreateCampaignSegmentInput,
   type CreateCampaignTemplateInput,
+  emptyPreSendChecklist,
+  isPreSendChecklistComplete,
+  mergePreSendChecklist,
 } from "./outreach";
 export {
   buildDeliveryIdempotencyKey,

@@ -134,16 +134,19 @@ export {
 export {
   createFirestoreHomepageVisualsRepository,
   createFirestoreOrganizationContactRepository,
+  createFirestoreOutreachWarmupSettingsRepository,
   createInMemoryHomepageVisualsRepository,
   createInMemoryOrganizationContactRepository,
   createLocalFilesystemHomepageVisualsRepository,
   FirestoreHomepageVisualsRepository,
   FirestoreOrganizationContactRepository,
+  FirestoreOutreachWarmupSettingsRepository,
   HOMEPAGE_VISUALS_DOC_ID,
   InMemoryHomepageVisualsRepository,
   InMemoryOrganizationContactRepository,
   LocalFilesystemHomepageVisualsRepository,
   ORGANIZATION_CONTACT_DOC_ID,
+  OUTREACH_WARMUP_DOC_ID,
   SITE_SETTINGS_COLLECTION,
 } from "../site";
 export {
