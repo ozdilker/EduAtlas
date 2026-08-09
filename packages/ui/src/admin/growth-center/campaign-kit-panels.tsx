@@ -1,6 +1,7 @@
+"use client";
+
 import { Button } from "../../components/button";
 import type {
-  GrowthLearnings,
   GrowthLearningRow,
   GrowthPostSummary,
   GrowthPreSendChecklist,
@@ -50,12 +51,14 @@ export function GrowthRecipientChecklist({
 export function GrowthPreSendChecklistForm({
   campaignId,
   checklist,
+  onChecklistChange,
   complete,
   action,
   canEdit,
 }: {
   campaignId: string;
   checklist: GrowthPreSendChecklist;
+  onChecklistChange: (next: GrowthPreSendChecklist) => void;
   complete: boolean;
   action?: (formData: FormData) => Promise<void>;
   canEdit: boolean;
@@ -75,7 +78,10 @@ export function GrowthPreSendChecklistForm({
               <input
                 type="checkbox"
                 name={key}
-                defaultChecked={checklist[key]}
+                checked={checklist[key]}
+                onChange={(event) =>
+                  onChecklistChange({ ...checklist, [key]: event.target.checked })
+                }
               />
               <span>{label}</span>
             </label>
@@ -149,12 +155,14 @@ export function GrowthPostSummaryPanel({ summary }: { summary: GrowthPostSummary
 
 export function GrowthLearningsForm({
   campaignId,
-  learnings,
+  notes,
+  onNotesChange,
   action,
   canEdit,
 }: {
   campaignId: string;
-  learnings: GrowthLearnings | null;
+  notes: string;
+  onNotesChange: (next: string) => void;
   action?: (formData: FormData) => Promise<void>;
   canEdit: boolean;
 }) {
@@ -169,7 +177,8 @@ export function GrowthLearningsForm({
             <textarea
               name="notes"
               rows={4}
-              defaultValue={learnings?.notes ?? ""}
+              value={notes}
+              onChange={(event) => onNotesChange(event.target.value)}
               placeholder="Ne işe yaradı, neyi değiştirirsin?"
             />
           </label>
@@ -177,8 +186,8 @@ export function GrowthLearningsForm({
             Learning kaydet
           </Button>
         </form>
-      ) : learnings?.notes ? (
-        <p className="ea-growth-learnings-notes">{learnings.notes}</p>
+      ) : notes ? (
+        <p className="ea-growth-learnings-notes">{notes}</p>
       ) : (
         <p className="ea-admin-muted">Henüz learning notu yok.</p>
       )}

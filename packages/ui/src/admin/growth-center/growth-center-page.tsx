@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/button";
 import { AdminShell } from "../admin-shell";
 import { buildAdminNavItems } from "../admin-nav";
@@ -20,7 +20,40 @@ import {
   inferInitialWizardStep,
   WIZARD_STEPS,
   type GrowthCenterPageProps,
+  type GrowthFormValues,
+  type GrowthPreSendChecklist,
 } from "./types";
+
+type DraftForm = {
+  name: string;
+  description: string;
+  templateId: string;
+  segmentId: string;
+  subjectOverride: string;
+  preheader: string;
+};
+
+function toDraft(form: GrowthFormValues): DraftForm {
+  return {
+    name: form.name,
+    description: form.description,
+    templateId: form.templateId,
+    segmentId: form.segmentId,
+    subjectOverride: form.subjectOverride,
+    preheader: form.preheader,
+  };
+}
+
+function checklistSyncKey(checklist: GrowthPreSendChecklist): string {
+  return [
+    checklist.subjectOk,
+    checklist.ctaOk,
+    checklist.testMailSent,
+    checklist.recipientsReviewed,
+    checklist.warmupOk,
+    checklist.sendApproved,
+  ].join("\0");
+}
 
 /**
  * EduAtlas Growth Center — campaign ops on `/admin/outreach`.
@@ -85,6 +118,31 @@ export function GrowthCenterPage({
   const [step, setStep] = useState(() =>
     inferInitialWizardStep({ isExisting, status, hasRecipients }),
   );
+  const [draft, setDraft] = useState<DraftForm>(() => toDraft(form));
+  const [testEmail, setTestEmail] = useState(defaultTestEmail);
+  const [checklistDraft, setChecklistDraft] =
+    useState<GrowthPreSendChecklist>(preSendChecklist);
+  const [learningNotes, setLearningNotes] = useState(learnings?.notes ?? "");
+  const formSyncKey = [
+    form.id,
+    form.name,
+    form.description,
+    form.templateId,
+    form.segmentId,
+    form.subjectOverride,
+    form.preheader,
+    defaultTestEmail,
+    checklistSyncKey(preSendChecklist),
+    learnings?.notes ?? "",
+  ].join("\0");
+
+  useEffect(() => {
+    setDraft(toDraft(form));
+    setTestEmail(defaultTestEmail);
+    setChecklistDraft(preSendChecklist);
+    setLearningNotes(learnings?.notes ?? "");
+    // Server snapshot only — keep local edits while switching wizard steps.
+  }, [formSyncKey]);
 
   const filteredCampaigns = useMemo(
     () => campaigns.filter((c) => campaignMatchesUiFilter(filter, c)),
@@ -205,7 +263,10 @@ export function GrowthCenterPage({
                         className="ea-admin-select"
                         name="name"
                         required
-                        defaultValue={form.name}
+                        value={draft.name}
+                        onChange={(event) =>
+                          setDraft((current) => ({ ...current, name: event.target.value }))
+                        }
                         placeholder="İstanbul claim daveti"
                       />
                     </div>
@@ -216,7 +277,13 @@ export function GrowthCenterPage({
                         className="ea-admin-select"
                         name="description"
                         rows={2}
-                        defaultValue={form.description}
+                        value={draft.description}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            description: event.target.value,
+                          }))
+                        }
                       />
                     </div>
                     <div className="ea-admin-field">
@@ -226,7 +293,13 @@ export function GrowthCenterPage({
                         className="ea-admin-select"
                         name="subjectOverride"
                         required
-                        defaultValue={form.subjectOverride}
+                        value={draft.subjectOverride}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            subjectOverride: event.target.value,
+                          }))
+                        }
                       />
                     </div>
                     <div className="ea-admin-field">
@@ -236,27 +309,39 @@ export function GrowthCenterPage({
                         className="ea-admin-select"
                         name="preheader"
                         required
-                        defaultValue={form.preheader}
+                        value={draft.preheader}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            preheader: event.target.value,
+                          }))
+                        }
                       />
                     </div>
-                    <input type="hidden" name="templateId" value={form.templateId} />
-                    <input type="hidden" name="segmentId" value={form.segmentId} />
+                    <input type="hidden" name="templateId" value={draft.templateId} />
+                    <input type="hidden" name="segmentId" value={draft.segmentId} />
                   </>
                 ) : null}
                 {step === 2 ? (
                   <>
-                    <input type="hidden" name="name" value={form.name || "Kampanya"} />
-                    <input type="hidden" name="description" value={form.description} />
-                    <input type="hidden" name="subjectOverride" value={form.subjectOverride} />
-                    <input type="hidden" name="preheader" value={form.preheader} />
-                    <input type="hidden" name="segmentId" value={form.segmentId} />
+                    <input type="hidden" name="name" value={draft.name || "Kampanya"} />
+                    <input type="hidden" name="description" value={draft.description} />
+                    <input type="hidden" name="subjectOverride" value={draft.subjectOverride} />
+                    <input type="hidden" name="preheader" value={draft.preheader} />
+                    <input type="hidden" name="segmentId" value={draft.segmentId} />
                     <div className="ea-admin-field">
                       <label htmlFor="outreach-template">Şablon</label>
                       <select
                         id="outreach-template"
                         className="ea-admin-select"
                         name="templateId"
-                        defaultValue={form.templateId}
+                        value={draft.templateId}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            templateId: event.target.value,
+                          }))
+                        }
                         required
                       >
                         {templates.map((option) => (
@@ -270,18 +355,24 @@ export function GrowthCenterPage({
                 ) : null}
                 {step === 3 ? (
                   <>
-                    <input type="hidden" name="name" value={form.name || "Kampanya"} />
-                    <input type="hidden" name="description" value={form.description} />
-                    <input type="hidden" name="subjectOverride" value={form.subjectOverride} />
-                    <input type="hidden" name="preheader" value={form.preheader} />
-                    <input type="hidden" name="templateId" value={form.templateId} />
+                    <input type="hidden" name="name" value={draft.name || "Kampanya"} />
+                    <input type="hidden" name="description" value={draft.description} />
+                    <input type="hidden" name="subjectOverride" value={draft.subjectOverride} />
+                    <input type="hidden" name="preheader" value={draft.preheader} />
+                    <input type="hidden" name="templateId" value={draft.templateId} />
                     <div className="ea-admin-field">
                       <label htmlFor="outreach-segment">Segment</label>
                       <select
                         id="outreach-segment"
                         className="ea-admin-select"
                         name="segmentId"
-                        defaultValue={form.segmentId}
+                        value={draft.segmentId}
+                        onChange={(event) =>
+                          setDraft((current) => ({
+                            ...current,
+                            segmentId: event.target.value,
+                          }))
+                        }
                         required
                       >
                         {segments.map((option) => (
@@ -369,7 +460,8 @@ export function GrowthCenterPage({
                     type="email"
                     name="to"
                     required
-                    defaultValue={defaultTestEmail}
+                    value={testEmail}
+                    onChange={(event) => setTestEmail(event.target.value)}
                     placeholder="admin@eduatlas.com.tr"
                   />
                 </div>
@@ -467,7 +559,8 @@ export function GrowthCenterPage({
                 )}
                 <GrowthPreSendChecklistForm
                   campaignId={form.id}
-                  checklist={preSendChecklist}
+                  checklist={checklistDraft}
+                  onChecklistChange={setChecklistDraft}
                   complete={preSendComplete}
                   action={checklistAction}
                   canEdit={canEditChecklist}
@@ -548,7 +641,8 @@ export function GrowthCenterPage({
                 {(canEditLearnings || learnings?.notes) && (
                   <GrowthLearningsForm
                     campaignId={form.id}
-                    learnings={learnings}
+                    notes={learningNotes}
+                    onNotesChange={setLearningNotes}
                     action={learningsAction}
                     canEdit={canEditLearnings}
                   />
