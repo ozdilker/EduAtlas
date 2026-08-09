@@ -1,5 +1,6 @@
 import { EduAtlasLogo } from "../brand/eduatlas-logo";
 import { Badge } from "../components/badge";
+import { resolveInstitutionCardImageSrc } from "../institution/institution-card-image-src";
 import { cn } from "../lib/cn";
 import type { InstitutionProfileViewData } from "./institution-profile-content";
 
@@ -12,7 +13,13 @@ export type InstitutionHeroProps = {
  * Profile hero — identity, badges, and media (actions live in the sidebar).
  */
 export function InstitutionHero({ profile, className }: InstitutionHeroProps) {
-  const coverImageUrl = profile.coverImageUrl?.trim();
+  const typeSlug = profile.typeHref.replace(/^\/categories\//, "").trim();
+  const coverImageUrl = resolveInstitutionCardImageSrc({
+    imageSrc: profile.coverImageUrl,
+    typeLabel: profile.typeLabel,
+    ...(typeSlug ? { typeSlug } : {}),
+  });
+  const hasOwnCover = Boolean(profile.coverImageUrl?.trim());
   const logoUrl = profile.logoUrl?.trim();
 
   return (
@@ -20,12 +27,8 @@ export function InstitutionHero({ profile, className }: InstitutionHeroProps) {
       className={cn("ea-profile-hero", className)}
       aria-labelledby="institution-profile-title"
     >
-      <div className="ea-profile-hero__cover" aria-hidden={coverImageUrl ? undefined : true}>
-        {coverImageUrl ? (
-          <img src={coverImageUrl} alt="" className="ea-profile-hero__cover-image" />
-        ) : (
-          <div className="ea-profile-hero__cover-placeholder" />
-        )}
+      <div className="ea-profile-hero__cover" aria-hidden={hasOwnCover ? undefined : true}>
+        <img src={coverImageUrl} alt="" className="ea-profile-hero__cover-image" />
       </div>
 
       <div className="ea-profile-hero__body">
