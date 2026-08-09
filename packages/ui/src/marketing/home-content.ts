@@ -113,7 +113,7 @@ export function getHomeStatistics(): HomeStatItem[] {
 
 export function getHomeTrustBar(): HomeStatItem[] {
   return [
-    { id: "institutions", label: "Eğitim Kurumu", value: "25.000+" },
+    { id: "institutions", label: "Eğitim Kurumu", value: "37.000+" },
     { id: "families", label: "Mutlu Öğrenci", value: "1.250.000+" },
     { id: "cities", label: "İlde Hizmet", value: "81" },
     { id: "rating", label: "Kullanıcı Puanı", value: "4,9 / 5" },
