@@ -36,17 +36,21 @@ describe("resolveRobotsPolicy", () => {
     expect(txt).not.toContain("Allow:");
   });
 
-  it("emits production allow, private disallows, and sitemap index only", () => {
+  it("emits production allow, private disallows, search disallow, and sitemap index only", () => {
     const txt = buildRobotsTxt(resolveRobotsPolicy(true), { siteUrl });
     expect(txt).toContain("Allow: /");
     expect(txt).toContain("Disallow: /admin");
     expect(txt).toContain("Disallow: /owner");
     expect(txt).toContain("Disallow: /login");
     expect(txt).toContain("Disallow: /api");
+    expect(txt).toContain("Disallow: /search");
     expect(txt).toContain("Sitemap: https://eduatlas.com.tr/sitemap.xml");
     expect(txt).not.toContain("/sitemaps/");
     expect(txt).not.toContain("Host:");
-    expect(txt).not.toContain("Disallow: /search");
+    // SEO landings stay crawlable — only application search is disallowed.
+    expect(txt).not.toContain("Disallow: /institutions");
+    expect(txt).not.toContain("Disallow: /cities");
+    expect(txt).not.toContain("Disallow: /categories");
   });
 });
 

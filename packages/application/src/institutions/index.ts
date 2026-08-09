@@ -1,4 +1,10 @@
 export {
+  ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
+  type AdminFreeTextSearchScopeInput,
+  hasAdminFreeTextSearchScope,
+  isUnscopedAdminFreeTextQuery,
+} from "./admin-free-text-search-scope";
+export {
   DuplicateInstitutionError,
   InstitutionNotFoundError,
   InstitutionProfileValidationError,
@@ -6,6 +12,20 @@ export {
   isInstitutionNotFoundError,
   isInstitutionProfileValidationError,
 } from "./errors";
+export {
+  type GetHomeFeaturedInstitutionsDependencies,
+  type GetHomeFeaturedInstitutionsInput,
+  getHomeFeaturedInstitutions,
+  HOME_FEATURED_CANDIDATE_PAGE_SIZE,
+  HOME_FEATURED_LIMIT,
+  type HomeFeaturedInstitution,
+} from "./get-home-featured-institutions";
+export type {
+  InstitutionAdminListFilters,
+  InstitutionAdminListPage,
+  InstitutionAdminListPageInput,
+  InstitutionAdminListSort,
+} from "./institution-admin-list";
 export {
   type CreateInstitutionFiltersInput,
   createInstitutionFilters,
@@ -19,6 +39,7 @@ export {
 } from "./institution-page";
 export type {
   InstitutionListOptions,
+  InstitutionPublishedBrowsePage,
   InstitutionRepository,
 } from "./institution-repository";
 export {
@@ -37,11 +58,3 @@ export {
   isInstitutionSort,
   parseInstitutionSort,
 } from "./institution-sort";
-export {
-  type GetHomeFeaturedInstitutionsDependencies,
-  type GetHomeFeaturedInstitutionsInput,
-  getHomeFeaturedInstitutions,
-  HOME_FEATURED_CANDIDATE_PAGE_SIZE,
-  HOME_FEATURED_LIMIT,
-  type HomeFeaturedInstitution,
-} from "./get-home-featured-institutions";

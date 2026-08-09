@@ -30,12 +30,28 @@ export async function getAdminOperationsView(): Promise<AdminOperationsViewData>
     resolveDistrictLabel: (cId: string, dId: string) => resolveGeoLabels(cId, dId).districtName,
   };
 
-  const [acquisition, review] = await Promise.all([
+  const recentSamplePromise = institutionRepository.listAdminPage
+    ? institutionRepository.listAdminPage({
+        pageSize: RECENT_ACTIVITY_LIMIT,
+        sort: "created_desc",
+      })
+    : Promise.resolve({ items: [] as const });
+  const publishedSamplePromise = institutionRepository.listAdminPage
+    ? institutionRepository.listAdminPage({
+        pageSize: LATEST_PUBLISHED_LIMIT,
+        sort: "created_desc",
+        filters: { status: InstitutionStatus.Published },
+      })
+    : Promise.resolve({ items: [] as const });
+
+  const [acquisition, review, recentSample, publishedSample] = await Promise.all([
     getInstitutionAcquisitionDashboard(
-      { queue: "all" },
+      { queue: "all", lightweight: true },
       { ...deps, resolveTypeLabel: getInstitutionTypeLabel },
     ),
     getInstitutionReviewQueue({ queue: "draft" }, deps),
+    recentSamplePromise,
+    publishedSamplePromise,
   ]);
 
   const total = acquisition.statistics.totalInstitutions;
@@ -48,38 +64,27 @@ export async function getAdminOperationsView(): Promise<AdminOperationsViewData>
     timeStyle: "short",
   });
 
-  const institutions = acquisition.rows.map((row) => row.institution);
+  const recentActivity = recentSample.items.map((institution) =>
+    Object.freeze({
+      id: institutionIdAsString(institution.id),
+      name: institution.name,
+      statusLabel: getAdminAcquisitionStatusLabel(institution.status),
+      updatedAtLabel: dateTimeFormat.format(new Date(institution.updatedAt)),
+      href: `/admin/review?selected=${encodeURIComponent(institutionIdAsString(institution.id))}`,
+    }),
+  );
 
-  const recentActivity = [...institutions]
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .slice(0, RECENT_ACTIVITY_LIMIT)
-    .map((institution) =>
-      Object.freeze({
-        id: institutionIdAsString(institution.id),
-        name: institution.name,
-        statusLabel: getAdminAcquisitionStatusLabel(institution.status),
-        updatedAtLabel: dateTimeFormat.format(new Date(institution.updatedAt)),
-        href: `/admin/review?selected=${encodeURIComponent(institutionIdAsString(institution.id))}`,
-      }),
-    );
-
-  const latestPublished = institutions
-    .filter((institution) => institution.status === InstitutionStatus.Published)
-    .sort((left, right) =>
-      (right.publishedAt ?? right.updatedAt).localeCompare(left.publishedAt ?? left.updatedAt),
-    )
-    .slice(0, LATEST_PUBLISHED_LIMIT)
-    .map((institution) =>
-      Object.freeze({
-        id: institutionIdAsString(institution.id),
-        name: institution.name,
-        cityLabel: resolveGeoLabels(institution.location.cityId, "dist_unknown").cityName,
-        publishedAtLabel: dateFormat.format(
-          new Date(institution.publishedAt ?? institution.updatedAt),
-        ),
-        href: `/institutions/${institution.slug}`,
-      }),
-    );
+  const latestPublished = publishedSample.items.map((institution) =>
+    Object.freeze({
+      id: institutionIdAsString(institution.id),
+      name: institution.name,
+      cityLabel: resolveGeoLabels(institution.location.cityId, "dist_unknown").cityName,
+      publishedAtLabel: dateFormat.format(
+        new Date(institution.publishedAt ?? institution.updatedAt),
+      ),
+      href: `/institutions/${institution.slug}`,
+    }),
+  );
 
   const pendingClaims = Math.max(0, queueCounts.claimed - queueCounts.verified);
 

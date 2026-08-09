@@ -8,12 +8,15 @@ import type { InstitutionSearchQuery } from "./institution-search-query";
 export type InstitutionSearchResult = Readonly<{
   readonly query: InstitutionSearchQuery;
   readonly page: InstitutionPage<InstitutionSearchDocument>;
+  /** Present for empty-text / structured Firestore cursor pages. */
+  readonly nextCursor?: string | null;
 }>;
 
 export type CreateInstitutionSearchResultInput = {
   query: InstitutionSearchQuery;
   items: readonly InstitutionSearchDocument[];
   totalItems: number;
+  nextCursor?: string | null;
 };
 
 /**
@@ -30,5 +33,6 @@ export function createInstitutionSearchResult(
       pageSize: input.query.pageSize,
       totalItems: input.totalItems,
     }),
+    ...(input.nextCursor !== undefined ? { nextCursor: input.nextCursor } : {}),
   });
 }

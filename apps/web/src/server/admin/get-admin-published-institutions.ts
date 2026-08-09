@@ -1,9 +1,10 @@
-import { calculateInstitutionQuality, InstitutionSort } from "@eduatlas/application";
 import {
-  cityIdAsString,
-  InstitutionStatus,
-  institutionIdAsString,
-} from "@eduatlas/domain";
+  ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
+  calculateInstitutionQuality,
+  InstitutionSort,
+  isUnscopedAdminFreeTextQuery,
+} from "@eduatlas/application";
+import { cityIdAsString, InstitutionStatus, institutionIdAsString } from "@eduatlas/domain";
 import { buildTurkeyGeographySeedCatalog, resolveGeoLabels } from "@eduatlas/firebase/server";
 import {
   ADMIN_PUBLISHED_PAGE_SIZE,
@@ -17,6 +18,7 @@ export type PublishedSearchParams = {
   cityId?: string | string[];
   q?: string | string[];
   page?: string | string[];
+  cursor?: string | string[];
 };
 
 function firstParam(value: string | string[] | undefined): string {
@@ -42,15 +44,14 @@ function formatPublishedAt(value: string | undefined): string {
   }
 }
 
-function emptyView(
-  input: {
-    cityId: string;
-    query: string;
-    cities: AdminPublishedInstitutionsViewData["cities"];
-    subtitle?: string;
-    emptyMessage: string;
-  },
-): AdminPublishedInstitutionsViewData {
+function emptyView(input: {
+  cityId: string;
+  query: string;
+  cities: AdminPublishedInstitutionsViewData["cities"];
+  subtitle?: string;
+  emptyMessage: string;
+  locationRequired?: boolean;
+}): AdminPublishedInstitutionsViewData {
   return {
     title: "Yayındaki kurumlar",
     subtitle:
@@ -63,6 +64,7 @@ function emptyView(
     cities: input.cities,
     rows: [],
     emptyMessage: input.emptyMessage,
+    ...(input.locationRequired ? { locationRequired: true } : {}),
     pagination: {
       page: 1,
       pageSize: ADMIN_PUBLISHED_PAGE_SIZE,
@@ -71,20 +73,25 @@ function emptyView(
       from: 0,
       to: 0,
       pageNumbers: [1],
+      nextCursor: null,
+      cursor: null,
+      hasNextPage: false,
     },
   };
 }
 
 /**
  * Lists published institutions for admin verification (import checks + city filter).
- * Server-paginated — full catalog can exceed 7k rows.
+ * Bounded Firestore pagination + count aggregation — never downloads the full catalog
+ * unless free-text search (`q`) is active (substring correctness; separate follow-up).
  */
 export async function getAdminPublishedInstitutionsView(
   searchParams: PublishedSearchParams = {},
 ): Promise<AdminPublishedInstitutionsViewData> {
   const cityId = firstParam(searchParams.cityId).trim();
   const query = firstParam(searchParams.q).trim();
-  const requestedPage = parsePage(firstParam(searchParams.page));
+  const cursor = firstParam(searchParams.cursor).trim();
+  const requestedPage = cursor ? parsePage(firstParam(searchParams.page)) : 1;
 
   const catalog = buildTurkeyGeographySeedCatalog();
   const cities = catalog.cities
@@ -96,36 +103,58 @@ export async function getAdminPublishedInstitutionsView(
 
   const institutionRepository = await getInstitutionRepository();
 
-  let totalCount = 0;
-  try {
-    const totals = await institutionRepository.list({
-      page: 1,
-      pageSize: 1,
-      filters: { status: InstitutionStatus.Published },
+  // Free-text substring search cannot be applied after limit(50) without wrong results.
+  // Keep legacy list() only for scoped q; unscoped q never calls list()/listAll().
+  if (query) {
+    if (isUnscopedAdminFreeTextQuery(query, { cityId })) {
+      return emptyView({
+        cityId,
+        query,
+        cities,
+        emptyMessage: ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
+        locationRequired: true,
+      });
+    }
+    return loadPublishedWithLegacySearch({
+      institutionRepository,
+      cityId,
+      query,
+      requestedPage: parsePage(firstParam(searchParams.page)),
+      cities,
     });
-    totalCount = totals.totalItems;
-  } catch (error) {
-    console.error(
-      "[eduatlas] getAdminPublishedInstitutionsView total count failed:",
-      error instanceof Error ? error.message : error,
-    );
   }
 
-  let listed;
-  try {
-    listed = await institutionRepository.list({
-      page: requestedPage,
-      pageSize: ADMIN_PUBLISHED_PAGE_SIZE,
-      sort: InstitutionSort.NameAsc,
-      filters: {
-        status: InstitutionStatus.Published,
-        ...(cityId ? { cityId } : {}),
-        ...(query ? { query } : {}),
-      },
+  if (!institutionRepository.listAdminPage || !institutionRepository.countAdmin) {
+    return emptyView({
+      cityId,
+      query,
+      cities,
+      emptyMessage: "Yayınlı kurum listesi alınamadı. Admin sayfalama adaptörü yapılandırılmamış.",
     });
+  }
+
+  const filters = {
+    status: InstitutionStatus.Published,
+    ...(cityId ? { cityId } : {}),
+  };
+
+  let pageResult: Awaited<ReturnType<NonNullable<(typeof institutionRepository)["listAdminPage"]>>>;
+  let totalCount = 0;
+  try {
+    const [listed, publishedTotal] = await Promise.all([
+      institutionRepository.listAdminPage({
+        pageSize: ADMIN_PUBLISHED_PAGE_SIZE,
+        sort: "name_asc",
+        cursor: cursor || null,
+        filters,
+      }),
+      institutionRepository.countAdmin({ status: InstitutionStatus.Published }),
+    ]);
+    pageResult = listed;
+    totalCount = publishedTotal;
   } catch (error) {
     console.error(
-      "[eduatlas] getAdminPublishedInstitutionsView list failed:",
+      "[eduatlas] getAdminPublishedInstitutionsView bounded list failed:",
       error instanceof Error ? error.message : error,
     );
     return emptyView({
@@ -139,23 +168,120 @@ export async function getAdminPublishedInstitutionsView(
     });
   }
 
-  const filteredCount = listed.totalItems;
+  const filteredCount = pageResult.totalItems;
   const totalPages = Math.max(1, Math.ceil(filteredCount / ADMIN_PUBLISHED_PAGE_SIZE));
-  const page = Math.min(requestedPage, totalPages);
+  const page = Math.min(Math.max(1, requestedPage), totalPages);
 
-  // If the URL page is past the end (e.g. after filters), re-fetch the last page.
-  if (page !== requestedPage && filteredCount > 0) {
-    listed = await institutionRepository.list({
+  const rows = pageResult.items.map((item) => {
+    const geo = resolveGeoLabels(item.location.cityId, item.location.districtId);
+    const id = institutionIdAsString(item.id);
+    const qualityScore = calculateInstitutionQuality({ institution: item }).quality.score;
+    return {
+      id,
+      name: item.name,
+      slug: item.slug,
+      typeLabel: getInstitutionTypeLabel(item.primaryType),
+      cityId: item.location.cityId,
+      cityLabel: geo.cityName,
+      districtId: item.location.districtId,
+      districtLabel: geo.districtName,
+      statusLabel: "Yayında",
+      qualityScore,
+      publishedAtLabel: formatPublishedAt(item.publishedAt),
+      publicHref: `/institutions/${item.slug}`,
+      profileHref: `/admin/review?queue=published&selected=${encodeURIComponent(id)}`,
+    };
+  });
+
+  const from =
+    filteredCount === 0 || rows.length === 0 ? 0 : (page - 1) * ADMIN_PUBLISHED_PAGE_SIZE + 1;
+  const to =
+    filteredCount === 0 || rows.length === 0
+      ? 0
+      : Math.min((page - 1) * ADMIN_PUBLISHED_PAGE_SIZE + rows.length, filteredCount);
+
+  const emptyMessage =
+    totalCount === 0
+      ? "Henüz yayında kurum yok. Excel içe aktarma sonrası burada görünmeleri gerekir. Kota hatası aldıysanız kurumlar kaydedilmemiş olabilir."
+      : cityId
+        ? "Bu filtreyle eşleşen yayındaki kurum yok."
+        : "Yayındaki kurum bulunamadı.";
+
+  return {
+    title: "Yayındaki kurumlar",
+    subtitle:
+      "İçe aktarılan ve yayına alınan kurumları il il filtreleyerek kontrol edin. Bu liste Firebase’deki published kayıtları gösterir.",
+    totalCount,
+    filteredCount,
+    query,
+    cityId,
+    cities,
+    rows,
+    emptyMessage,
+    pagination: {
       page,
+      pageSize: ADMIN_PUBLISHED_PAGE_SIZE,
+      totalPages,
+      totalItems: filteredCount,
+      from,
+      to,
+      pageNumbers: buildAdminPublishedPageNumbers(page, totalPages),
+      nextCursor: pageResult.nextCursor,
+      cursor: cursor || null,
+      hasNextPage: pageResult.hasNextPage,
+    },
+  };
+}
+
+async function loadPublishedWithLegacySearch(input: {
+  institutionRepository: Awaited<ReturnType<typeof getInstitutionRepository>>;
+  cityId: string;
+  query: string;
+  requestedPage: number;
+  cities: AdminPublishedInstitutionsViewData["cities"];
+}): Promise<AdminPublishedInstitutionsViewData> {
+  const { cityId, query, requestedPage, cities, institutionRepository } = input;
+
+  let totalCount = 0;
+  try {
+    if (institutionRepository.countAdmin) {
+      totalCount = await institutionRepository.countAdmin({
+        status: InstitutionStatus.Published,
+      });
+    }
+  } catch {
+    totalCount = 0;
+  }
+
+  let listed: Awaited<ReturnType<(typeof institutionRepository)["list"]>>;
+  try {
+    listed = await institutionRepository.list({
+      page: requestedPage,
       pageSize: ADMIN_PUBLISHED_PAGE_SIZE,
       sort: InstitutionSort.NameAsc,
       filters: {
         status: InstitutionStatus.Published,
         ...(cityId ? { cityId } : {}),
-        ...(query ? { query } : {}),
+        query,
       },
     });
+  } catch (error) {
+    console.error(
+      "[eduatlas] getAdminPublishedInstitutionsView legacy search failed:",
+      error instanceof Error ? error.message : error,
+    );
+    return emptyView({
+      cityId,
+      query,
+      cities,
+      emptyMessage:
+        "Yayınlı kurum araması alınamadı. Firestore kotasını veya Admin bağlantısını kontrol edin.",
+    });
   }
+
+  const filteredCount = listed.totalItems;
+  const totalPages = Math.max(1, Math.ceil(filteredCount / ADMIN_PUBLISHED_PAGE_SIZE));
+  const page = Math.min(requestedPage, totalPages);
 
   const rows = listed.items.map((item) => {
     const geo = resolveGeoLabels(item.location.cityId, item.location.districtId);
@@ -181,13 +307,6 @@ export async function getAdminPublishedInstitutionsView(
   const from = filteredCount === 0 ? 0 : (page - 1) * ADMIN_PUBLISHED_PAGE_SIZE + 1;
   const to = Math.min(page * ADMIN_PUBLISHED_PAGE_SIZE, filteredCount);
 
-  const emptyMessage =
-    totalCount === 0
-      ? "Henüz yayında kurum yok. Excel içe aktarma sonrası burada görünmeleri gerekir. Kota hatası aldıysanız kurumlar kaydedilmemiş olabilir."
-      : cityId || query
-        ? "Bu filtreyle eşleşen yayındaki kurum yok."
-        : "Yayındaki kurum bulunamadı.";
-
   return {
     title: "Yayındaki kurumlar",
     subtitle:
@@ -198,7 +317,8 @@ export async function getAdminPublishedInstitutionsView(
     cityId,
     cities,
     rows,
-    emptyMessage,
+    emptyMessage: "Bu filtreyle eşleşen yayındaki kurum yok.",
+    usedLegacySearchScan: true,
     pagination: {
       page,
       pageSize: ADMIN_PUBLISHED_PAGE_SIZE,
@@ -207,6 +327,9 @@ export async function getAdminPublishedInstitutionsView(
       from,
       to,
       pageNumbers: buildAdminPublishedPageNumbers(page, totalPages),
+      nextCursor: null,
+      cursor: null,
+      hasNextPage: page < totalPages,
     },
   };
 }

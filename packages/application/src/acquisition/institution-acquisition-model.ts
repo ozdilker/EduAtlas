@@ -102,4 +102,18 @@ export type InstitutionAcquisitionDashboard = Readonly<{
   readonly duplicateCandidates: readonly AcquisitionDuplicateCandidate[];
   readonly availableCities: readonly AcquisitionCountBucket[];
   readonly availableDistricts: readonly AcquisitionCountBucket[];
+  /**
+   * True when this response used explicit full-catalog materialization
+   * (duplicates / free-text / missing_fields / pending OR-queue).
+   */
+  readonly usedCatalogScan?: boolean;
+  /** Next Firestore cursor for bounded table pagination. */
+  readonly nextCursor?: string | null;
+  /**
+   * True when free-text `q` was present without city/district/type scope.
+   * No catalog materialization occurred.
+   */
+  readonly locationRequired?: boolean;
+  /** User-facing notice (e.g. location required for free-text search). */
+  readonly searchNotice?: string;
 }>;

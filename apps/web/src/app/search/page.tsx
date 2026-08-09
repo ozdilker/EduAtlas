@@ -14,6 +14,7 @@ type SearchPageProps = {
   searchParams: Promise<{
     q?: string | string[];
     page?: string | string[];
+    cursor?: string | string[];
     city?: string | string[];
     district?: string | string[];
     type?: string | string[];
@@ -39,8 +40,11 @@ export async function generateMetadata() {
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
   const query = firstParam(params.q).trim();
+  const cursor = firstParam(params.cursor).trim() || undefined;
   const pageRaw = Number.parseInt(firstParam(params.page) || "1", 10);
-  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const requestedPage = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  // Empty-text search is cursor-based; page>1 without cursor falls back to first page.
+  const page = !query && requestedPage > 1 && !cursor ? 1 : requestedPage;
   const sort = firstParam(params.sort).trim() || "relevance";
 
   const filterOptions = getSearchFilterOptions({
@@ -58,6 +62,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     page,
     pageSize: 12,
     sort,
+    cursor,
     filters: toSearchFiltersInput(filterOptions.active),
   });
 
@@ -87,8 +92,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         institutions={[...view.institutions]}
         resultCount={view.result.page.totalItems}
         pagination={pagination}
+        nextCursor={view.nextCursor}
         filters={filterOptions}
         isParent={isParent}
+        locationRequired={view.locationRequired}
       />
     </>
   );

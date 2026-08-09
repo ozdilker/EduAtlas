@@ -1,14 +1,18 @@
-import type { Firestore } from "firebase-admin/firestore";
+import { AggregateField, FieldPath, type Firestore, type Query } from "firebase-admin/firestore";
+import { countFirestoreRead, countFirestoreWrite } from "../monitoring/firestore-counter";
 import {
   type FirestoreInstitutionDocument,
   INSTITUTIONS_COLLECTION,
 } from "./firestore-institution-document";
 import { FirestoreInstitutionMapper } from "./firestore-institution-mapper";
 import type {
+  AdminListCursor,
+  AdminListFilters,
+  AdminListSort,
   InstitutionDocumentRecord,
   InstitutionDocumentStore,
+  PublishedBrowseFilters,
 } from "./institution-document-store";
-import { countFirestoreRead, countFirestoreWrite } from "../monitoring/firestore-counter";
 
 /** Short in-process cache so search/list don't re-download the full catalog every call. */
 const LIST_ALL_CACHE_TTL_MS = 60_000;
@@ -184,6 +188,239 @@ export class FirestoreInstitutionDocumentStore implements InstitutionDocumentSto
     return promise;
   }
 
+  /**
+   * Public browse/search: published + optional structured filters + qualityScore order + hard limit.
+   */
+  async listPublishedBrowsePage(input: {
+    limit: number;
+    cursor?: { qualityScore: number; id: string } | null;
+    filters?: PublishedBrowseFilters;
+  }): Promise<{
+    records: InstitutionDocumentRecord[];
+    nextCursor: { qualityScore: number; id: string } | null;
+  }> {
+    const capped = Math.max(0, Math.floor(input.limit));
+    if (capped === 0) {
+      return { records: [], nextCursor: null };
+    }
+
+    countFirestoreRead();
+    let query = this.buildPublishedStructuredQuery(input.filters)
+      .orderBy("qualityScore", "desc")
+      .orderBy(FieldPath.documentId(), "asc")
+      .limit(capped);
+
+    const cursor = input.cursor;
+    if (cursor?.id) {
+      query = query.startAfter(cursor.qualityScore, cursor.id.trim());
+    }
+
+    const snapshot = await query.get();
+    const records: InstitutionDocumentRecord[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+
+    const last = records[records.length - 1];
+    const nextCursor =
+      records.length === capped && last
+        ? { qualityScore: last.data.qualityScore ?? 0, id: last.id }
+        : null;
+
+    return { records, nextCursor };
+  }
+
+  async countPublished(filters?: PublishedBrowseFilters): Promise<number> {
+    countFirestoreRead();
+    const snapshot = await this.buildPublishedStructuredQuery(filters).count().get();
+    return snapshot.data().count;
+  }
+
+  /**
+   * Scoped free-text candidates — equality filters only, no orderBy/limit.
+   * Callers must pass at least one structured filter (city/district/type).
+   */
+  async listPublishedCandidates(
+    filters: PublishedBrowseFilters,
+  ): Promise<InstitutionDocumentRecord[]> {
+    const cityId = filters.cityId?.trim();
+    const districtId = filters.districtId?.trim();
+    const primaryTypeId = filters.primaryTypeId?.trim();
+    if (!cityId && !districtId && !primaryTypeId) {
+      throw new Error(
+        "listPublishedCandidates requires at least one of cityId, districtId, primaryTypeId.",
+      );
+    }
+
+    countFirestoreRead();
+    const snapshot = await this.buildPublishedStructuredQuery({
+      ...(cityId ? { cityId } : {}),
+      ...(districtId ? { districtId } : {}),
+      ...(primaryTypeId ? { primaryTypeId } : {}),
+    }).get();
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+  }
+
+  private buildPublishedStructuredQuery(filters?: PublishedBrowseFilters): Query {
+    let query: Query = this.collection().where("lifecycleStatus", "==", "published");
+    const cityId = filters?.cityId?.trim();
+    const districtId = filters?.districtId?.trim();
+    const primaryTypeId = filters?.primaryTypeId?.trim();
+    if (cityId) {
+      query = query.where("cityId", "==", cityId);
+    }
+    if (districtId) {
+      query = query.where("districtId", "==", districtId);
+    }
+    if (primaryTypeId) {
+      query = query.where("primaryTypeId", "==", primaryTypeId);
+    }
+    return query;
+  }
+
+  /**
+   * Related-card query: city + published, ordered by qualityScore, hard-capped in Firestore.
+   */
+  async listPublishedByCityIdLimited(
+    cityId: string,
+    limit: number,
+  ): Promise<InstitutionDocumentRecord[]> {
+    const normalized = cityId.trim();
+    const capped = Math.max(0, Math.floor(limit));
+    if (!normalized || capped === 0) {
+      return [];
+    }
+
+    countFirestoreRead();
+    const snapshot = await this.collection()
+      .where("cityId", "==", normalized)
+      .where("lifecycleStatus", "==", "published")
+      .orderBy("qualityScore", "desc")
+      .limit(capped)
+      .get();
+
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+  }
+
+  /**
+   * Admin listing: equality filters + orderBy + hard limit + startAfter (never listAll).
+   */
+  async listAdminPage(input: {
+    limit: number;
+    sort: AdminListSort;
+    cursor?: AdminListCursor | null;
+    filters?: AdminListFilters;
+  }): Promise<{
+    records: InstitutionDocumentRecord[];
+    nextCursor: AdminListCursor | null;
+  }> {
+    const capped = Math.max(0, Math.floor(input.limit));
+    if (capped === 0) {
+      return { records: [], nextCursor: null };
+    }
+
+    countFirestoreRead();
+    let query = this.applyAdminSort(this.buildAdminFilteredQuery(input.filters), input.sort).limit(
+      capped,
+    );
+
+    const cursor = input.cursor;
+    if (cursor?.id && cursor.sort === input.sort) {
+      query = applyAdminStartAfter(query, cursor);
+    }
+
+    const snapshot = await query.get();
+    const records: InstitutionDocumentRecord[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+
+    const last = records[records.length - 1];
+    const nextCursor =
+      records.length === capped && last ? toAdminListCursor(input.sort, last) : null;
+
+    return { records, nextCursor };
+  }
+
+  async countAdmin(filters?: AdminListFilters): Promise<number> {
+    countFirestoreRead();
+    const snapshot = await this.buildAdminFilteredQuery(filters).count().get();
+    return snapshot.data().count;
+  }
+
+  async sumAdminQualityScore(filters?: AdminListFilters): Promise<{ count: number; sum: number }> {
+    countFirestoreRead();
+    const snapshot = await this.buildAdminFilteredQuery(filters)
+      .aggregate({
+        count: AggregateField.count(),
+        scoreSum: AggregateField.sum("qualityScore"),
+      })
+      .get();
+    const count = Number(snapshot.data().count ?? 0);
+    const sum = Number(snapshot.data().scoreSum ?? 0);
+    return { count, sum };
+  }
+
+  private buildAdminFilteredQuery(filters?: AdminListFilters): Query {
+    let query: Query = this.collection();
+    const lifecycleStatus = filters?.lifecycleStatus?.trim();
+    const cityId = filters?.cityId?.trim();
+    const districtId = filters?.districtId?.trim();
+    const primaryTypeId = filters?.primaryTypeId?.trim();
+    const claimStatus = filters?.claimStatus?.trim();
+    const claimStatusIn = filters?.claimStatusIn?.map((item) => item.trim()).filter(Boolean);
+
+    if (lifecycleStatus) {
+      query = query.where("lifecycleStatus", "==", lifecycleStatus);
+    }
+    if (cityId) {
+      query = query.where("cityId", "==", cityId);
+    }
+    if (districtId) {
+      query = query.where("districtId", "==", districtId);
+    }
+    if (primaryTypeId) {
+      query = query.where("primaryTypeId", "==", primaryTypeId);
+    }
+    if (claimStatus) {
+      query = query.where("claimStatus", "==", claimStatus);
+    } else if (claimStatusIn && claimStatusIn.length > 0) {
+      query = query.where("claimStatus", "in", claimStatusIn.slice(0, 10));
+    }
+    if (filters?.isPremium !== undefined) {
+      query = query.where("isPremium", "==", filters.isPremium);
+    }
+    if (typeof filters?.qualityScoreMin === "number") {
+      query = query.where("qualityScore", ">=", filters.qualityScoreMin);
+    }
+    if (typeof filters?.qualityScoreMaxExclusive === "number") {
+      query = query.where("qualityScore", "<", filters.qualityScoreMaxExclusive);
+    }
+    return query;
+  }
+
+  private applyAdminSort(query: Query, sort: AdminListSort): Query {
+    switch (sort) {
+      case "name_desc":
+        return query.orderBy("name", "desc").orderBy(FieldPath.documentId(), "asc");
+      case "created_desc":
+        return query.orderBy("createdAt", "desc").orderBy(FieldPath.documentId(), "asc");
+      case "quality_desc":
+        return query.orderBy("qualityScore", "desc").orderBy(FieldPath.documentId(), "asc");
+      case "quality_asc":
+        return query.orderBy("qualityScore", "asc").orderBy(FieldPath.documentId(), "asc");
+      default:
+        return query.orderBy("name", "asc").orderBy(FieldPath.documentId(), "asc");
+    }
+  }
+
   async listByDistrictId(districtId: string): Promise<InstitutionDocumentRecord[]> {
     const normalized = districtId.trim();
     if (!normalized) {
@@ -323,4 +560,39 @@ function isAlreadyExistsError(error: unknown): boolean {
   const code = "code" in error ? Number((error as { code?: unknown }).code) : NaN;
   const message = error instanceof Error ? error.message : String(error);
   return code === 6 || /ALREADY_EXISTS|already exists/i.test(message);
+}
+
+function toAdminListCursor(
+  sort: AdminListSort,
+  record: InstitutionDocumentRecord,
+): AdminListCursor {
+  const id = record.id;
+  switch (sort) {
+    case "name_desc":
+    case "name_asc":
+      return { sort, name: record.data.name, id };
+    case "created_desc":
+      return { sort, createdAt: record.data.createdAt, id };
+    case "quality_desc":
+    case "quality_asc":
+      return { sort, qualityScore: record.data.qualityScore ?? 0, id };
+    default:
+      return { sort: "name_asc", name: record.data.name, id };
+  }
+}
+
+function applyAdminStartAfter(query: Query, cursor: AdminListCursor): Query {
+  const id = cursor.id.trim();
+  switch (cursor.sort) {
+    case "name_desc":
+    case "name_asc":
+      return query.startAfter(cursor.name ?? "", id);
+    case "created_desc":
+      return query.startAfter(cursor.createdAt ?? "", id);
+    case "quality_desc":
+    case "quality_asc":
+      return query.startAfter(cursor.qualityScore ?? 0, id);
+    default:
+      return query.startAfter(cursor.name ?? "", id);
+  }
 }

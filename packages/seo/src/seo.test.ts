@@ -110,7 +110,7 @@ describe("buildMetadata", () => {
 });
 
 describe("JSON-LD helpers", () => {
-  it("builds Organization, WebSite, SearchAction, and BreadcrumbList", () => {
+  it("builds Organization, WebSite without SearchAction, and BreadcrumbList", () => {
     const organization = buildOrganizationJsonLd(site);
     const website = buildWebsiteJsonLd(site);
     const searchAction = buildSearchActionJsonLd(site);
@@ -125,11 +125,16 @@ describe("JSON-LD helpers", () => {
 
     expect(organization["@type"]).toBe("Organization");
     expect(website["@type"]).toBe("WebSite");
-    expect(website.potentialAction).toEqual(searchAction);
+    expect(website.potentialAction).toBeUndefined();
     expect(searchAction["@type"]).toBe("SearchAction");
     expect(breadcrumbs["@type"]).toBe("BreadcrumbList");
     expect(serializeJsonLd(organization)).toContain("EduAtlas");
     expect(serializeJsonLd({ html: "<script>" })).toContain("\\u003cscript>");
+  });
+
+  it("can still opt into SearchAction on legacy WebSite helper", () => {
+    const website = buildWebsiteJsonLd(site, { includeSearchAction: true });
+    expect(website.potentialAction).toEqual(buildSearchActionJsonLd(site));
   });
 });
 
@@ -142,6 +147,8 @@ describe("page SEO builders", () => {
       "WebSite",
       "BreadcrumbList",
     ]);
+    const website = page.jsonLd.find((n) => n["@type"] === "WebSite");
+    expect(website?.potentialAction).toBeUndefined();
   });
 
   it("builds search SEO as noindex", () => {

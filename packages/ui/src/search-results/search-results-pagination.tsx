@@ -13,25 +13,49 @@ import {
 export type SearchResultsPaginationProps = {
   pagination?: SearchResultsPageInfo;
   filters?: SearchFiltersViewModel;
+  /** Next-page Firestore cursor (empty-text / structured search). */
+  nextCursor?: string | null;
   className?: string;
 };
 
 /**
  * Pagination controls linked to `/search` query params.
+ * Empty-text search uses Firestore cursors for Next; free-text keeps page numbers.
  */
 export function SearchResultsPagination({
   pagination = getStaticSearchResultsPagination(),
   filters,
+  nextCursor = null,
   className,
 }: SearchResultsPaginationProps) {
   const { currentPage, totalPages, pageNumbers } = pagination;
-  const hrefFor = (page: number) =>
+  const useFirestoreCursor = Boolean(filters && !filters.query.trim());
+
+  const hrefForPage = (page: number, cursor?: string) =>
     filters
-      ? buildSearchHref(toSearchHrefParams(filters, { page: page <= 1 ? undefined : page }))
+      ? buildSearchHref(
+          toSearchHrefParams(filters, {
+            page: page <= 1 ? undefined : page,
+            cursor: cursor ?? null,
+          }),
+        )
       : undefined;
 
-  const prevHref = currentPage > 1 ? hrefFor(currentPage - 1) : undefined;
-  const nextHref = currentPage < totalPages ? hrefFor(currentPage + 1) : undefined;
+  const prevHref = useFirestoreCursor
+    ? currentPage > 1
+      ? hrefForPage(1)
+      : undefined
+    : currentPage > 1
+      ? hrefForPage(currentPage - 1)
+      : undefined;
+
+  const nextHref = useFirestoreCursor
+    ? nextCursor
+      ? hrefForPage(currentPage + 1, nextCursor)
+      : undefined
+    : currentPage < totalPages
+      ? hrefForPage(currentPage + 1)
+      : undefined;
 
   return (
     <nav className={cn("ea-search-results__pagination", className)} aria-label="Sonuç sayfaları">
@@ -55,7 +79,14 @@ export function SearchResultsPagination({
       <ul className="ea-search-results__pagination-list">
         {pageNumbers.map((page) => {
           const current = page === currentPage;
-          const href = hrefFor(page);
+          const href =
+            useFirestoreCursor
+              ? page === 1
+                ? hrefForPage(1)
+                : page === currentPage + 1 && nextCursor
+                  ? hrefForPage(page, nextCursor)
+                  : undefined
+              : hrefForPage(page);
 
           return (
             <li key={page}>

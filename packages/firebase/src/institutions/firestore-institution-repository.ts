@@ -1,6 +1,11 @@
 import type {
+  InstitutionAdminListFilters,
+  InstitutionAdminListPage,
+  InstitutionAdminListPageInput,
+  InstitutionAdminListSort,
   InstitutionListOptions,
   InstitutionPage,
+  InstitutionPublishedBrowsePage,
   InstitutionRepository,
   InstitutionSearchQuery,
   InstitutionSearchRepository,
@@ -8,6 +13,7 @@ import type {
 } from "@eduatlas/application";
 import {
   createInstitutionPage,
+  createInstitutionSearchResult,
   DEFAULT_INSTITUTION_PAGE_SIZE,
   DuplicateInstitutionError,
   InstitutionNotFoundError,
@@ -18,19 +24,32 @@ import {
   type Institution,
   type InstitutionId,
   InstitutionStatus,
+  InstitutionVerification,
   institutionIdAsString,
 } from "@eduatlas/domain";
 import type { Firestore } from "firebase-admin/firestore";
+import {
+  decodeAdminInstitutionListCursor,
+  encodeAdminInstitutionListCursor,
+} from "./admin-institution-list-cursor";
 import { FirestoreInstitutionDocumentStore } from "./firestore-institution-document-store";
 import {
   FirestoreInstitutionMapper,
   googleBusinessFromDocument,
 } from "./firestore-institution-mapper";
 import type {
-  InstitutionDocumentRecord,
+  AdminListFilters,
+  AdminListSort,
   InstitutionDocumentStore,
 } from "./institution-document-store";
-import { searchInstitutionsInStore } from "./institution-keyword-search";
+import {
+  searchInstitutionsInStore,
+  toSearchDocumentsFromRecords,
+} from "./institution-keyword-search";
+import {
+  decodePublishedBrowseCursor,
+  encodePublishedBrowseCursor,
+} from "./published-browse-cursor";
 
 export type FirestoreInstitutionRepositoryOptions = {
   firestore?: Firestore;
@@ -67,11 +86,202 @@ export class FirestoreInstitutionRepository
     return record ? FirestoreInstitutionMapper.toDomain(record.id, record.data) : null;
   }
 
+  /**
+   * Public /institutions browse — Firestore limit + startAfter cursor (no listAll).
+   */
+  async listPublishedBrowsePage(input: {
+    pageSize: number;
+    cursor?: string | null;
+  }): Promise<InstitutionPublishedBrowsePage> {
+    const pageSize = Math.max(1, Math.min(100, Math.floor(input.pageSize)));
+    if (!this.store.listPublishedBrowsePage || !this.store.countPublished) {
+      throw new Error(
+        "InstitutionDocumentStore.listPublishedBrowsePage/countPublished required for public browse.",
+      );
+    }
+
+    const cursor = decodePublishedBrowseCursor(input.cursor);
+    const [page, totalPublished] = await Promise.all([
+      this.store.listPublishedBrowsePage({
+        limit: pageSize,
+        cursor,
+      }),
+      this.store.countPublished(),
+    ]);
+
+    const items = page.records.map((record) =>
+      FirestoreInstitutionMapper.toDomain(record.id, record.data),
+    );
+    const nextCursor = page.nextCursor ? encodePublishedBrowseCursor(page.nextCursor) : null;
+
+    return Object.freeze({
+      items: Object.freeze(items),
+      pageSize,
+      nextCursor,
+      totalPublished,
+    });
+  }
+
+  /**
+   * Empty-text / structured-filter search — bounded Firestore query (no listAll).
+   * Free-text search must not call this path.
+   */
+  private async searchStructuredPublished(
+    query: InstitutionSearchQuery,
+  ): Promise<InstitutionSearchResult> {
+    if (!this.store.listPublishedBrowsePage || !this.store.countPublished) {
+      throw new Error(
+        "InstitutionDocumentStore.listPublishedBrowsePage/countPublished required for structured search.",
+      );
+    }
+
+    const browseFilters = toPublishedBrowseFilters(query);
+
+    const cursor = decodePublishedBrowseCursor(query.cursor);
+    const [page, totalPublished] = await Promise.all([
+      this.store.listPublishedBrowsePage({
+        limit: query.pageSize,
+        cursor,
+        filters: browseFilters,
+      }),
+      this.store.countPublished(browseFilters),
+    ]);
+
+    let items = toSearchDocumentsFromRecords(page.records);
+
+    // verified / premium are not part of the bounded Firestore query yet — apply on the page.
+    if (query.filters.verification) {
+      items = items.filter((item) => item.verification === query.filters.verification);
+    }
+    if (query.filters.isPremium !== undefined) {
+      items = items.filter((item) => item.isPremium === query.filters.isPremium);
+    }
+
+    if (query.sort === InstitutionSort.NameAsc) {
+      items = [...items].sort(
+        (left, right) =>
+          left.name.localeCompare(right.name, "tr") || left.id.localeCompare(right.id),
+      );
+    } else if (query.sort === InstitutionSort.NameDesc) {
+      items = [...items].sort(
+        (left, right) =>
+          right.name.localeCompare(left.name, "tr") || left.id.localeCompare(right.id),
+      );
+    }
+
+    const nextCursor = page.nextCursor ? encodePublishedBrowseCursor(page.nextCursor) : null;
+
+    return createInstitutionSearchResult({
+      query,
+      items,
+      totalItems: totalPublished,
+      nextCursor,
+    });
+  }
+
+  /**
+   * Admin UI listing — Firestore limit + startAfter cursor (never listAll).
+   */
+  async listAdminPage(input: InstitutionAdminListPageInput): Promise<InstitutionAdminListPage> {
+    const pageSize = Math.max(1, Math.min(500, Math.floor(input.pageSize)));
+    const sort: InstitutionAdminListSort = input.sort ?? "name_asc";
+    if (!this.store.listAdminPage || !this.store.countAdmin) {
+      throw new Error(
+        "InstitutionDocumentStore.listAdminPage/countAdmin required for admin listing.",
+      );
+    }
+
+    const storeFilters = toAdminStoreFilters(input.filters);
+    const cursor = decodeAdminInstitutionListCursor(input.cursor, sort);
+    const [page, totalItems] = await Promise.all([
+      this.store.listAdminPage({
+        limit: pageSize,
+        sort: sort as AdminListSort,
+        cursor,
+        filters: storeFilters,
+      }),
+      this.store.countAdmin(storeFilters),
+    ]);
+
+    const items = page.records.map((record) =>
+      FirestoreInstitutionMapper.toDomain(record.id, record.data),
+    );
+    const nextCursor = page.nextCursor ? encodeAdminInstitutionListCursor(page.nextCursor) : null;
+
+    return Object.freeze({
+      items: Object.freeze(items),
+      pageSize,
+      nextCursor,
+      hasNextPage: Boolean(nextCursor),
+      totalItems,
+    });
+  }
+
+  /**
+   * Admin filtered count via Firestore aggregation (no document download).
+   */
+  async countAdmin(filters?: InstitutionAdminListFilters): Promise<number> {
+    if (!this.store.countAdmin) {
+      throw new Error("InstitutionDocumentStore.countAdmin required for admin counts.");
+    }
+    return this.store.countAdmin(toAdminStoreFilters(filters));
+  }
+
+  /**
+   * Sum of stored qualityScore for acquisition average KPIs (no document download).
+   */
+  async sumAdminQualityScore(
+    filters?: InstitutionAdminListFilters,
+  ): Promise<{ count: number; sum: number }> {
+    if (!this.store.sumAdminQualityScore) {
+      throw new Error(
+        "InstitutionDocumentStore.sumAdminQualityScore required for acquisition quality averages.",
+      );
+    }
+    return this.store.sumAdminQualityScore(toAdminStoreFilters(filters));
+  }
+
+  /**
+   * Published institutions in a city with a Firestore-level limit (related cards).
+   * Does not use unbounded listByCityId.
+   */
+  async listRelatedPublishedByCity(cityId: string, limit: number): Promise<readonly Institution[]> {
+    const capped = Math.max(0, Math.floor(limit));
+    if (!cityId.trim() || capped === 0) {
+      return Object.freeze([]);
+    }
+
+    if (!this.store.listPublishedByCityIdLimited) {
+      throw new Error(
+        "InstitutionDocumentStore.listPublishedByCityIdLimited is required for related institution queries.",
+      );
+    }
+
+    const records = await this.store.listPublishedByCityIdLimited(cityId.trim(), capped);
+    return Object.freeze(
+      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
+    );
+  }
+
   async list(options: InstitutionListOptions = {}): Promise<InstitutionPage<Institution>> {
     const page = options.page ?? 1;
     const pageSize = options.pageSize ?? DEFAULT_INSTITUTION_PAGE_SIZE;
     const sort = options.sort ?? InstitutionSort.Relevance;
     const filters = options.filters;
+
+    // Admin free-text must never trigger nationwide listAll() without structured scope.
+    const hasFreeText = Boolean(filters?.query?.trim());
+    const hasFreeTextScope = Boolean(
+      filters?.cityId?.trim() || filters?.districtId?.trim() || filters?.primaryType,
+    );
+    if (hasFreeText && !hasFreeTextScope) {
+      return createInstitutionPage({
+        items: [],
+        page,
+        pageSize,
+        totalItems: 0,
+      });
+    }
 
     let records: Awaited<ReturnType<InstitutionDocumentStore["listAll"]>>;
     if (filters?.districtId && this.store.listByDistrictId) {
@@ -204,8 +414,7 @@ export class FirestoreInstitutionRepository
       id,
       FirestoreInstitutionMapper.toFirestore(institution, {
         leadCounters: institution.leadCounters ?? existing.data.leadCounters,
-        googleBusiness:
-          institution.googleBusiness ?? googleBusinessFromDocument(existing.data),
+        googleBusiness: institution.googleBusiness ?? googleBusinessFromDocument(existing.data),
       }),
     );
     return institution;
@@ -280,34 +489,90 @@ export class FirestoreInstitutionRepository
 
   /**
    * Keyword search over published institutions (Firestore fallback).
-   * Type-only queries use a scoped Firestore read to avoid downloading the full catalog.
+   * Empty-text / structured filters use a bounded published query (no listAll).
+   * Free-text with city/district/type loads published candidates for that scope only
+   * (no nationwide listAll). Unfiltered free-text still uses listAll().
    */
   async search(query: InstitutionSearchQuery): Promise<InstitutionSearchResult> {
+    if (!query.text.trim()) {
+      return this.searchStructuredPublished(query);
+    }
+
     const records = await this.loadRecordsForSearch(query);
     return searchInstitutionsInStore(records, query);
   }
 
+  /**
+   * Free-text candidate loader.
+   * With structured scope → published + filters in Firestore (no listAll).
+   * Without structured scope → legacy listAll() (unchanged; separate future task).
+   */
   private async loadRecordsForSearch(
     query: InstitutionSearchQuery,
   ): Promise<Awaited<ReturnType<InstitutionDocumentStore["listAll"]>>> {
-    const filters = query.filters;
-    if (!query.text.trim()) {
-      if (filters.districtId && this.store.listByDistrictId) {
-        return this.store.listByDistrictId(filters.districtId);
+    const browseFilters = toPublishedBrowseFilters(query);
+    if (hasPublishedBrowseScope(browseFilters)) {
+      if (!this.store.listPublishedCandidates) {
+        throw new Error(
+          "InstitutionDocumentStore.listPublishedCandidates required for scoped free-text search.",
+        );
       }
-
-      if (filters.cityId && this.store.listByCityId) {
-        return this.store.listByCityId(filters.cityId);
-      }
-
-      if (filters.primaryType && this.store.listByPrimaryType) {
-        return this.store.listByPrimaryType(filters.primaryType);
-      }
+      return this.store.listPublishedCandidates(browseFilters);
     }
 
     return this.store.listAll();
   }
 }
+
+function toPublishedBrowseFilters(query: InstitutionSearchQuery): {
+  cityId?: string;
+  districtId?: string;
+  primaryTypeId?: string;
+} {
+  return {
+    ...(query.filters.cityId ? { cityId: query.filters.cityId } : {}),
+    ...(query.filters.districtId ? { districtId: query.filters.districtId } : {}),
+    ...(query.filters.primaryType ? { primaryTypeId: query.filters.primaryType } : {}),
+  };
+}
+
+function hasPublishedBrowseScope(filters: {
+  cityId?: string;
+  districtId?: string;
+  primaryTypeId?: string;
+}): boolean {
+  return Boolean(filters.cityId || filters.districtId || filters.primaryTypeId);
+}
+
+function toAdminStoreFilters(filters?: InstitutionAdminListFilters): AdminListFilters {
+  const claimStatusIn = filters?.verifications?.map(verificationToClaimStatus);
+  return {
+    ...(filters?.status ? { lifecycleStatus: filters.status } : {}),
+    ...(filters?.cityId?.trim() ? { cityId: filters.cityId.trim() } : {}),
+    ...(filters?.districtId?.trim() ? { districtId: filters.districtId.trim() } : {}),
+    ...(filters?.primaryType ? { primaryTypeId: filters.primaryType } : {}),
+    ...(filters?.verification
+      ? { claimStatus: verificationToClaimStatus(filters.verification) }
+      : !filters?.verification && claimStatusIn && claimStatusIn.length > 0
+        ? { claimStatusIn }
+        : {}),
+    ...(filters?.isPremium !== undefined ? { isPremium: filters.isPremium } : {}),
+    ...(typeof filters?.qualityScoreMin === "number"
+      ? { qualityScoreMin: filters.qualityScoreMin }
+      : {}),
+    ...(typeof filters?.qualityScoreMaxExclusive === "number"
+      ? { qualityScoreMaxExclusive: filters.qualityScoreMaxExclusive }
+      : {}),
+  };
+}
+
+function verificationToClaimStatus(verification: InstitutionVerification): string {
+  if (verification === InstitutionVerification.Verified) {
+    return "claimed";
+  }
+  return verification;
+}
+
 function sortInstitutions(institutions: Institution[], sort: InstitutionSort): Institution[] {
   const copy = [...institutions];
 

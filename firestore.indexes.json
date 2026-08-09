@@ -72,6 +72,341 @@
         { "fieldPath": "institutionId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "qualityScore", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "claimStatus", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "claimStatus", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "primaryTypeId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "claimStatus", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "claimStatus", "order": "ASCENDING" },
+        { "fieldPath": "qualityScore", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" },
+        { "fieldPath": "claimStatus", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "claimStatus", "order": "ASCENDING" },
+        { "fieldPath": "lifecycleStatus", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

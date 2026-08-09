@@ -15,6 +15,8 @@ type SearchInstitutionsCursorResponse = Readonly<{
   pageSize: number;
   currentCursor: string | null;
   nextCursor: string | null;
+  /** Free-text without city — client should show location gate; no catalog scan. */
+  locationRequired: boolean;
 }>;
 
 function firstParam(value: string | string[] | null): string {
@@ -27,8 +29,8 @@ function firstParam(value: string | string[] | null): string {
 /**
  * Cursor-based (infinite scroll) search endpoint.
  *
- * Cursor is an offset-based token for now (0-based index).
- * It enables infinite-scroll clients without changing current page-number UI.
+ * - Empty-text / structured filters: opaque Firestore startAfter cursor (published-browse format).
+ * - Free-text: requires city; unscoped q returns locationRequired (no listAll).
  *
  * GET /api/search/institutions-cursor?q=...&cursor=...&pageSize=12&city=...&district=...&type=...&verified=...&premium=...&sort=relevance
  */
@@ -42,11 +44,6 @@ export async function GET(request: Request) {
   const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? pageSizeRaw : 12;
 
   const cursorRaw = searchParams.get("cursor")?.trim() ?? "";
-  const offset = cursorRaw ? Number.parseInt(cursorRaw, 10) : 0;
-  const safeOffset = Number.isFinite(offset) && offset >= 0 ? offset : 0;
-
-  // Current implementation: cursor maps to page number, keeping existing backend search semantics.
-  const page = Math.floor(safeOffset / pageSize) + 1;
 
   const filterOptions = getSearchFilterOptions({
     query: q,
@@ -58,19 +55,52 @@ export async function GET(request: Request) {
     premium: firstParam(searchParams.get("premium")),
   });
 
+  let page = 1;
+  let cursor: string | undefined;
+
+  if (!q) {
+    cursor = cursorRaw || undefined;
+    page = cursor ? 2 : 1;
+  } else {
+    const offset = cursorRaw ? Number.parseInt(cursorRaw, 10) : 0;
+    const safeOffset = Number.isFinite(offset) && offset >= 0 ? offset : 0;
+    page = Math.floor(safeOffset / pageSize) + 1;
+  }
+
   const view = await searchPublicInstitutions({
     text: q,
     page,
     pageSize,
     sort,
+    cursor,
     filters: toSearchFiltersInput(filterOptions.active),
   });
 
+  if (view.locationRequired) {
+    const blocked: SearchInstitutionsCursorResponse = Object.freeze({
+      query: q,
+      institutions: [],
+      totalItems: 0,
+      pageSize,
+      currentCursor: null,
+      nextCursor: null,
+      locationRequired: true,
+    });
+    return NextResponse.json(blocked);
+  }
+
   const totalItems = view.result.page.totalItems;
   const institutions = view.institutions;
-  const returnedCount = institutions.length;
-  const nextOffset = safeOffset + returnedCount;
-  const nextCursor = nextOffset < totalItems ? String(nextOffset) : null;
+
+  let nextCursor: string | null;
+  if (!q) {
+    nextCursor = view.nextCursor;
+  } else {
+    const offset = cursorRaw ? Number.parseInt(cursorRaw, 10) : 0;
+    const safeOffset = Number.isFinite(offset) && offset >= 0 ? offset : 0;
+    const nextOffset = safeOffset + institutions.length;
+    nextCursor = nextOffset < totalItems ? String(nextOffset) : null;
+  }
 
   const response: SearchInstitutionsCursorResponse = Object.freeze({
     query: q,
@@ -79,8 +109,8 @@ export async function GET(request: Request) {
     pageSize,
     currentCursor: cursorRaw ? cursorRaw : null,
     nextCursor,
+    locationRequired: false,
   });
 
   return NextResponse.json(response);
 }
-

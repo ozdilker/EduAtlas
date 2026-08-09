@@ -3,7 +3,6 @@ import { resolveOrganizationSchemaId, resolveSiteOriginUrl, resolveWebSiteSchema
 import { EDUATLAS_ALTERNATE_NAME } from "../organization-constants";
 import type { SchemaBuildContext } from "../types";
 import { SchemaOrgType } from "../types";
-import { SearchActionSchemaBuilder } from "./search-action";
 
 /** @deprecated Prefer EDUATLAS_ALTERNATE_NAME — kept for existing imports. */
 export const WEBSITE_ALTERNATE_NAME = EDUATLAS_ALTERNATE_NAME;
@@ -11,15 +10,15 @@ export const WEBSITE_ALTERNATE_NAME = EDUATLAS_ALTERNATE_NAME;
 export type WebSiteSchemaBuildInput = Readonly<{
   readonly description: string;
   /**
-   * Optional override for potentialAction (future Action types).
-   * When omitted, SearchActionSchemaBuilder fills potentialAction from SiteConfig.
+   * Optional potentialAction override (e.g. future Action types).
+   * Omitted by default — SearchAction is not emitted because `/search` is robots-disallowed.
    */
   readonly potentialAction?: JsonLdObject;
 }>;
 
 /**
  * Schema.org WebSite builder — home page only (one node per site).
- * potentialAction is SearchAction from SearchActionBuilder by default.
+ * Does not advertise SearchAction (consistent with Disallow: /search).
  */
 export const WebSiteSchemaBuilder = {
   build(
@@ -46,7 +45,7 @@ export const WebSiteSchemaBuilder = {
         "@id": resolveOrganizationSchemaId(site),
       },
       inLanguage: site.locale?.replace("_", "-") || "tr-TR",
-      potentialAction: input.potentialAction ?? SearchActionSchemaBuilder.build(site),
+      ...(input.potentialAction ? { potentialAction: input.potentialAction } : {}),
     };
 
     return Object.freeze(website);

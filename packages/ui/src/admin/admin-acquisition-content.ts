@@ -82,6 +82,16 @@ export type AdminAcquisitionPagination = Readonly<{
   readonly from: number;
   readonly to: number;
   readonly pageNumbers: readonly number[];
+  /** Firestore startAfter cursor for the next page (null when none). */
+  readonly nextCursor: string | null;
+  /** Cursor used to load the current page (null on page 1). */
+  readonly cursor: string | null;
+  readonly hasNextPage: boolean;
+  /**
+   * True when pagination uses Firestore cursors (bounded path).
+   * False for legacy catalog-scan offset pages (query / duplicates / missing_fields / pending).
+   */
+  readonly useCursor: boolean;
 }>;
 
 export type AdminAcquisitionDashboardViewData = Readonly<{
@@ -130,6 +140,10 @@ export type AdminAcquisitionDashboardViewData = Readonly<{
   readonly rows: readonly AdminAcquisitionRowView[];
   readonly duplicateCandidates: readonly AdminCountBucketView[];
   readonly bulkActionsNote: string;
+  /** True when free-text `q` lacked city/district/type scope. */
+  readonly locationRequired?: boolean;
+  /** User-facing search notice (e.g. location required). */
+  readonly searchNotice?: string;
 }>;
 
 export const ADMIN_ACQUISITION_PAGE_SIZE = 50;
@@ -272,6 +286,7 @@ export function buildAdminAcquisitionQueueHref(
   searchQuery: string,
   sort: AdminAcquisitionQualitySort = "highest",
   page = 1,
+  cursor?: string | null,
 ): string {
   const params = new URLSearchParams();
   if (queue !== "all") params.set("queue", queue);
@@ -284,6 +299,8 @@ export function buildAdminAcquisitionQueueHref(
   if (filters.status) params.set("status", filters.status);
   if (searchQuery) params.set("q", searchQuery);
   if (page > 1) params.set("page", String(page));
+  const next = cursor?.trim();
+  if (next) params.set("cursor", next);
   const qs = params.toString();
   return qs ? `/admin/acquisition?${qs}` : "/admin/acquisition";
 }

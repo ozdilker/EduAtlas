@@ -318,10 +318,9 @@ describe("WebSiteSchemaBuilder", () => {
     expect(website.description).toBe(home.metadata.description);
     expect(website.inLanguage).toBe("tr-TR");
     expect(website.publisher).toEqual({ "@id": resolveOrganizationSchemaId(site) });
-    expect(website.potentialAction).toEqual(SearchActionSchemaBuilder.build(site));
-    expect((website.potentialAction as { target: { urlTemplate: string } }).target.urlTemplate).toBe(
-      `https://eduatlas.com.tr/search?q={${SEARCH_TERM_STRING}}`,
-    );
+    // SearchAction omitted — /search is robots-disallowed; human forms still work.
+    expect(website.potentialAction).toBeUndefined();
+    expect(home.jsonLd.some((node) => node["@type"] === SchemaOrgType.SearchAction)).toBe(false);
   });
 
   it("accepts potentialAction override for future Action types", () => {

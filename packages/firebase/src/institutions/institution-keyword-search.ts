@@ -100,6 +100,18 @@ function geoIdsMatch(
   return normalize(filterId) === normalize(documentId);
 }
 
+/**
+ * Maps store records to search projection documents (no filtering/pagination).
+ */
+export function toSearchDocumentsFromRecords(
+  records: readonly { id: string; data: FirestoreInstitutionDocument }[],
+): InstitutionSearchDocument[] {
+  return records.map((record) => {
+    const institution = FirestoreInstitutionMapper.toDomain(record.id, record.data);
+    return toSearchDocument(institution, record.data);
+  });
+}
+
 function toSearchDocument(
   institution: Institution,
   data: FirestoreInstitutionDocument,

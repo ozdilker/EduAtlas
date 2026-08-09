@@ -1,7 +1,6 @@
 import {
   createAiWorkforceOrchestrator,
   getInstitutionAcquisitionDashboard,
-  getInstitutionReviewQueue,
   summarizeAiWorkforceFoundation,
 } from "@eduatlas/application";
 import {
@@ -27,7 +26,8 @@ const AI_LIMIT = 8;
 
 /**
  * Admin Overview landing view — pure composition of existing acquisition,
- * review, claim_requests, and AI workforce foundation services.
+ * claim_requests, and AI workforce foundation services.
+ * Status badge counts use Firestore count aggregation when available (no second full catalog read).
  */
 export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
   const [institutionRepository, claimRequestRepository] = await Promise.all([
@@ -40,16 +40,44 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
     resolveDistrictLabel: (cId: string, dId: string) => resolveGeoLabels(cId, dId).districtName,
   };
 
-  const [acquisition, review, pendingClaims] = await Promise.all([
+  const statusCountsPromise = institutionRepository.countAdmin
+    ? Promise.all([
+        institutionRepository.countAdmin({ status: InstitutionStatus.Draft }),
+        institutionRepository.countAdmin({ status: InstitutionStatus.PendingReview }),
+        institutionRepository.countAdmin({ status: InstitutionStatus.Published }),
+      ]).then(([draftCount, pendingReviewCount, publishedCount]) => ({
+        draftCount,
+        pendingReviewCount,
+        publishedCount,
+      }))
+    : Promise.resolve({ draftCount: 0, pendingReviewCount: 0, publishedCount: 0 });
+
+  const recentSamplePromise = institutionRepository.listAdminPage
+    ? institutionRepository.listAdminPage({
+        pageSize: ACTIVITY_LIMIT,
+        sort: "created_desc",
+      })
+    : Promise.resolve({ items: [] as const });
+  const draftSamplePromise = institutionRepository.listAdminPage
+    ? institutionRepository.listAdminPage({
+        pageSize: ACTIVITY_LIMIT,
+        sort: "created_desc",
+        filters: { status: InstitutionStatus.Draft },
+      })
+    : Promise.resolve({ items: [] as const });
+
+  const [acquisition, statusCounts, pendingClaims, recentSample, draftSample] = await Promise.all([
     getInstitutionAcquisitionDashboard(
-      { queue: "all" },
+      { queue: "all", lightweight: true },
       { ...deps, resolveTypeLabel: getInstitutionTypeLabel },
     ),
-    getInstitutionReviewQueue({ queue: "draft" }, deps),
+    statusCountsPromise,
     claimRequestRepository.listRecent({
       status: ClaimRequestStatus.Pending,
       limit: 200,
     }),
+    recentSamplePromise,
+    draftSamplePromise,
   ]);
 
   const workforce = createAiWorkforceOrchestrator();
@@ -68,9 +96,11 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
     pendingClaims.length,
     Math.max(0, queueCounts.claimed - queueCounts.verified),
   );
-  const pendingReviewCount = review.queueCounts.needs_review;
+  const pendingReviewCount = statusCounts.pendingReviewCount;
+  const draftCount = statusCounts.draftCount;
+  const publishedCount = statusCounts.publishedCount;
 
-  const institutions = acquisition.rows.map((row) => row.institution);
+  const institutions = [...recentSample.items];
   const institutionsById = new Map(
     institutions.map((institution) => [institutionIdAsString(institution.id), institution]),
   );
@@ -104,28 +134,26 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
   const latestClaims = latestPendingClaims.map((claim) => {
     const institution = institutionsById.get(claim.institutionId.value);
     const institutionName = institution?.name ?? claim.institutionId.value;
+    // Include city scope when available so overview clicks never trigger unscoped q → listAll().
+    const href = institution
+      ? `/admin/acquisition?queue=claimed&cityId=${encodeURIComponent(institution.location.cityId)}&q=${encodeURIComponent(institution.name)}`
+      : `/admin/acquisition?queue=claimed`;
     return Object.freeze({
       id: claim.id.value,
       title: institutionName,
       meta: `${claim.applicantName} · ${claim.email} · ${dateTimeFormat.format(new Date(claim.createdAt))}`,
-      href: `/admin/acquisition?queue=claimed&q=${encodeURIComponent(institutionName)}`,
+      href,
     });
   });
 
-  const latestImports = institutions
-    .filter((institution) => institution.status === InstitutionStatus.Draft)
-    .sort((left, right) =>
-      (right.createdAt ?? right.updatedAt).localeCompare(left.createdAt ?? left.updatedAt),
-    )
-    .slice(0, ACTIVITY_LIMIT)
-    .map((institution) =>
-      Object.freeze({
-        id: `import_${institutionIdAsString(institution.id)}`,
-        title: institution.name,
-        meta: `Taslak · ${dateFormat.format(new Date(institution.createdAt ?? institution.updatedAt))}`,
-        href: `/admin/review?queue=draft&selected=${encodeURIComponent(institutionIdAsString(institution.id))}`,
-      }),
-    );
+  const latestImports = draftSample.items.slice(0, ACTIVITY_LIMIT).map((institution) =>
+    Object.freeze({
+      id: `import_${institutionIdAsString(institution.id)}`,
+      title: institution.name,
+      meta: `Taslak · ${dateFormat.format(new Date(institution.createdAt ?? institution.updatedAt))}`,
+      href: `/admin/review?queue=draft&selected=${encodeURIComponent(institutionIdAsString(institution.id))}`,
+    }),
+  );
 
   const healthStats = Object.freeze([
     Object.freeze({
@@ -137,13 +165,13 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
     Object.freeze({
       id: "published",
       label: "Yayında",
-      value: review.queueCounts.published,
+      value: publishedCount,
       href: "/admin/review?queue=published",
     }),
     Object.freeze({
       id: "draft",
       label: "Taslak",
-      value: review.queueCounts.draft,
+      value: draftCount,
       href: "/admin/review?queue=draft",
     }),
     Object.freeze({
@@ -175,8 +203,8 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
     generatedAtLabel: dateTimeFormat.format(new Date(acquisition.generatedAt)),
     health: Object.freeze({
       totalInstitutions: total,
-      publishedCount: review.queueCounts.published,
-      draftCount: review.queueCounts.draft,
+      publishedCount,
+      draftCount,
       pendingReviewCount,
       claimsAwaitingReview,
       averageQualityScore: quality.averageScore,

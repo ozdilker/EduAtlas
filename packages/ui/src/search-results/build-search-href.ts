@@ -7,6 +7,8 @@ export type SearchHrefParams = {
   premium?: boolean;
   sort?: string;
   page?: number;
+  /** Firestore startAfter cursor for empty-text / structured search. */
+  cursor?: string;
 };
 
 /**
@@ -23,6 +25,8 @@ export function buildSearchHref(params: SearchHrefParams): string {
   if (params.premium) search.set("premium", "1");
   if (params.sort && params.sort !== "relevance") search.set("sort", params.sort);
   if (params.page && params.page > 1) search.set("page", String(params.page));
+  const cursor = params.cursor?.trim();
+  if (cursor) search.set("cursor", cursor);
   const qs = search.toString();
   return qs ? `/search?${qs}` : "/search";
 }
@@ -60,6 +64,7 @@ export type SearchHrefOverrides = {
   premium?: NullableOverride<boolean>;
   sort?: NullableOverride<string>;
   page?: number;
+  cursor?: NullableOverride<string>;
 };
 
 function resolveOverride<T>(override: NullableOverride<T>, fallback: T | undefined): T | undefined {
@@ -85,5 +90,7 @@ export function toSearchHrefParams(
     premium: resolveOverride(overrides.premium, filters.active.premium),
     sort: resolveOverride(overrides.sort, filters.sort),
     page: overrides.page,
+    // Cursor is never inherited from filters — callers pass it explicitly for next page.
+    cursor: resolveOverride(overrides.cursor, undefined),
   };
 }

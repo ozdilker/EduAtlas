@@ -1,4 +1,5 @@
 import {
+  createInstitutionId,
   foldTurkishText,
   type Institution,
   InstitutionStatus,
@@ -7,6 +8,11 @@ import {
   validateInstitutionForPublish,
 } from "@eduatlas/domain";
 import { calculateInstitutionQuality } from "../institution-quality/calculate-institution-quality";
+import {
+  ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
+  isUnscopedAdminFreeTextQuery,
+} from "../institutions/admin-free-text-search-scope";
+import type { InstitutionAdminListSort } from "../institutions/institution-admin-list";
 import { createInstitutionFilters } from "../institutions/institution-filters";
 import type { InstitutionRepository } from "../institutions/institution-repository";
 import type {
@@ -30,6 +36,7 @@ export type GetInstitutionReviewQueueInput = {
   /** Institution id opened in the review panel. */
   selectedId?: string;
   pageSize?: number;
+  cursor?: string | null;
   now?: string;
 };
 
@@ -39,7 +46,9 @@ export type GetInstitutionReviewQueueDependencies = {
   resolveDistrictLabel?: (cityId: string, districtId: string) => string;
 };
 
-const DEFAULT_PAGE_SIZE = 500;
+const DEFAULT_PAGE_SIZE = 50;
+/** Cap for ready-queue materialization (publish validation cannot be counted in Firestore). */
+const READY_SCAN_PAGE_SIZE = 500;
 
 export function reviewQualityBand(score: number): ReviewQualityBand {
   if (score < 40) return "low";
@@ -140,47 +149,42 @@ function toBuckets(counts: Map<string, { label: string; count: number }>): Revie
     .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
 }
 
-/**
- * Repository-backed Institution Review Queue.
- * Every imported institution passes through here before publication —
- * purely human-driven; this service only reads and aggregates.
- */
-export async function getInstitutionReviewQueue(
-  input: GetInstitutionReviewQueueInput,
-  deps: GetInstitutionReviewQueueDependencies,
-): Promise<InstitutionReviewQueue> {
-  const queue: ReviewQueueId = input.queue ?? "draft";
-  const sort: ReviewSort = input.sort ?? "newest";
-  const now = input.now ?? new Date().toISOString();
+function reviewSortToAdminSort(sort: ReviewSort): InstitutionAdminListSort {
+  switch (sort) {
+    case "highest":
+      return "quality_desc";
+    case "lowest":
+      return "quality_asc";
+    default:
+      return "created_desc";
+  }
+}
 
-  const filters = createInstitutionFilters({
-    cityId: input.cityId,
-    districtId: input.districtId,
-    primaryType: input.primaryType,
-    status: input.status,
-    query: input.query,
-  });
+function queueToStatus(queue: ReviewQueueId): InstitutionStatus | undefined {
+  switch (queue) {
+    case "draft":
+      return InstitutionStatus.Draft;
+    case "needs_review":
+      return InstitutionStatus.PendingReview;
+    case "published":
+      return InstitutionStatus.Published;
+    case "rejected":
+      return InstitutionStatus.Archived;
+    default:
+      return undefined;
+  }
+}
 
-  const page = await deps.institutionRepository.list({
-    filters,
-    page: 1,
-    pageSize: input.pageSize ?? DEFAULT_PAGE_SIZE,
-  });
-
-  const resolveCity = deps.resolveCityLabel ?? ((cityId: string) => cityId);
-  const resolveDistrict =
-    deps.resolveDistrictLabel ??
-    ((cityId: string, districtId: string) => `${cityId}/${districtId}`);
-
+function buildRows(institutions: readonly Institution[], now: string): ReviewQueueRow[] {
   const groups = new Map<string, Institution[]>();
-  for (const institution of page.items) {
+  for (const institution of institutions) {
     const key = duplicateGroupKey(institution);
     const members = groups.get(key) ?? [];
     members.push(institution);
     groups.set(key, members);
   }
 
-  const allRows: ReviewQueueRow[] = page.items.map((institution) => {
+  return institutions.map((institution) => {
     const { quality, recommendations } = calculateInstitutionQuality({ institution, now });
     const publishValidation = validateInstitutionForPublish(institution);
     const members = groups.get(duplicateGroupKey(institution)) ?? [];
@@ -209,18 +213,165 @@ export async function getInstitutionReviewQueue(
       }),
     });
   });
+}
 
+/**
+ * Repository-backed Institution Review Queue.
+ * Uses bounded Firestore admin page + count aggregation when free-text search is absent.
+ * Free-text `query` falls back to InstitutionRepository.list() to preserve substring semantics.
+ */
+export async function getInstitutionReviewQueue(
+  input: GetInstitutionReviewQueueInput,
+  deps: GetInstitutionReviewQueueDependencies,
+): Promise<InstitutionReviewQueue> {
+  const queue: ReviewQueueId = input.queue ?? "draft";
+  const sort: ReviewSort = input.sort ?? "newest";
+  const now = input.now ?? new Date().toISOString();
+  const pageSize = Math.max(1, Math.min(500, input.pageSize ?? DEFAULT_PAGE_SIZE));
+
+  const filters = createInstitutionFilters({
+    cityId: input.cityId,
+    districtId: input.districtId,
+    primaryType: input.primaryType,
+    status: input.status,
+    query: input.query,
+  });
+
+  if (
+    isUnscopedAdminFreeTextQuery(input.query, {
+      cityId: input.cityId,
+      districtId: input.districtId,
+      primaryType: input.primaryType,
+    })
+  ) {
+    return Object.freeze({
+      generatedAt: now,
+      queue,
+      sort,
+      filters: Object.freeze({
+        ...(filters.cityId ? { cityId: filters.cityId } : {}),
+        ...(filters.districtId ? { districtId: filters.districtId } : {}),
+        ...(filters.primaryType ? { primaryType: filters.primaryType } : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+        ...(input.qualityBand ? { qualityBand: input.qualityBand } : {}),
+        ...(filters.query ? { query: filters.query } : {}),
+      }),
+      queueCounts: Object.freeze({
+        draft: 0,
+        needs_review: 0,
+        ready: 0,
+        published: 0,
+        rejected: 0,
+      }),
+      rows: Object.freeze([]),
+      selected: null,
+      availableCities: Object.freeze([]),
+      availableDistricts: Object.freeze([]),
+      locationRequired: true,
+      searchNotice: ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
+    });
+  }
+
+  const resolveCity = deps.resolveCityLabel ?? ((cityId: string) => cityId);
+  const resolveDistrict =
+    deps.resolveDistrictLabel ??
+    ((cityId: string, districtId: string) => `${cityId}/${districtId}`);
+
+  const hasTextSearch = Boolean(filters.query?.trim());
+  const listAdminPage = deps.institutionRepository.listAdminPage?.bind(deps.institutionRepository);
+  const countAdmin = deps.institutionRepository.countAdmin?.bind(deps.institutionRepository);
+  const canUseBounded = Boolean(listAdminPage) && Boolean(countAdmin) && !hasTextSearch;
+
+  let institutions: Institution[] = [];
+  let queueCounts: InstitutionReviewQueue["queueCounts"];
+
+  if (!canUseBounded || !listAdminPage || !countAdmin) {
+    const page = await deps.institutionRepository.list({
+      filters,
+      page: 1,
+      pageSize: Math.max(pageSize, READY_SCAN_PAGE_SIZE),
+    });
+    institutions = [...page.items];
+    const allRows = buildRows(institutions, now);
+    const bandFiltered = allRows.filter(
+      (row) => !input.qualityBand || reviewQualityBand(row.quality.score) === input.qualityBand,
+    );
+    queueCounts = Object.freeze({
+      draft: bandFiltered.filter((row) => isInReviewQueue(row, "draft")).length,
+      needs_review: bandFiltered.filter((row) => isInReviewQueue(row, "needs_review")).length,
+      ready: bandFiltered.filter((row) => isInReviewQueue(row, "ready")).length,
+      published: bandFiltered.filter((row) => isInReviewQueue(row, "published")).length,
+      rejected: bandFiltered.filter((row) => isInReviewQueue(row, "rejected")).length,
+    });
+  } else {
+    const countFiltersBase = {
+      ...(filters.cityId ? { cityId: filters.cityId } : {}),
+      ...(filters.districtId ? { districtId: filters.districtId } : {}),
+      ...(filters.primaryType ? { primaryType: filters.primaryType } : {}),
+      ...(filters.status ? { status: filters.status } : {}),
+    };
+
+    const adminSort = reviewSortToAdminSort(sort);
+
+    const [draft, needsReview, published, rejected, draftScan, pendingScan] = await Promise.all([
+      countAdmin({ ...countFiltersBase, status: InstitutionStatus.Draft }),
+      countAdmin({ ...countFiltersBase, status: InstitutionStatus.PendingReview }),
+      countAdmin({ ...countFiltersBase, status: InstitutionStatus.Published }),
+      countAdmin({ ...countFiltersBase, status: InstitutionStatus.Archived }),
+      listAdminPage({
+        pageSize: READY_SCAN_PAGE_SIZE,
+        sort: adminSort,
+        filters: { ...countFiltersBase, status: InstitutionStatus.Draft },
+      }),
+      listAdminPage({
+        pageSize: READY_SCAN_PAGE_SIZE,
+        sort: adminSort,
+        filters: { ...countFiltersBase, status: InstitutionStatus.PendingReview },
+      }),
+    ]);
+
+    const readyCandidates = buildRows([...draftScan.items, ...pendingScan.items], now).filter(
+      (row) => row.publishValidation.ok,
+    );
+
+    queueCounts = Object.freeze({
+      draft,
+      needs_review: needsReview,
+      ready: readyCandidates.length,
+      published,
+      rejected,
+    });
+
+    if (queue === "ready") {
+      institutions = sortRows(readyCandidates, sort)
+        .filter(
+          (row) => !input.qualityBand || reviewQualityBand(row.quality.score) === input.qualityBand,
+        )
+        .slice(0, pageSize)
+        .map((row) => row.institution);
+    } else if (queue === "draft" && !input.cursor && !filters.status) {
+      institutions = [...draftScan.items].slice(0, pageSize);
+    } else if (queue === "needs_review" && !input.cursor && !filters.status) {
+      institutions = [...pendingScan.items].slice(0, pageSize);
+    } else {
+      const status = filters.status ?? queueToStatus(queue);
+      const page = await listAdminPage({
+        pageSize,
+        sort: adminSort,
+        cursor: input.cursor ?? null,
+        filters: {
+          ...countFiltersBase,
+          ...(status ? { status } : {}),
+        },
+      });
+      institutions = [...page.items];
+    }
+  }
+
+  const allRows = buildRows(institutions, now);
   const bandFiltered = allRows.filter(
     (row) => !input.qualityBand || reviewQualityBand(row.quality.score) === input.qualityBand,
   );
-
-  const queueCounts = Object.freeze({
-    draft: bandFiltered.filter((row) => isInReviewQueue(row, "draft")).length,
-    needs_review: bandFiltered.filter((row) => isInReviewQueue(row, "needs_review")).length,
-    ready: bandFiltered.filter((row) => isInReviewQueue(row, "ready")).length,
-    published: bandFiltered.filter((row) => isInReviewQueue(row, "published")).length,
-    rejected: bandFiltered.filter((row) => isInReviewQueue(row, "rejected")).length,
-  });
 
   const rows = Object.freeze(
     sortRows(
@@ -229,14 +380,27 @@ export async function getInstitutionReviewQueue(
     ),
   ) as readonly ReviewQueueRow[];
 
-  const selected = input.selectedId
+  let selected: ReviewQueueRow | null = input.selectedId
     ? (allRows.find((row) => institutionIdAsString(row.institution.id) === input.selectedId) ??
       null)
     : null;
 
+  if (!selected && input.selectedId) {
+    try {
+      const institution = await deps.institutionRepository.getById(
+        createInstitutionId(input.selectedId),
+      );
+      if (institution) {
+        selected = buildRows([institution], now)[0] ?? null;
+      }
+    } catch {
+      selected = null;
+    }
+  }
+
   const cityCounts = new Map<string, { label: string; count: number }>();
   const districtCounts = new Map<string, { label: string; count: number }>();
-  for (const institution of page.items) {
+  for (const institution of institutions) {
     const cityId = institution.location.cityId;
     const districtId = institution.location.districtId;
     const cityEntry = cityCounts.get(cityId) ?? { label: resolveCity(cityId), count: 0 };

@@ -15,6 +15,8 @@ export type InstitutionSearchQuery = Readonly<{
   readonly sort: InstitutionSort;
   readonly page: number;
   readonly pageSize: number;
+  /** Opaque Firestore startAfter cursor (empty-text / structured search only). */
+  readonly cursor?: string;
 }>;
 
 export type CreateInstitutionSearchQueryInput = {
@@ -23,6 +25,7 @@ export type CreateInstitutionSearchQueryInput = {
   sort?: InstitutionSort | string;
   page?: number;
   pageSize?: number;
+  cursor?: string | null;
 };
 
 /**
@@ -48,6 +51,7 @@ export function createInstitutionSearchQuery(
   }
 
   const filters = createInstitutionFilters(input.filters ?? {});
+  const cursor = input.cursor?.trim() || undefined;
 
   return Object.freeze({
     text,
@@ -55,5 +59,6 @@ export function createInstitutionSearchQuery(
     sort,
     page,
     pageSize,
+    ...(cursor ? { cursor } : {}),
   });
 }

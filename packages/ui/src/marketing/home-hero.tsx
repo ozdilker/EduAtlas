@@ -202,10 +202,38 @@ export function HomeHero({
               method="get"
               onSubmit={(event) => {
                 const form = event.currentTarget;
-                const city = new FormData(form).get("city");
-                setLastSearchCityId(typeof city === "string" ? city : "");
+                const data = new FormData(form);
+                const q = String(data.get("q") ?? "").trim();
+                const cityRaw = data.get("city");
+                const city =
+                  typeof cityRaw === "string" && cityRaw.trim()
+                    ? cityRaw.trim()
+                    : getLastSearchCityId() || "";
+
+                if (q && !city) {
+                  // Free-text without city → location gate on /search (no nationwide scan).
+                  event.preventDefault();
+                  window.location.assign(`/search?q=${encodeURIComponent(q)}`);
+                  return;
+                }
+
+                if (city) {
+                  setLastSearchCityId(city);
+                } else {
+                  setLastSearchCityId("");
+                }
+
+                if (q && city && !cityRaw) {
+                  // Inject stored city into navigation when select was empty.
+                  event.preventDefault();
+                  const params = new URLSearchParams();
+                  params.set("q", q);
+                  params.set("city", city);
+                  window.location.assign(`/search?${params.toString()}`);
+                }
               }}
-            >              <label className="ea-sr-only" htmlFor="home-search-input">
+            >
+              <label className="ea-sr-only" htmlFor="home-search-input">
                 Kurum, şehir veya tür ara
               </label>
               <Input

@@ -1,4 +1,6 @@
 import type {
+  InstitutionAdminListFilters,
+  InstitutionAdminListPageInput,
   InstitutionListOptions,
   InstitutionRepository,
   InstitutionSearchQuery,
@@ -10,13 +12,13 @@ import {
   shouldUseFirebaseEmulators,
 } from "@eduatlas/config";
 import type { Institution, InstitutionId } from "@eduatlas/domain";
+import { requestCacheAsync } from "@eduatlas/firebase/cache";
 import {
   createEmptyInstitutionRepository,
   createFirestoreInstitutionRepository,
   createSeededInstitutionRepository,
   getAdminFirestore,
 } from "@eduatlas/firebase/server";
-import { requestCacheAsync } from "@eduatlas/firebase/cache";
 
 type InstitutionDataAccess = InstitutionRepository & InstitutionSearchRepository;
 
@@ -64,7 +66,11 @@ async function createLocalInstitutionDataAccess(): Promise<InstitutionDataAccess
 /** After quota errors, briefly prefer local reads — then retry Firestore (e.g. after Blaze). */
 const READ_FALLBACK_TTL_MS = 45_000;
 
-function createFallbackInstitutionDataAccess(
+/**
+ * Wraps a primary InstitutionRepository with quota fallback + request memoization.
+ * Exported for focused adapter tests (forwards optional admin pagination methods).
+ */
+export function createFallbackInstitutionDataAccess(
   primary: InstitutionDataAccess,
   getFallback: () => Promise<InstitutionDataAccess>,
 ): InstitutionDataAccess {
@@ -125,13 +131,56 @@ function createFallbackInstitutionDataAccess(
   return {
     // Request-scoped memoization: avoid re-reading the same institution doc twice
     // during a single Next server render pass.
-    getById: requestCacheAsync(
-      wrapRead("getById", (repo, id: InstitutionId) => repo.getById(id)),
-    ),
+    getById: requestCacheAsync(wrapRead("getById", (repo, id: InstitutionId) => repo.getById(id))),
     getBySlug: requestCacheAsync(
       wrapRead("getBySlug", (repo, slug: string) => repo.getBySlug(slug)),
     ),
     list: wrapRead("list", (repo, options?: InstitutionListOptions) => repo.list(options)),
+    listRelatedPublishedByCity: wrapRead(
+      "listRelatedPublishedByCity",
+      (repo, cityId: string, limit: number) => {
+        if (!repo.listRelatedPublishedByCity) {
+          throw new Error(
+            "InstitutionRepository.listRelatedPublishedByCity is not available on this adapter.",
+          );
+        }
+        return repo.listRelatedPublishedByCity(cityId, limit);
+      },
+    ),
+    listPublishedBrowsePage: wrapRead(
+      "listPublishedBrowsePage",
+      (repo, input: { pageSize: number; cursor?: string | null }) => {
+        if (!repo.listPublishedBrowsePage) {
+          throw new Error(
+            "InstitutionRepository.listPublishedBrowsePage is not available on this adapter.",
+          );
+        }
+        return repo.listPublishedBrowsePage(input);
+      },
+    ),
+    listAdminPage: wrapRead("listAdminPage", (repo, input: InstitutionAdminListPageInput) => {
+      if (!repo.listAdminPage) {
+        throw new Error("InstitutionRepository.listAdminPage is not available on this adapter.");
+      }
+      return repo.listAdminPage(input);
+    }),
+    countAdmin: wrapRead("countAdmin", (repo, filters?: InstitutionAdminListFilters) => {
+      if (!repo.countAdmin) {
+        throw new Error("InstitutionRepository.countAdmin is not available on this adapter.");
+      }
+      return repo.countAdmin(filters);
+    }),
+    sumAdminQualityScore: wrapRead(
+      "sumAdminQualityScore",
+      (repo, filters?: InstitutionAdminListFilters) => {
+        if (!repo.sumAdminQualityScore) {
+          throw new Error(
+            "InstitutionRepository.sumAdminQualityScore is not available on this adapter.",
+          );
+        }
+        return repo.sumAdminQualityScore(filters);
+      },
+    ),
     save: wrapWrite("save", (repo, institution: Institution) => repo.save(institution)),
     saveMany: wrapWrite("saveMany", async (repo, institutions: readonly Institution[]) => {
       if (repo.saveMany) {

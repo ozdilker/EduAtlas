@@ -25,6 +25,7 @@ export function AdminAcquisitionDashboard({
 }: AdminAcquisitionDashboardProps) {
   const stats = data.statistics;
   const { pagination } = data;
+  const useCursor = pagination.useCursor;
 
   return (
     <AdminShell
@@ -38,6 +39,12 @@ export function AdminAcquisitionDashboard({
         </div>
         <p className="ea-admin-page-header__meta">Güncellendi: {data.generatedAtLabel}</p>
       </header>
+
+      {data.searchNotice ? (
+        <p className="ea-admin-import__status ea-admin-import__status--info" role="status">
+          {data.searchNotice}
+        </p>
+      ) : null}
 
       <section className="ea-admin-progress" aria-labelledby="acquisition-progress-heading">
         <div className="ea-admin-progress__head">
@@ -329,7 +336,7 @@ export function AdminAcquisitionDashboard({
           note={data.bulkActionsNote}
           approveClaimAction={approveClaimAction}
         />
-        {pagination.totalPages > 1 ? (
+        {pagination.totalPages > 1 || pagination.hasNextPage ? (
           <nav className="ea-admin-published__pager" aria-label="Kurum edinimi sayfaları">
             {pagination.page <= 1 ? (
               <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
@@ -343,36 +350,84 @@ export function AdminAcquisitionDashboard({
                   data.filters,
                   data.searchQuery,
                   data.activeSort,
-                  pagination.page - 1,
+                  useCursor ? 1 : pagination.page - 1,
                 )}
               >
                 Önceki
               </a>
             )}
             <ol className="ea-admin-published__pager-pages">
-              {pagination.pageNumbers.map((pageNumber) => (
-                <li key={pageNumber}>
-                  <a
-                    className={
-                      pageNumber === pagination.page
-                        ? "ea-admin-published__pager-link ea-admin-published__pager-link--current"
-                        : "ea-admin-published__pager-link"
-                    }
-                    href={buildAdminAcquisitionQueueHref(
+              {pagination.pageNumbers.map((pageNumber) => {
+                const isCurrent = pageNumber === pagination.page;
+                const href = useCursor
+                  ? pageNumber === 1
+                    ? buildAdminAcquisitionQueueHref(
+                        data.activeQueue,
+                        data.filters,
+                        data.searchQuery,
+                        data.activeSort,
+                      )
+                    : pageNumber === pagination.page + 1 && pagination.nextCursor
+                      ? buildAdminAcquisitionQueueHref(
+                          data.activeQueue,
+                          data.filters,
+                          data.searchQuery,
+                          data.activeSort,
+                          pageNumber,
+                          pagination.nextCursor,
+                        )
+                      : undefined
+                  : buildAdminAcquisitionQueueHref(
                       data.activeQueue,
                       data.filters,
                       data.searchQuery,
                       data.activeSort,
                       pageNumber,
+                    );
+
+                return (
+                  <li key={pageNumber}>
+                    {href && !isCurrent ? (
+                      <a className="ea-admin-published__pager-link" href={href}>
+                        {pageNumber}
+                      </a>
+                    ) : (
+                      <span
+                        className={
+                          isCurrent
+                            ? "ea-admin-published__pager-link ea-admin-published__pager-link--current"
+                            : "ea-admin-published__pager-link ea-admin-published__pager-link--disabled"
+                        }
+                        aria-current={isCurrent ? "page" : undefined}
+                      >
+                        {pageNumber}
+                      </span>
                     )}
-                    aria-current={pageNumber === pagination.page ? "page" : undefined}
-                  >
-                    {pageNumber}
-                  </a>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ol>
-            {pagination.page >= pagination.totalPages ? (
+            {useCursor ? (
+              pagination.nextCursor ? (
+                <a
+                  className="ea-admin-published__pager-link"
+                  href={buildAdminAcquisitionQueueHref(
+                    data.activeQueue,
+                    data.filters,
+                    data.searchQuery,
+                    data.activeSort,
+                    pagination.page + 1,
+                    pagination.nextCursor,
+                  )}
+                >
+                  Sonraki
+                </a>
+              ) : (
+                <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
+                  Sonraki
+                </span>
+              )
+            ) : pagination.page >= pagination.totalPages ? (
               <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
                 Sonraki
               </span>

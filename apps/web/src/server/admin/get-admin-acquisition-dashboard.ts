@@ -8,7 +8,9 @@ import {
 import {
   type ClaimRequest,
   ClaimRequestStatus,
+  cityIdAsString,
   claimRequestIdAsString,
+  districtIdAsString,
   type InstitutionStatus,
   type InstitutionType,
   type InstitutionVerification,
@@ -17,7 +19,11 @@ import {
   isInstitutionType,
   isInstitutionVerification,
 } from "@eduatlas/domain";
-import { resolveGeoLabels } from "@eduatlas/firebase/server";
+import {
+  buildTurkeyGeographySeedCatalog,
+  PRIORITY_CITY_PLATE_CODES,
+  resolveGeoLabels,
+} from "@eduatlas/firebase/server";
 import {
   ADMIN_ACQUISITION_OWNERSHIP_OPTIONS,
   ADMIN_ACQUISITION_PAGE_SIZE,
@@ -52,6 +58,7 @@ export type AcquisitionSearchParams = {
   sort?: string | string[];
   q?: string | string[];
   page?: string | string[];
+  cursor?: string | string[];
 };
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -112,7 +119,12 @@ export async function getAdminAcquisitionDashboardView(
   const query = firstParam(searchParams.q)?.trim();
   const ownership = parseOwnership(firstParam(searchParams.ownership)?.trim());
   const sort = parseSort(firstParam(searchParams.sort)?.trim());
-  const page = parsePage(firstParam(searchParams.page)?.trim());
+  const cursor = firstParam(searchParams.cursor)?.trim() ?? "";
+  // Bounded path is cursor-based: without a cursor, always load page 1.
+  // Catalog-scan modes (query / duplicates / missing_fields / pending) still use offset pages.
+  const page = cursor
+    ? parsePage(firstParam(searchParams.page)?.trim())
+    : parsePage(firstParam(searchParams.page)?.trim());
 
   const primaryType =
     primaryTypeRaw && isInstitutionType(primaryTypeRaw)
@@ -125,6 +137,14 @@ export async function getAdminAcquisitionDashboardView(
   const status =
     statusRaw && isInstitutionStatus(statusRaw) ? (statusRaw as InstitutionStatus) : undefined;
 
+  const catalog = buildTurkeyGeographySeedCatalog();
+  // Priority cities only for byCity KPI counts — avoid 81× count() on every page load.
+  const cityIdsForCounts = catalog.cities
+    .filter((city) => PRIORITY_CITY_PLATE_CODES.has(city.plateCode))
+    .map((city) => cityIdAsString(city.id));
+  const cityIdsWithSelection =
+    cityId && !cityIdsForCounts.includes(cityId) ? [...cityIdsForCounts, cityId] : cityIdsForCounts;
+
   const [institutionRepository, claimRequestRepository] = await Promise.all([
     getInstitutionRepository(),
     getClaimRequestRepository(),
@@ -136,6 +156,8 @@ export async function getAdminAcquisitionDashboardView(
         sort,
         page,
         pageSize: ADMIN_ACQUISITION_PAGE_SIZE,
+        cityIdsForCounts: cityIdsWithSelection,
+        ...(cursor ? { cursor } : {}),
         ...(cityId ? { cityId } : {}),
         ...(cityId && districtId ? { districtId } : {}),
         ...(primaryType ? { primaryType } : {}),
@@ -157,7 +179,22 @@ export async function getAdminAcquisitionDashboardView(
     }),
   ]);
 
-  return toAdminAcquisitionDashboardViewData(dashboard, pendingClaims);
+  const selectedCityId = cityId ?? "";
+  return toAdminAcquisitionDashboardViewData(dashboard, pendingClaims, {
+    geographyCities: catalog.cities.map((city) => ({
+      id: cityIdAsString(city.id),
+      label: city.nameTr,
+    })),
+    geographyDistricts: selectedCityId
+      ? catalog.districts
+          .filter((district) => cityIdAsString(district.cityId) === selectedCityId)
+          .map((district) => ({
+            id: districtIdAsString(district.id),
+            label: district.nameTr,
+          }))
+      : [],
+    cursor: cursor || null,
+  });
 }
 
 function buildPendingClaimByInstitutionId(
@@ -176,6 +213,11 @@ function buildPendingClaimByInstitutionId(
 function toAdminAcquisitionDashboardViewData(
   dashboard: InstitutionAcquisitionDashboard,
   pendingClaims: readonly ClaimRequest[],
+  options?: {
+    geographyCities?: readonly { id: string; label: string }[];
+    geographyDistricts?: readonly { id: string; label: string }[];
+    cursor?: string | null;
+  },
 ): AdminAcquisitionDashboardViewData {
   const pendingByInstitution = buildPendingClaimByInstitutionId(pendingClaims);
   const filters = Object.freeze({
@@ -258,20 +300,44 @@ function toAdminAcquisitionDashboardViewData(
     searchQuery,
     filters,
     cityOptions: Object.freeze(
-      dashboard.availableCities.map((item) =>
-        Object.freeze({ value: item.id, label: `${item.label} (${item.count})` }),
-      ),
+      (options?.geographyCities && options.geographyCities.length > 0
+        ? options.geographyCities.map((city) => {
+            const counted = dashboard.availableCities.find((item) => item.id === city.id);
+            return Object.freeze({
+              value: city.id,
+              label: counted ? `${city.label} (${counted.count})` : city.label,
+            });
+          })
+        : dashboard.availableCities.map((item) =>
+            Object.freeze({ value: item.id, label: `${item.label} (${item.count})` }),
+          )
+      ).sort((left, right) => left.label.localeCompare(right.label, "tr")),
     ),
     districtOptions: Object.freeze(
-      dashboard.availableDistricts
-        .filter((item) => !filters.cityId || item.id.startsWith(`${filters.cityId}::`))
-        .map((item) => {
-          const districtId = item.id.includes("::") ? (item.id.split("::")[1] ?? item.id) : item.id;
-          return Object.freeze({
-            value: districtId,
-            label: `${item.label} (${item.count})`,
-          });
-        }),
+      options?.geographyDistricts && options.geographyDistricts.length > 0
+        ? options.geographyDistricts.map((district) => {
+            const counted = dashboard.availableDistricts.find(
+              (item) =>
+                item.id === district.id ||
+                item.id === `${filters.cityId}::${district.id}` ||
+                item.id.endsWith(`::${district.id}`),
+            );
+            return Object.freeze({
+              value: district.id,
+              label: counted ? `${district.label} (${counted.count})` : district.label,
+            });
+          })
+        : dashboard.availableDistricts
+            .filter((item) => !filters.cityId || item.id.startsWith(`${filters.cityId}::`))
+            .map((item) => {
+              const districtId = item.id.includes("::")
+                ? (item.id.split("::")[1] ?? item.id)
+                : item.id;
+              return Object.freeze({
+                value: districtId,
+                label: `${item.label} (${item.count})`,
+              });
+            }),
     ),
     typeOptions: ADMIN_ACQUISITION_TYPE_OPTIONS,
     verificationOptions: ADMIN_ACQUISITION_VERIFICATION_OPTIONS,
@@ -314,6 +380,10 @@ function toAdminAcquisitionDashboardViewData(
         dashboard.pagination.page,
         dashboard.pagination.totalPages,
       ),
+      nextCursor: dashboard.nextCursor ?? null,
+      cursor: options?.cursor ?? null,
+      hasNextPage: Boolean(dashboard.nextCursor),
+      useCursor: dashboard.usedCatalogScan !== true,
     }),
     rows,
     duplicateCandidates: Object.freeze(
@@ -327,5 +397,7 @@ function toAdminAcquisitionDashboardViewData(
     ),
     bulkActionsNote:
       "Satırdaki Onayla ile bekleyen sahiplenme taleplerini onaylayabilirsiniz. Toplu onay, red, atama ve birleştirme henüz bağlı değildir.",
+    ...(dashboard.locationRequired ? { locationRequired: true } : {}),
+    ...(dashboard.searchNotice ? { searchNotice: dashboard.searchNotice } : {}),
   });
 }

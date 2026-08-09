@@ -2,8 +2,9 @@
 
 import { Container } from "../components/container";
 import { cn } from "../lib/cn";
+import { getLastSearchCityId, setLastSearchCityId } from "../parent/parent-search-location-storage";
 import { SearchBar } from "../search/search-bar";
-import type { SearchActiveFiltersView } from "./build-search-href";
+import { buildSearchHref, type SearchActiveFiltersView } from "./build-search-href";
 
 export type SearchResultsHeaderProps = {
   title?: string;
@@ -11,6 +12,8 @@ export type SearchResultsHeaderProps = {
   defaultQuery?: string;
   /** Preserve active filters when submitting a new keyword search. */
   preserveFilters?: SearchActiveFiltersView & { sort?: string };
+  /** When true, free-text submit requires a city (active, stored, or location gate). */
+  requireCityForText?: boolean;
   className?: string;
 };
 
@@ -22,6 +25,7 @@ export function SearchResultsHeader({
   description = "Türkiye genelinde eğitim kurumlarını keşfedin — güvenle karşılaştırın.",
   defaultQuery = "",
   preserveFilters,
+  requireCityForText = false,
   className,
 }: SearchResultsHeaderProps) {
   const trimmed = defaultQuery.trim();
@@ -46,6 +50,43 @@ export function SearchResultsHeader({
     </>
   );
 
+  function onSubmitQuery(nextQuery: string) {
+    const q = nextQuery.trim();
+    if (!q) {
+      window.location.assign(
+        buildSearchHref({
+          city: preserveFilters?.cityId,
+          district: preserveFilters?.districtId,
+          type: preserveFilters?.type,
+          verified: preserveFilters?.verified,
+          premium: preserveFilters?.premium,
+          sort: preserveFilters?.sort,
+        }),
+      );
+      return;
+    }
+
+    const cityId = preserveFilters?.cityId?.trim() || getLastSearchCityId() || "";
+    if (cityId) {
+      setLastSearchCityId(cityId);
+      window.location.assign(
+        buildSearchHref({
+          q,
+          city: cityId,
+          district: preserveFilters?.districtId,
+          type: preserveFilters?.type,
+          verified: preserveFilters?.verified,
+          premium: preserveFilters?.premium,
+          sort: preserveFilters?.sort,
+        }),
+      );
+      return;
+    }
+
+    // No city yet — open location-required search surface (server will not scan).
+    window.location.assign(buildSearchHref({ q }));
+  }
+
   return (
     <header className={cn("ea-search-results__header", className)}>
       <Container size="xl">
@@ -63,6 +104,7 @@ export function SearchResultsHeader({
             inputName="q"
             className="ea-search-results__bar"
             filtersSlot={preserveFilters ? hiddenFields : null}
+            onSubmitQuery={requireCityForText ? onSubmitQuery : undefined}
           />
         </div>
       </Container>

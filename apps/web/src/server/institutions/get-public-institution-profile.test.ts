@@ -1,8 +1,11 @@
 import { createInstitutionFilters, type InstitutionRepository } from "@eduatlas/application";
 import { InstitutionStatus } from "@eduatlas/domain";
 import { createSeededInstitutionRepository } from "@eduatlas/firebase/server";
-import { describe, expect, it } from "vitest";
-import { getPublicInstitutionProfileBySlug } from "./get-public-institution-profile";
+import { describe, expect, it, vi } from "vitest";
+import {
+  getPublicInstitutionProfileBySlug,
+  loadRelatedInstitutions,
+} from "./get-public-institution-profile";
 
 describe("getPublicInstitutionProfileBySlug", () => {
   it("returns a profile for published seed institutions", async () => {
@@ -40,5 +43,23 @@ describe("getPublicInstitutionProfileBySlug", () => {
     );
     expect(result?.institution.primaryType).toBeDefined();
     expect(result?.profile.typeLabel).toBe("Anaokulu");
+  });
+
+  it("loads related institutions via limited city query, not unbounded list", async () => {
+    const repository = await createSeededInstitutionRepository();
+    const institution = await repository.getBySlug("kadikoy-marmara-koleji");
+    expect(institution).not.toBeNull();
+
+    const listSpy = vi.spyOn(repository, "list");
+    const limitedSpy = vi.spyOn(repository, "listRelatedPublishedByCity");
+
+    const related = await loadRelatedInstitutions(repository, institution!);
+
+    expect(limitedSpy).toHaveBeenCalledWith(institution!.location.cityId, 7);
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(related.length).toBeLessThanOrEqual(3);
+    expect(
+      related.every((card) => card.href !== `/institutions/${institution!.slug}`),
+    ).toBe(true);
   });
 });

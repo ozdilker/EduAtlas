@@ -1,5 +1,5 @@
-import { createInstitutionFilters, type InstitutionRepository } from "@eduatlas/application";
-import { type Institution, InstitutionStatus, institutionIdAsString } from "@eduatlas/domain";
+import type { InstitutionRepository } from "@eduatlas/application";
+import { type Institution, institutionIdAsString } from "@eduatlas/domain";
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import type { InstitutionProfileViewData } from "@eduatlas/ui";
 import { cache } from "react";
@@ -9,6 +9,14 @@ import {
   toInstitutionCardView,
   toInstitutionProfileView,
 } from "./to-profile-view";
+
+/** UI shows at most 3 related cards. */
+const RELATED_UI_LIMIT = 3;
+/**
+ * Firestore hard cap: one extra doc so excluding the current institution still
+ * leaves enough candidates without scanning the city.
+ */
+const RELATED_FIRESTORE_LIMIT = 7;
 
 export type PublicInstitutionProfile = {
   readonly institution: Institution;
@@ -65,20 +73,23 @@ export async function loadRelatedInstitutions(
   repository: InstitutionRepository,
   institution: Institution,
 ) {
-  const page = await repository.list({
-    page: 1,
-    pageSize: 6,
-    filters: createInstitutionFilters({
-      cityId: institution.location.cityId,
-      status: InstitutionStatus.Published,
-    }),
-  });
-
   const currentId = institutionIdAsString(institution.id);
+  const cityId = institution.location.cityId;
 
-  return page.items
+  if (!repository.listRelatedPublishedByCity) {
+    throw new Error(
+      "InstitutionRepository.listRelatedPublishedByCity is required for related institution queries.",
+    );
+  }
+
+  const candidates = await repository.listRelatedPublishedByCity(
+    cityId,
+    RELATED_FIRESTORE_LIMIT,
+  );
+
+  return candidates
     .filter((item) => institutionIdAsString(item.id) !== currentId)
-    .slice(0, 3)
+    .slice(0, RELATED_UI_LIMIT)
     .map((item) =>
       toInstitutionCardView(item, resolveGeoLabels(item.location.cityId, item.location.districtId)),
     );

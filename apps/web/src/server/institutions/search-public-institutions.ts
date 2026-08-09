@@ -1,5 +1,6 @@
 import {
   createInstitutionSearchQuery,
+  createInstitutionSearchResult,
   type CreateInstitutionFiltersInput,
   type InstitutionSearchRepository,
   type InstitutionSearchResult,
@@ -15,6 +16,13 @@ export type PublicInstitutionSearchView = {
   readonly query: string;
   readonly result: InstitutionSearchResult;
   readonly institutions: readonly InstitutionCardViewData[];
+  /** Firestore startAfter cursor for empty-text / structured search pages. */
+  readonly nextCursor: string | null;
+  /**
+   * True when free-text was requested without cityId.
+   * Public search must not run nationwide listAll() — UI shows location gate.
+   */
+  readonly locationRequired: boolean;
 };
 
 function isQuotaOrUnavailableError(error: unknown): boolean {
@@ -37,27 +45,80 @@ function resolveSort(raw: string | undefined): InstitutionSort {
   }
 }
 
+function buildLocationRequiredView(options: {
+  text: string;
+  page: number;
+  pageSize: number;
+  sort: InstitutionSort;
+  filters: CreateInstitutionFiltersInput;
+  cursor?: string | null;
+}): PublicInstitutionSearchView {
+  const searchQuery = createInstitutionSearchQuery({
+    text: options.text,
+    sort: options.sort,
+    page: options.page,
+    pageSize: options.pageSize,
+    filters: options.filters,
+    cursor: options.cursor,
+  });
+
+  return {
+    query: options.text,
+    result: createInstitutionSearchResult({
+      query: searchQuery,
+      items: [],
+      totalItems: 0,
+    }),
+    institutions: [],
+    nextCursor: null,
+    locationRequired: true,
+  };
+}
+
 /**
  * Runs public keyword search through InstitutionSearchRepository only.
  * Never throws not-found — empty result sets are valid.
  * Falls back to an empty local store when Firestore is unavailable/over quota
  * (dummy seeds are not re-injected).
+ *
+ * Empty-text / structured filters use a bounded Firestore path.
+ * Free-text requires cityId — unscoped free-text never calls repository.search / listAll.
  */
 export async function searchPublicInstitutions(options: {
   text?: string;
   page?: number;
   pageSize?: number;
   sort?: string;
+  cursor?: string | null;
   filters?: CreateInstitutionFiltersInput;
   repository?: InstitutionSearchRepository;
 }): Promise<PublicInstitutionSearchView> {
   const text = options.text?.trim() ?? "";
+  const page = options.page ?? 1;
+  const pageSize = options.pageSize ?? 12;
+  const sort = resolveSort(options.sort);
+  const filters = options.filters ?? {};
+  const cityId = filters.cityId?.trim();
+
+  // Public free-text MUST be city-scoped — never nationwide listAll().
+  if (text && !cityId) {
+    return buildLocationRequiredView({
+      text,
+      page,
+      pageSize,
+      sort,
+      filters,
+      cursor: options.cursor,
+    });
+  }
+
   const searchQuery = createInstitutionSearchQuery({
     text,
-    sort: resolveSort(options.sort),
-    page: options.page ?? 1,
-    pageSize: options.pageSize ?? 12,
-    filters: options.filters ?? {},
+    sort,
+    page,
+    pageSize,
+    filters,
+    cursor: options.cursor,
   });
 
   const primary = options.repository ?? (await getInstitutionSearchRepository());
@@ -83,5 +144,7 @@ export async function searchPublicInstitutions(options: {
     query: text,
     result,
     institutions,
+    nextCursor: result.nextCursor ?? null,
+    locationRequired: false,
   };
 }

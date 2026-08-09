@@ -1,7 +1,7 @@
 import { MetadataEngine } from "@eduatlas/seo";
 import { InstitutionsBrowsePage } from "@eduatlas/ui";
 import { getSeoSiteConfig } from "@/lib/seo-site";
-import { searchPublicInstitutions } from "@/server/institutions/search-public-institutions";
+import { listPublicInstitutionsBrowse } from "@/server/institutions/list-public-institutions-browse";
 
 export const dynamic = "force-dynamic";
 
@@ -10,18 +10,17 @@ export const metadata = MetadataEngine.resolve("static", getSeoSiteConfig(), {
 }).metadata;
 
 /**
- * Public institutions index — real published institutions from search.
+ * Public institutions index — published cards via bounded Firestore browse (no listAll).
  */
 export default async function InstitutionsBrowseRoute() {
-  const view = await searchPublicInstitutions({
-    page: 1,
+  const view = await listPublicInstitutionsBrowse({
     pageSize: 24,
   });
 
   return (
     <InstitutionsBrowsePage
       institutions={view.institutions}
-      totalCount={view.result.page.totalItems}
+      totalCount={view.totalCount}
     />
   );
 }

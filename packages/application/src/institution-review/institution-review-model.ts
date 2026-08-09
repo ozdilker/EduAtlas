@@ -69,4 +69,11 @@ export type InstitutionReviewQueue = Readonly<{
   readonly selected: ReviewQueueRow | null;
   readonly availableCities: readonly ReviewCountBucket[];
   readonly availableDistricts: readonly ReviewCountBucket[];
+  /**
+   * True when free-text `q` was present without city/district/type scope.
+   * No catalog materialization occurred.
+   */
+  readonly locationRequired?: boolean;
+  /** User-facing notice (e.g. location required for free-text search). */
+  readonly searchNotice?: string;
 }>;

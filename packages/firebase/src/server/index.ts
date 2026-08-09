@@ -84,6 +84,8 @@ export {
 } from "../geography";
 export {
   createFirestoreInstitutionRepository,
+  decodePublishedBrowseCursor,
+  encodePublishedBrowseCursor,
   type FirestoreInstitutionDocument,
   FirestoreInstitutionDocumentStore,
   FirestoreInstitutionMapper,
@@ -93,6 +95,7 @@ export {
   InMemoryInstitutionDocumentStore,
   type InstitutionDocumentRecord,
   type InstitutionDocumentStore,
+  type PublishedBrowseCursorValue,
 } from "../institutions";
 export {
   createFirestoreLeadRepository,

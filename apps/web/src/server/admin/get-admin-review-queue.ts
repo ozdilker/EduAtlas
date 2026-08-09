@@ -118,9 +118,19 @@ export async function getAdminReviewQueueView(
     },
   );
 
+  const locationNotice = result.searchNotice?.trim() ?? "";
+  const effectiveNotice = locationNotice || notice;
+  const effectiveTone: "info" | "error" | "" = locationNotice
+    ? "info"
+    : noticeToneRaw === "error"
+      ? "error"
+      : notice
+        ? "info"
+        : "";
+
   return toAdminReviewQueueViewData(result, {
-    notice,
-    noticeTone: noticeToneRaw === "error" ? "error" : notice ? "info" : "",
+    notice: effectiveNotice,
+    noticeTone: effectiveTone,
   });
 }
 
@@ -265,8 +275,7 @@ function toPanelView(row: ReviewQueueRow): AdminReviewPanelView {
         ? `%${Math.round(institution.googleBusiness.confidenceScore * 100)}`
         : "",
     googleLastError: institution.googleBusiness?.lastError ?? "",
-    googleMapsUrl:
-      institution.googleBusiness?.mapsUrl ?? institution.location.googleMapsUrl ?? "",
+    googleMapsUrl: institution.googleBusiness?.mapsUrl ?? institution.location.googleMapsUrl ?? "",
   });
 }
 

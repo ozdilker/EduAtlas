@@ -16,6 +16,8 @@ export const DEFAULT_PRODUCTION_DISALLOW_PATHS: readonly string[] = Object.freez
   "/preview",
   "/test",
   "/health",
+  /** Application search surface — not an SEO landing; keep profiles/cities/categories crawlable. */
+  "/search",
 ]);
 
 function disallowRules(paths: readonly string[]): readonly RobotsPathRule[] {

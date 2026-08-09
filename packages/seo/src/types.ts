@@ -21,7 +21,7 @@ export type SeoSiteConfig = {
   twitterHandle?: string;
   /**
    * Public site-search pathname (no query), e.g. `/search`.
-   * Used by SearchAction urlTemplate — not hardcoded in builders.
+   * Retained for opt-in SearchAction helpers; homepage WebSite does not emit SearchAction.
    */
   searchPath?: string;
   /**

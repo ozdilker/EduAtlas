@@ -3,7 +3,7 @@ import { buildSearchActionJsonLd } from "./search-action";
 
 /**
  * WebSite JSON-LD for the home surface.
- * Includes a SearchAction placeholder when enabled.
+ * SearchAction is opt-in only — default off (robots Disallow: /search).
  */
 export function buildWebsiteJsonLd(
   site: SeoSiteConfig,
@@ -12,7 +12,7 @@ export function buildWebsiteJsonLd(
     searchPathTemplate?: string;
   },
 ): JsonLdObject {
-  const includeSearchAction = options?.includeSearchAction ?? true;
+  const includeSearchAction = options?.includeSearchAction ?? false;
   const website: JsonLdObject = {
     "@context": "https://schema.org",
     "@type": "WebSite",

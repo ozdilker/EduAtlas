@@ -695,6 +695,8 @@ export type { SearchResultsGridProps } from "./search-results/search-results-gri
 export { SearchResultsGrid } from "./search-results/search-results-grid";
 export type { SearchResultsHeaderProps } from "./search-results/search-results-header";
 export { SearchResultsHeader } from "./search-results/search-results-header";
+export type { SearchLocationGateProps } from "./search-results/search-location-gate";
+export { SearchLocationGate } from "./search-results/search-location-gate";
 export type { SearchResultsPageProps } from "./search-results/search-results-page";
 export { SearchResultsPage } from "./search-results/search-results-page";
 export type { SearchResultsPaginationProps } from "./search-results/search-results-pagination";

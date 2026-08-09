@@ -1,9 +1,9 @@
 import { Button } from "../components/button";
+import { buildAdminNavItems } from "./admin-nav";
 import {
   type AdminPublishedInstitutionsViewData,
   buildAdminPublishedHref,
 } from "./admin-published-content";
-import { buildAdminNavItems } from "./admin-nav";
 import { AdminShell } from "./admin-shell";
 
 export type AdminPublishedPageProps = {
@@ -12,9 +12,11 @@ export type AdminPublishedPageProps = {
 
 /**
  * Admin list of published institutions — verify imports and filter by city.
+ * Pagination uses Firestore cursors (Prev resets to page 1; Next uses nextCursor).
  */
 export function AdminPublishedPage({ data }: AdminPublishedPageProps) {
   const { pagination } = data;
+  const useCursor = !data.query.trim();
 
   return (
     <AdminShell
@@ -55,7 +57,6 @@ export function AdminPublishedPage({ data }: AdminPublishedPageProps) {
           Filtreler
         </h2>
         <form className="ea-admin-filters__form" method="get" action="/admin/published">
-          <input type="hidden" name="page" value="1" />
           <div className="ea-admin-field">
             <label htmlFor="admin-published-city">Şehir (il)</label>
             <select id="admin-published-city" name="cityId" defaultValue={data.cityId}>
@@ -101,7 +102,14 @@ export function AdminPublishedPage({ data }: AdminPublishedPageProps) {
         </div>
 
         {data.rows.length === 0 ? (
-          <p className="ea-admin-muted" role="status">
+          <p
+            className={
+              data.locationRequired
+                ? "ea-admin-import__status ea-admin-import__status--info"
+                : "ea-admin-muted"
+            }
+            role="status"
+          >
             {data.emptyMessage}
           </p>
         ) : (
@@ -153,7 +161,7 @@ export function AdminPublishedPage({ data }: AdminPublishedPageProps) {
               </table>
             </div>
 
-            {pagination.totalPages > 1 ? (
+            {pagination.totalPages > 1 || pagination.hasNextPage ? (
               <nav className="ea-admin-published__pager" aria-label="Yayındaki kurum sayfaları">
                 {pagination.page <= 1 ? (
                   <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
@@ -165,34 +173,76 @@ export function AdminPublishedPage({ data }: AdminPublishedPageProps) {
                     href={buildAdminPublishedHref({
                       cityId: data.cityId,
                       q: data.query,
-                      page: pagination.page - 1,
+                      page: useCursor ? 1 : pagination.page - 1,
                     })}
                   >
                     Önceki
                   </a>
                 )}
                 <ol className="ea-admin-published__pager-pages">
-                  {pagination.pageNumbers.map((pageNumber) => (
-                    <li key={pageNumber}>
-                      <a
-                        className={
-                          pageNumber === pagination.page
-                            ? "ea-admin-published__pager-link ea-admin-published__pager-link--current"
-                            : "ea-admin-published__pager-link"
-                        }
-                        href={buildAdminPublishedHref({
+                  {pagination.pageNumbers.map((pageNumber) => {
+                    const isCurrent = pageNumber === pagination.page;
+                    const href = useCursor
+                      ? pageNumber === 1
+                        ? buildAdminPublishedHref({
+                            cityId: data.cityId,
+                            q: data.query,
+                          })
+                        : pageNumber === pagination.page + 1 && pagination.nextCursor
+                          ? buildAdminPublishedHref({
+                              cityId: data.cityId,
+                              q: data.query,
+                              page: pageNumber,
+                              cursor: pagination.nextCursor,
+                            })
+                          : undefined
+                      : buildAdminPublishedHref({
                           cityId: data.cityId,
                           q: data.query,
                           page: pageNumber,
-                        })}
-                        aria-current={pageNumber === pagination.page ? "page" : undefined}
-                      >
-                        {pageNumber}
-                      </a>
-                    </li>
-                  ))}
+                        });
+
+                    return (
+                      <li key={pageNumber}>
+                        {href && !isCurrent ? (
+                          <a className="ea-admin-published__pager-link" href={href}>
+                            {pageNumber}
+                          </a>
+                        ) : (
+                          <span
+                            className={
+                              isCurrent
+                                ? "ea-admin-published__pager-link ea-admin-published__pager-link--current"
+                                : "ea-admin-published__pager-link ea-admin-published__pager-link--disabled"
+                            }
+                            aria-current={isCurrent ? "page" : undefined}
+                          >
+                            {pageNumber}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
-                {pagination.page >= pagination.totalPages ? (
+                {useCursor ? (
+                  pagination.nextCursor ? (
+                    <a
+                      className="ea-admin-published__pager-link"
+                      href={buildAdminPublishedHref({
+                        cityId: data.cityId,
+                        q: data.query,
+                        page: pagination.page + 1,
+                        cursor: pagination.nextCursor,
+                      })}
+                    >
+                      Sonraki
+                    </a>
+                  ) : (
+                    <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
+                      Sonraki
+                    </span>
+                  )
+                ) : pagination.page >= pagination.totalPages ? (
                   <span className="ea-admin-published__pager-link ea-admin-published__pager-link--disabled">
                     Sonraki
                   </span>
