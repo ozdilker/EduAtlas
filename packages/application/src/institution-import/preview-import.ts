@@ -100,6 +100,7 @@ export async function previewImport(
       institutionRepository: deps.institutionRepository,
       cityRepository: deps.cityRepository,
       districtRepository: deps.districtRepository,
+      billingProtectionRepository: deps.billingProtectionRepository,
     },
   );
 

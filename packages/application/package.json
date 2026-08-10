@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./ai-workforce": "./src/ai-workforce/index.ts",
     "./acquisition": "./src/acquisition/index.ts",
+    "./billing-protection": "./src/billing-protection/index.ts",
     "./education-catalog": "./src/education-catalog/index.ts",
     "./geography": "./src/geography/index.ts",
     "./institution-import": "./src/institution-import/index.ts",

@@ -1,7 +1,9 @@
 import {
   ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
+  assertOperationAllowed,
   calculateInstitutionQuality,
   InstitutionSort,
+  isBillingProtectionError,
   isUnscopedAdminFreeTextQuery,
 } from "@eduatlas/application";
 import { cityIdAsString, InstitutionStatus, institutionIdAsString } from "@eduatlas/domain";
@@ -11,6 +13,7 @@ import {
   type AdminPublishedInstitutionsViewData,
   buildAdminPublishedPageNumbers,
 } from "@eduatlas/ui";
+import { getBillingProtectionDeps } from "../billing-protection/repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 
@@ -121,6 +124,7 @@ export async function getAdminPublishedInstitutionsView(
       query,
       requestedPage: parsePage(firstParam(searchParams.page)),
       cities,
+      billingProtectionDeps: await getBillingProtectionDeps(),
     });
   }
 
@@ -239,8 +243,24 @@ async function loadPublishedWithLegacySearch(input: {
   query: string;
   requestedPage: number;
   cities: AdminPublishedInstitutionsViewData["cities"];
+  billingProtectionDeps: Awaited<ReturnType<typeof getBillingProtectionDeps>>;
 }): Promise<AdminPublishedInstitutionsViewData> {
-  const { cityId, query, requestedPage, cities, institutionRepository } = input;
+  const { cityId, query, requestedPage, cities, institutionRepository, billingProtectionDeps } =
+    input;
+
+  try {
+    await assertOperationAllowed("ADMIN_FREE_TEXT", billingProtectionDeps);
+  } catch (error) {
+    if (isBillingProtectionError(error)) {
+      return emptyView({
+        cityId,
+        query,
+        cities,
+        emptyMessage: error.message,
+      });
+    }
+    throw error;
+  }
 
   let totalCount = 0;
   try {

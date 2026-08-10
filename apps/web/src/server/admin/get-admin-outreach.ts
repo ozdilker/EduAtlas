@@ -1,6 +1,8 @@
 import {
-  CLAIM_INVITATION_TEMPLATE_ID,
   buildRecipientChecklist,
+  type CampaignQualityScore,
+  CLAIM_INVITATION_TEMPLATE_ID,
+  campaignListBucketLabel,
   computeCampaignQualityScore,
   currentWarmupLimit,
   estimateDeliveryEtaMinutes,
@@ -8,19 +10,18 @@ import {
   previewSegmentInstitutions,
   remainingDeliveryJobs,
   resolveCampaignListBucket,
-  campaignListBucketLabel,
-  type CampaignQualityScore,
   type SegmentInstitutionPreview,
 } from "@eduatlas/application";
 import {
-  campaignIdAsString,
-  emptyPreSendChecklist,
-  isPreSendChecklistComplete,
   type CampaignLearnings,
   type CampaignPostSummary,
   type CampaignPreSendChecklist,
+  campaignIdAsString,
+  emptyPreSendChecklist,
+  isPreSendChecklistComplete,
 } from "@eduatlas/domain";
 import { getSeoSiteConfig } from "@/lib/seo-site";
+import { getBillingProtectionDeps } from "@/server/billing-protection/repository";
 import { getInstitutionRepository } from "@/server/institutions/repository";
 import { getOutreachService, getOutreachStores } from "@/server/outreach/store";
 
@@ -182,8 +183,7 @@ export async function getAdminOutreachPageData(searchParams: {
       status: c.status,
       templateId: c.templateId,
       segmentId: c.segmentId,
-      subjectOverride:
-        c.subjectOverride?.trim() || templateSubjectById.get(c.templateId) || "",
+      subjectOverride: c.subjectOverride?.trim() || templateSubjectById.get(c.templateId) || "",
       preheader: c.preheader?.trim() || templatePreviewById.get(c.templateId) || "",
       description: c.description ?? "",
       recipientCount,
@@ -193,9 +193,7 @@ export async function getAdminOutreachPageData(searchParams: {
   });
 
   const selectedId = firstParam(searchParams.id)?.trim();
-  const selected = selectedId
-    ? (rows.find((r) => r.id === selectedId) ?? null)
-    : null;
+  const selected = selectedId ? (rows.find((r) => r.id === selectedId) ?? null) : null;
 
   let previewHtml = "";
   let previewSubject = "";
@@ -218,9 +216,7 @@ export async function getAdminOutreachPageData(searchParams: {
   }));
 
   if (selected) {
-    const selectedDomain = campaigns.find(
-      (c) => campaignIdAsString(c.id) === selected.id,
-    );
+    const selectedDomain = campaigns.find((c) => campaignIdAsString(c.id) === selected.id);
     preSendChecklist = selectedDomain?.preSendChecklist ?? emptyPreSendChecklist();
     preSendComplete = isPreSendChecklistComplete(preSendChecklist);
     postSummary = selectedDomain?.postSummary ?? null;
@@ -261,10 +257,7 @@ export async function getAdminOutreachPageData(searchParams: {
       percent: progressRaw.percent,
     };
     const remaining = remainingDeliveryJobs(progressRaw);
-    const etaMinutes = estimateDeliveryEtaMinutes(
-      remaining,
-      deliveryConfig.ratePerMinute,
-    );
+    const etaMinutes = estimateDeliveryEtaMinutes(remaining, deliveryConfig.ratePerMinute);
 
     const recipientRows = await stores.recipientRepository.listByCampaignId(selected.id);
     recipients = recipientRows.map((r) => ({
@@ -285,11 +278,13 @@ export async function getAdminOutreachPageData(searchParams: {
     }));
 
     try {
+      const billingProtectionDeps = await getBillingProtectionDeps();
       const segPreview = await previewSegmentInstitutions(
         { segmentId: selected.segmentId, limit: 25 },
         {
           segmentRepository: stores.segmentRepository,
           institutionRepository,
+          billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
         },
       );
       segmentPreview = [...segPreview.items];
@@ -329,12 +324,8 @@ export async function getAdminOutreachPageData(searchParams: {
 
   return Object.freeze({
     campaigns: Object.freeze(rows),
-    templates: Object.freeze(
-      templates.map((t) => Object.freeze({ id: t.id, name: t.name })),
-    ),
-    segments: Object.freeze(
-      segments.map((s) => Object.freeze({ id: s.id, name: s.name })),
-    ),
+    templates: Object.freeze(templates.map((t) => Object.freeze({ id: t.id, name: t.name }))),
+    segments: Object.freeze(segments.map((s) => Object.freeze({ id: s.id, name: s.name }))),
     selected,
     previewHtml,
     previewSubject,

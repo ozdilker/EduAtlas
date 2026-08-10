@@ -43,6 +43,7 @@ import {
   getAdminAcquisitionStatusLabel,
   getAdminAcquisitionVerificationLabel,
 } from "@eduatlas/ui";
+import { getBillingProtectionDeps } from "../billing-protection/repository";
 import { getClaimRequestRepository } from "../claims/claim-request-repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
@@ -145,9 +146,10 @@ export async function getAdminAcquisitionDashboardView(
   const cityIdsWithSelection =
     cityId && !cityIdsForCounts.includes(cityId) ? [...cityIdsForCounts, cityId] : cityIdsForCounts;
 
-  const [institutionRepository, claimRequestRepository] = await Promise.all([
+  const [institutionRepository, claimRequestRepository, billingProtectionDeps] = await Promise.all([
     getInstitutionRepository(),
     getClaimRequestRepository(),
+    getBillingProtectionDeps(),
   ]);
   const [dashboard, pendingClaims] = await Promise.all([
     getInstitutionAcquisitionDashboard(
@@ -171,6 +173,7 @@ export async function getAdminAcquisitionDashboardView(
         resolveCityLabel: (id) => resolveGeoLabels(id, "dist_unknown").cityName,
         resolveDistrictLabel: (cId, dId) => resolveGeoLabels(cId, dId).districtName,
         resolveTypeLabel: getInstitutionTypeLabel,
+        billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
       },
     ),
     claimRequestRepository.listRecent({

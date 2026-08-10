@@ -1,16 +1,8 @@
-import {
-  ImportDataSourceId,
-  ImportSourceFormat,
-} from "@eduatlas/domain";
-import {
-  type PreviewImportResult,
-  previewImport,
-} from "@eduatlas/application";
+import { type PreviewImportResult, previewImport } from "@eduatlas/application";
+import { ImportDataSourceId, ImportSourceFormat } from "@eduatlas/domain";
 import type { AdminImportFormState, AdminImportRowView } from "@eduatlas/ui";
-import {
-  getAdminImportRowStatusLabel,
-  selectAdminImportDisplayRows,
-} from "@eduatlas/ui";
+import { getAdminImportRowStatusLabel, selectAdminImportDisplayRows } from "@eduatlas/ui";
+import { getBillingProtectionDeps } from "../billing-protection/repository";
 import { getSeededGeographyRepositories } from "../geography/repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { storeImportUpload } from "./import-upload-cache";
@@ -50,9 +42,7 @@ function sourceLabel(sourceId: ImportDataSourceId): string {
   }
 }
 
-function mapValidatedToRowView(
-  item: PreviewImportResult["rows"][number],
-): AdminImportRowView {
+function mapValidatedToRowView(item: PreviewImportResult["rows"][number]): AdminImportRowView {
   return {
     rowNumber: item.row.rowNumber,
     name: item.row.name,
@@ -83,9 +73,10 @@ export async function runAdminImportPreview(input: {
   );
 
   const uploadToken = await storeImportUpload(input.fileName, input.content);
-  const [institutionRepository, geography] = await Promise.all([
+  const [institutionRepository, geography, billingProtectionDeps] = await Promise.all([
     getInstitutionRepository(),
     getSeededGeographyRepositories(),
+    getBillingProtectionDeps(),
   ]);
 
   const preview = await previewImport(
@@ -94,6 +85,7 @@ export async function runAdminImportPreview(input: {
       institutionRepository,
       cityRepository: geography.cityRepository,
       districtRepository: geography.districtRepository,
+      billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
     },
   );
 

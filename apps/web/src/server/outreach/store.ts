@@ -1,4 +1,9 @@
 import {
+  type CampaignLogRepository,
+  type CampaignRecipientRepository,
+  type CampaignRepository,
+  type CampaignSegmentRepository,
+  type CampaignTemplateRepository,
   createDeliveryWorker,
   createEmailDeliveryHandler,
   createInMemoryDeliveryJobRepository,
@@ -7,17 +12,12 @@ import {
   createInMemoryOutreachStores,
   createInMemoryOutreachWarmupSettingsRepository,
   createOutreachService,
+  type DeliveryWorker,
   ensureOutreachSeeds,
   loadOutreachDeliveryConfig,
-  resolveMailLogoUrl,
-  type CampaignLogRepository,
-  type CampaignRepository,
-  type CampaignRecipientRepository,
-  type CampaignSegmentRepository,
-  type CampaignTemplateRepository,
-  type DeliveryWorker,
   type OutreachService,
   type OutreachWarmupSettingsRepository,
+  resolveMailLogoUrl,
 } from "@eduatlas/application";
 import {
   getFirebaseServerEnv,
@@ -31,8 +31,9 @@ import {
   getAdminFirestore,
 } from "@eduatlas/firebase/server";
 import { getSeoSiteConfig } from "@/lib/seo-site";
-import { getEmailService } from "@/server/notifications/repository";
+import { getBillingProtectionDeps } from "@/server/billing-protection/repository";
 import { getInstitutionRepository } from "@/server/institutions/repository";
+import { getEmailService } from "@/server/notifications/repository";
 
 type OutreachStores = Readonly<{
   campaignRepository: CampaignRepository;
@@ -69,7 +70,10 @@ async function buildRuntime(): Promise<OutreachRuntime> {
   const site = getSeoSiteConfig();
   const ctaHref = `${site.siteUrl.replace(/\/+$/, "")}/login`;
   const mailLogoUrl = resolveMailLogoUrl(site.siteUrl);
-  const institutionRepository = await getInstitutionRepository();
+  const [institutionRepository, billingProtectionDeps] = await Promise.all([
+    getInstitutionRepository(),
+    getBillingProtectionDeps(),
+  ]);
 
   if (canUseFirestoreBackend()) {
     const db = getAdminFirestore();
@@ -88,6 +92,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
       deliveryConfig: config,
       mailLogoUrl,
       warmupSettingsRepository,
+      billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
     });
     const worker = createDeliveryWorker({
       config,
@@ -102,9 +107,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
           ctaHref,
           mailLogoUrl,
           resolveInstitutionName: async (institutionId) => {
-            const inst = await institutionRepository.getById(
-              createInstitutionId(institutionId),
-            );
+            const inst = await institutionRepository.getById(createInstitutionId(institutionId));
             return inst?.name ?? "Kurumunuz";
           },
         }),
@@ -143,6 +146,7 @@ async function buildRuntime(): Promise<OutreachRuntime> {
     deliveryConfig: config,
     mailLogoUrl,
     warmupSettingsRepository,
+    billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
   });
   const worker = createDeliveryWorker({
     config,

@@ -10,6 +10,11 @@ import {
   qualityGradeFromScore,
   qualityLevelFromScore,
 } from "@eduatlas/domain";
+import {
+  assertOperationAllowed,
+  type BillingProtectionRepository,
+  isBillingProtectionError,
+} from "../billing-protection";
 import { calculateInstitutionQuality } from "../institution-quality/calculate-institution-quality";
 import {
   ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
@@ -66,6 +71,8 @@ export type GetInstitutionAcquisitionDashboardDependencies = {
   resolveCityLabel?: (cityId: string) => string;
   resolveDistrictLabel?: (cityId: string, districtId: string) => string;
   resolveTypeLabel?: (type: InstitutionType) => string;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  billingProtectionRepository?: BillingProtectionRepository | null;
 };
 
 const DEFAULT_LIST_PAGE_SIZE = 50;
@@ -377,6 +384,10 @@ async function materializeAcquisitionCatalog(
   duplicateCandidates: readonly AcquisitionDuplicateCandidate[];
   duplicateIdSet: Set<string>;
 }> {
+  await assertOperationAllowed("ACQUISITION_FULL_SCAN", {
+    billingProtectionRepository: deps.billingProtectionRepository,
+  });
+
   const filters = createInstitutionFilters({
     cityId: input.cityId,
     districtId: input.districtId,
@@ -599,8 +610,22 @@ async function legacyCatalogDashboard(
     query: input.query,
   });
 
-  const { ownershipFiltered, duplicateCandidates, duplicateIdSet } =
-    await materializeAcquisitionCatalog(input, deps);
+  let ownershipFiltered: Institution[];
+  let duplicateCandidates: readonly AcquisitionDuplicateCandidate[];
+  let duplicateIdSet: Set<string>;
+  try {
+    ({ ownershipFiltered, duplicateCandidates, duplicateIdSet } =
+      await materializeAcquisitionCatalog(input, deps));
+  } catch (error) {
+    if (isBillingProtectionError(error)) {
+      return Object.freeze({
+        ...locationRequiredAcquisitionDashboard(input),
+        locationRequired: false,
+        searchNotice: error.message,
+      });
+    }
+    throw error;
+  }
 
   const resolveCity = deps.resolveCityLabel ?? ((cityId: string) => cityId);
   const resolveDistrict =

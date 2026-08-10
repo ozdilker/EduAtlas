@@ -1,24 +1,25 @@
 import {
   buildDeliveryIdempotencyKey,
-  campaignIdAsString,
+  type Campaign,
   CampaignChannel,
   CampaignRecipientStatus,
   CampaignStatus,
+  campaignIdAsString,
   createCampaignRecipient,
   createDeliveryJob,
   DeliveryJobStatus,
-  institutionIdAsString,
-  type Campaign,
   type Institution,
+  institutionIdAsString,
 } from "@eduatlas/domain";
-import type { InstitutionRepository } from "../institutions/institution-repository";
+import { assertOperationAllowed, type BillingProtectionRepository } from "../billing-protection";
 import type { OutreachDeliveryConfig } from "../delivery/delivery-config";
 import type { DeliveryJobRepository } from "../delivery/delivery-job-repository";
-import { OutreachValidationError } from "./errors";
-import { institutionMatchesSegment } from "./institution-matches-segment";
+import type { InstitutionRepository } from "../institutions/institution-repository";
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
+import { OutreachValidationError } from "./errors";
+import { institutionMatchesSegment } from "./institution-matches-segment";
 
 export type PrepareCampaignResult = Readonly<{
   /** Newly created recipients in this call. */
@@ -40,6 +41,8 @@ export type PrepareCampaignDependencies = Readonly<{
   readonly targetLimit?: number;
   readonly nextRecipientId?: () => string;
   readonly nextJobId?: () => string;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  readonly billingProtectionRepository?: BillingProtectionRepository | null;
 }>;
 
 let prepareSeq = 0;
@@ -65,10 +68,7 @@ export async function prepareCampaign(
     throw new OutreachValidationError("Only draft campaigns can be prepared.");
   }
 
-  const targetLimit = Math.max(
-    1,
-    deps.targetLimit ?? deps.config.warmupBatchSize,
-  );
+  const targetLimit = Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize);
   const campaignId = campaignIdAsString(campaign.id);
   const existingRecipients = await deps.recipientRepository.listByCampaignId(campaignId);
   if (existingRecipients.length >= targetLimit) {
@@ -85,6 +85,10 @@ export async function prepareCampaign(
     throw new OutreachValidationError("Campaign segment is missing.");
   }
 
+  await assertOperationAllowed("OUTREACH_PREPARE", {
+    billingProtectionRepository: deps.billingProtectionRepository,
+  });
+
   const page = await deps.institutionRepository.list({
     filters: {
       ...(segment.filters.cityId ? { cityId: segment.filters.cityId } : {}),
@@ -99,9 +103,7 @@ export async function prepareCampaign(
     pageSize: 500,
   });
 
-  const existingInstitutionIds = new Set(
-    existingRecipients.map((r) => r.institutionId),
-  );
+  const existingInstitutionIds = new Set(existingRecipients.map((r) => r.institutionId));
   const matched = page.items.filter((inst) => institutionMatchesSegment(inst, segment));
   const slots = targetLimit - existingRecipients.length;
   const candidates = matched.filter(

@@ -3,6 +3,7 @@
 import {
   type ExecuteImportResult,
   executeImport,
+  isBillingProtectionError,
   isImportFileError,
   type PreviewImportResult,
   previewImport,
@@ -15,17 +16,11 @@ import {
   selectAdminImportDisplayRows,
 } from "@eduatlas/ui";
 import { revalidatePath } from "next/cache";
+import { getBillingProtectionDeps } from "../billing-protection/repository";
 import { getSeededGeographyRepositories } from "../geography/repository";
-import {
-  getInstitutionRepository,
-  resetInstitutionRepository,
-} from "../institutions/repository";
+import { getInstitutionRepository, resetInstitutionRepository } from "../institutions/repository";
 import { writeImportProgress } from "./import-progress-store";
-import {
-  deleteImportUpload,
-  getImportUpload,
-  storeImportUpload,
-} from "./import-upload-cache";
+import { deleteImportUpload, getImportUpload, storeImportUpload } from "./import-upload-cache";
 import { readImportUploadBytes } from "./read-import-upload-bytes";
 
 function createServerJobId(): string {
@@ -170,15 +165,17 @@ export async function importInstitutionsAction(
       resetInstitutionRepository();
     }
 
-    const [institutionRepository, geography] = await Promise.all([
+    const [institutionRepository, geography, billingProtectionDeps] = await Promise.all([
       getInstitutionRepository(),
       getSeededGeographyRepositories(),
+      getBillingProtectionDeps(),
     ]);
 
     const deps = {
       institutionRepository,
       cityRepository: geography.cityRepository,
       districtRepository: geography.districtRepository,
+      billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
     };
 
     if (mode === "execute") {
@@ -266,13 +263,14 @@ export async function importInstitutionsAction(
         updatedAt: Date.now(),
       });
     }
+    if (isBillingProtectionError(error)) {
+      return errorState(error.message, uploadToken, jobId);
+    }
     if (isImportFileError(error)) {
       return errorState(error.message, uploadToken, jobId);
     }
     const message =
-      error instanceof Error
-        ? error.message
-        : "İçe aktarma sırasında beklenmeyen bir hata oluştu.";
+      error instanceof Error ? error.message : "İçe aktarma sırasında beklenmeyen bir hata oluştu.";
     if (/RESOURCE_EXHAUSTED|Quota exceeded/i.test(message)) {
       return errorState(
         "Firestore kotası doldu. Yazmalar küçük partiler halinde yeniden denendi; kota sıfırlanınca tekrar “İçe aktar”a basın. Başarılı satırlar kaydedilmiş olabilir.",
@@ -284,9 +282,7 @@ export async function importInstitutionsAction(
   }
 }
 
-function mapValidatedToRowView(
-  item: PreviewImportResult["rows"][number],
-): AdminImportRowView {
+function mapValidatedToRowView(item: PreviewImportResult["rows"][number]): AdminImportRowView {
   return {
     rowNumber: item.row.rowNumber,
     name: item.row.name,
@@ -303,15 +299,12 @@ function mapValidatedToRowView(
   };
 }
 
-function mapExecutedToRowView(
-  item: ExecuteImportResult["rows"][number],
-): AdminImportRowView {
+function mapExecutedToRowView(item: ExecuteImportResult["rows"][number]): AdminImportRowView {
   return {
     rowNumber: item.validated.row.rowNumber,
     name: item.validated.row.name,
     slugPreview: item.validated.slugPreview,
-    typeLabel:
-      TYPE_LABELS[item.validated.row.primaryType] ?? item.validated.row.primaryType ?? "—",
+    typeLabel: TYPE_LABELS[item.validated.row.primaryType] ?? item.validated.row.primaryType ?? "—",
     cityId: item.validated.row.cityId,
     districtId: item.validated.row.districtId,
     status: item.validated.status,

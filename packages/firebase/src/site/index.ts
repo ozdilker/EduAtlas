@@ -1,4 +1,12 @@
 export {
+  BILLING_PROTECTION_CACHE_TTL_MS,
+  BILLING_PROTECTION_DOC_ID,
+  createFirestoreBillingProtectionRepository,
+  createInMemoryBillingProtectionRepository,
+  FirestoreBillingProtectionRepository,
+  InMemoryBillingProtectionRepository,
+} from "./firestore-billing-protection-repository";
+export {
   createFirestoreHomepageVisualsRepository,
   createInMemoryHomepageVisualsRepository,
   FirestoreHomepageVisualsRepository,

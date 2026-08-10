@@ -44,6 +44,8 @@ export type ExecuteImportDependencies = Readonly<{
   readonly cityRepository: CityRepository;
   readonly districtRepository: DistrictRepository;
   readonly onProgress?: (progress: ExecuteImportProgress) => void | Promise<void>;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  readonly billingProtectionRepository?: import("../billing-protection").BillingProtectionRepository | null;
 }>;
 
 export type ExecutedImportRow = Readonly<{
@@ -115,6 +117,7 @@ export async function executeImport(
     institutionRepository: deps.institutionRepository,
     cityRepository: deps.cityRepository,
     districtRepository: deps.districtRepository,
+    billingProtectionRepository: deps.billingProtectionRepository,
   });
 
   const rows: ExecutedImportRow[] = [];

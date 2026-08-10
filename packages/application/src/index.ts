@@ -63,6 +63,20 @@ export {
   startPaytrCheckout,
   verifyPaytrNotificationHash,
 } from "./billing";
+export type { BillingProtectionRepository } from "./billing-protection";
+export {
+  assertOperationAllowed,
+  BILLING_PROTECTED_OPERATIONS,
+  type BillingProtectedOperation,
+  type BillingProtectionDependencies,
+  BillingProtectionError,
+  getBillingProtection,
+  isBillingOperationBlocked,
+  isBillingProtectionError,
+  type SetBillingProtectionDependencies,
+  type SetBillingProtectionInput,
+  setBillingProtection,
+} from "./billing-protection";
 export {
   type ApproveClaimRequestDependencies,
   type ApproveClaimRequestInput,

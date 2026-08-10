@@ -18,6 +18,11 @@ import {
   resolveImportSlug,
   slugTokenFromGeoId,
 } from "@eduatlas/domain";
+import {
+  assertOperationAllowed,
+  type BillingProtectionRepository,
+  isBillingProtectionError,
+} from "../billing-protection";
 import type { CityRepository } from "../geography/city-repository";
 import type { DistrictRepository } from "../geography/district-repository";
 import type { InstitutionRepository } from "../institutions/institution-repository";
@@ -68,6 +73,8 @@ export type ValidateImportDependencies = Readonly<{
   readonly institutionRepository: InstitutionRepository;
   readonly cityRepository?: CityRepository;
   readonly districtRepository?: DistrictRepository;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  readonly billingProtectionRepository?: BillingProtectionRepository | null;
 }>;
 
 /**
@@ -103,9 +110,15 @@ export async function validateImport(
   // Best-effort duplicate scan — never burn the whole import on a quota/list failure.
   let existingItems: Awaited<ReturnType<InstitutionRepository["list"]>>["items"] = [];
   if (!input.skipExistingDuplicateScan) {
+    await assertOperationAllowed("IMPORT_DUPLICATE_SCAN", {
+      billingProtectionRepository: deps.billingProtectionRepository,
+    });
     try {
       existingItems = await listExistingForDuplicateScan(deps.institutionRepository);
     } catch (error) {
+      if (isBillingProtectionError(error)) {
+        throw error;
+      }
       console.warn(
         "[eduatlas] validateImport skipped existing-institution scan:",
         error instanceof Error ? error.message : error,
@@ -162,10 +175,8 @@ export async function validateImport(
         address: rawRow.address.trim() || DEFAULT_IMPORT_ADDRESS,
         shortDescription: rawRow.shortDescription,
         longDescription: rawRow.longDescription,
-        phone:
-          rawRow.phone && PHONE_PATTERN.test(rawRow.phone) ? rawRow.phone : "",
-        email:
-          rawRow.email && EMAIL_PATTERN.test(rawRow.email) ? rawRow.email : "",
+        phone: rawRow.phone && PHONE_PATTERN.test(rawRow.phone) ? rawRow.phone : "",
+        email: rawRow.email && EMAIL_PATTERN.test(rawRow.email) ? rawRow.email : "",
         whatsappNumber: rawRow.whatsappNumber,
         websiteUrl: rawRow.websiteUrl,
         facebookUrl: rawRow.facebookUrl,
@@ -188,7 +199,9 @@ export async function validateImport(
     }
 
     if (!row.cityId) {
-      issues.push(importIssueError("cityId", "Şehir (İl) zorunlu — Excel’de İl sütununu kontrol edin."));
+      issues.push(
+        importIssueError("cityId", "Şehir (İl) zorunlu — Excel’de İl sütununu kontrol edin."),
+      );
     }
 
     if (!row.districtId) {
@@ -236,8 +249,7 @@ export async function validateImport(
     const baseSlug = resolveImportSlug(row);
     const allocated = allocateUniqueImportSlug({
       baseSlug,
-      districtSlug:
-        districtSlugById.get(row.districtId) || slugTokenFromGeoId(row.districtId),
+      districtSlug: districtSlugById.get(row.districtId) || slugTokenFromGeoId(row.districtId),
       citySlug: citySlugById.get(row.cityId) || slugTokenFromGeoId(row.cityId),
       taken: takenSlugs,
     });
@@ -266,9 +278,7 @@ export async function validateImport(
       );
     }
 
-    const duplicateKey = row.name
-      ? importDuplicateKey(row.name, row.cityId, row.districtId)
-      : "";
+    const duplicateKey = row.name ? importDuplicateKey(row.name, row.cityId, row.districtId) : "";
 
     if (
       duplicateKey &&
@@ -320,10 +330,7 @@ export async function validateImport(
             // Drop bad social URLs rather than failing the whole preview/import.
             effectiveRow = clearImportSocialUrls(row);
             issues.push(
-              importIssueWarning(
-                "websiteUrl",
-                "Geçersiz web/sosyal medya adresi yok sayıldı.",
-              ),
+              importIssueWarning("websiteUrl", "Geçersiz web/sosyal medya adresi yok sayıldı."),
             );
             if (effectiveStatus === "ready") {
               effectiveStatus = "warning";

@@ -30,6 +30,7 @@ import {
   getAdminAcquisitionQualityLevelLabel,
   getAdminAcquisitionStatusLabel,
 } from "@eduatlas/ui";
+import { getBillingProtectionDeps } from "../billing-protection/repository";
 import { getInstitutionRepository } from "../institutions/repository";
 import { getInstitutionTypeLabel } from "../institutions/to-profile-view";
 
@@ -98,7 +99,10 @@ export async function getAdminReviewQueueView(
   const status =
     statusRaw && isInstitutionStatus(statusRaw) ? (statusRaw as InstitutionStatus) : undefined;
 
-  const institutionRepository = await getInstitutionRepository();
+  const [institutionRepository, billingProtectionDeps] = await Promise.all([
+    getInstitutionRepository(),
+    getBillingProtectionDeps(),
+  ]);
   const result = await getInstitutionReviewQueue(
     {
       queue,
@@ -115,6 +119,7 @@ export async function getAdminReviewQueueView(
       institutionRepository,
       resolveCityLabel: (id) => resolveGeoLabels(id, "dist_unknown").cityName,
       resolveDistrictLabel: (cId, dId) => resolveGeoLabels(cId, dId).districtName,
+      billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
     },
   );
 

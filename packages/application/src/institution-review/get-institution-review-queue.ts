@@ -7,6 +7,7 @@ import {
   institutionIdAsString,
   validateInstitutionForPublish,
 } from "@eduatlas/domain";
+import { assertOperationAllowed, isBillingProtectionError } from "../billing-protection";
 import { calculateInstitutionQuality } from "../institution-quality/calculate-institution-quality";
 import {
   ADMIN_FREE_TEXT_SEARCH_LOCATION_REQUIRED_MESSAGE,
@@ -44,6 +45,8 @@ export type GetInstitutionReviewQueueDependencies = {
   institutionRepository: InstitutionRepository;
   resolveCityLabel?: (cityId: string) => string;
   resolveDistrictLabel?: (cityId: string, districtId: string) => string;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  billingProtectionRepository?: import("../billing-protection").BillingProtectionRepository | null;
 };
 
 const DEFAULT_PAGE_SIZE = 50;
@@ -286,6 +289,42 @@ export async function getInstitutionReviewQueue(
   let queueCounts: InstitutionReviewQueue["queueCounts"];
 
   if (!canUseBounded || !listAdminPage || !countAdmin) {
+    if (hasTextSearch) {
+      try {
+        await assertOperationAllowed("ADMIN_FREE_TEXT", {
+          billingProtectionRepository: deps.billingProtectionRepository,
+        });
+      } catch (error) {
+        if (isBillingProtectionError(error)) {
+          return Object.freeze({
+            generatedAt: now,
+            queue,
+            sort,
+            filters: Object.freeze({
+              ...(filters.cityId ? { cityId: filters.cityId } : {}),
+              ...(filters.districtId ? { districtId: filters.districtId } : {}),
+              ...(filters.primaryType ? { primaryType: filters.primaryType } : {}),
+              ...(filters.status ? { status: filters.status } : {}),
+              ...(input.qualityBand ? { qualityBand: input.qualityBand } : {}),
+              ...(filters.query ? { query: filters.query } : {}),
+            }),
+            queueCounts: Object.freeze({
+              draft: 0,
+              needs_review: 0,
+              ready: 0,
+              published: 0,
+              rejected: 0,
+            }),
+            rows: Object.freeze([]),
+            selected: null,
+            availableCities: Object.freeze([]),
+            availableDistricts: Object.freeze([]),
+            searchNotice: error.message,
+          });
+        }
+        throw error;
+      }
+    }
     const page = await deps.institutionRepository.list({
       filters,
       page: 1,

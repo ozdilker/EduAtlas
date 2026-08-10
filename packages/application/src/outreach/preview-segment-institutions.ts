@@ -1,8 +1,9 @@
 import type { CampaignSegment, Institution } from "@eduatlas/domain";
 import { institutionIdAsString } from "@eduatlas/domain";
+import { assertOperationAllowed, type BillingProtectionRepository } from "../billing-protection";
 import type { InstitutionRepository } from "../institutions/institution-repository";
-import { institutionMatchesSegment } from "./institution-matches-segment";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
+import { institutionMatchesSegment } from "./institution-matches-segment";
 
 export type SegmentInstitutionPreview = Readonly<{
   readonly institutionId: string;
@@ -19,6 +20,8 @@ export type PreviewSegmentInstitutionsResult = Readonly<{
 export type PreviewSegmentInstitutionsDependencies = Readonly<{
   readonly segmentRepository: CampaignSegmentRepository;
   readonly institutionRepository: InstitutionRepository;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  readonly billingProtectionRepository?: BillingProtectionRepository | null;
 }>;
 
 function toPreview(inst: Institution): SegmentInstitutionPreview {
@@ -32,9 +35,13 @@ function toPreview(inst: Institution): SegmentInstitutionPreview {
 
 async function listMatchedInstitutions(
   segment: CampaignSegment,
-  institutionRepository: InstitutionRepository,
+  deps: PreviewSegmentInstitutionsDependencies,
 ): Promise<readonly Institution[]> {
-  const page = await institutionRepository.list({
+  await assertOperationAllowed("OUTREACH_PREPARE", {
+    billingProtectionRepository: deps.billingProtectionRepository,
+  });
+
+  const page = await deps.institutionRepository.list({
     filters: {
       ...(segment.filters.cityId ? { cityId: segment.filters.cityId } : {}),
       ...(segment.filters.districtId ? { districtId: segment.filters.districtId } : {}),
@@ -59,7 +66,7 @@ export async function countSegmentMatches(
 ): Promise<number> {
   const segment = await deps.segmentRepository.getById(segmentId.trim());
   if (!segment) return 0;
-  const matched = await listMatchedInstitutions(segment, deps.institutionRepository);
+  const matched = await listMatchedInstitutions(segment, deps);
   return matched.length;
 }
 
@@ -74,7 +81,7 @@ export async function previewSegmentInstitutions(
   if (!segment) {
     return Object.freeze({ matchCount: 0, items: Object.freeze([]) });
   }
-  const matched = await listMatchedInstitutions(segment, deps.institutionRepository);
+  const matched = await listMatchedInstitutions(segment, deps);
   const limit = input.limit && input.limit > 0 ? input.limit : 25;
   const items = matched.slice(0, limit).map(toPreview);
   return Object.freeze({

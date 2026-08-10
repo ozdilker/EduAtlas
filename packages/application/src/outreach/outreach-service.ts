@@ -1,8 +1,14 @@
 import {
-  campaignIdAsString,
+  type Campaign,
+  type CampaignLearnings,
+  type CampaignLog,
   CampaignLogLevel,
+  type CampaignPreSendChecklist,
+  type CampaignRecipient,
   CampaignRecipientStatus,
   CampaignStatus,
+  type CreateCampaignInput,
+  campaignIdAsString,
   createCampaign,
   createCampaignLog,
   createCampaignRecipient,
@@ -11,38 +17,27 @@ import {
   emptyPreSendChecklist,
   isPreSendChecklistComplete,
   mergePreSendChecklist,
-  type Campaign,
-  type CampaignLearnings,
-  type CampaignLog,
-  type CampaignPreSendChecklist,
-  type CampaignRecipient,
-  type CreateCampaignInput,
 } from "@eduatlas/domain";
-import type { EmailService } from "../notifications/email-service";
-import type { RenderedEmail } from "../notifications/email-templates";
-import type { InstitutionRepository } from "../institutions/institution-repository";
-import type { DeliveryJobRepository } from "../delivery/delivery-job-repository";
 import type { OutreachDeliveryConfig } from "../delivery/delivery-config";
 import { loadOutreachDeliveryConfig } from "../delivery/delivery-config";
+import type { DeliveryJobRepository } from "../delivery/delivery-job-repository";
+import type { InstitutionRepository } from "../institutions/institution-repository";
+import type { EmailService } from "../notifications/email-service";
+import type { RenderedEmail } from "../notifications/email-templates";
 import { applyMailTokens } from "./apply-mail-tokens";
 import type { CampaignLogRepository } from "./campaign-log-repository";
+import { type CampaignProgress, getCampaignProgress } from "./campaign-progress";
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
 import type { CampaignTemplateRepository } from "./campaign-template-repository";
-import {
-  getCampaignProgress,
-  type CampaignProgress,
-} from "./campaign-progress";
-import {
-  renderClaimInvitationMail,
-} from "./claim-invitation-mail";
+import { renderClaimInvitationMail } from "./claim-invitation-mail";
 import { OutreachNotFoundError, OutreachValidationError } from "./errors";
 import type { OutreachQueue } from "./outreach-queue";
 import { CLAIM_INVITATION_TEMPLATE_ID } from "./outreach-seeds";
 import {
-  prepareCampaign as prepareCampaignAction,
   type PrepareCampaignResult,
+  prepareCampaign as prepareCampaignAction,
 } from "./prepare-campaign";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
 import {
@@ -66,6 +61,10 @@ export type OutreachServiceDependencies = Readonly<{
   /** Absolute URL for campaign email header mark. */
   readonly mailLogoUrl?: string;
   readonly warmupSettingsRepository?: OutreachWarmupSettingsRepository;
+  /** Optional Phase 1 billing circuit breaker — fail-open when omitted. */
+  readonly billingProtectionRepository?:
+    | import("../billing-protection").BillingProtectionRepository
+    | null;
 }>;
 
 let logSeq = 0;
@@ -141,10 +140,7 @@ export class OutreachService {
     now: string;
   }): Promise<Campaign> {
     const campaign = await this.requireCampaign(input.campaignId);
-    if (
-      campaign.status !== CampaignStatus.Draft &&
-      campaign.status !== CampaignStatus.Ready
-    ) {
+    if (campaign.status !== CampaignStatus.Draft && campaign.status !== CampaignStatus.Ready) {
       throw new OutreachValidationError("Only draft or ready campaigns can be updated.");
     }
 
@@ -241,6 +237,7 @@ export class OutreachService {
         institutionRepository: this.deps.institutionRepository,
         config,
         targetLimit,
+        billingProtectionRepository: this.deps.billingProtectionRepository,
       },
     );
     await this.log(
@@ -330,9 +327,7 @@ export class OutreachService {
       campaign.status === CampaignStatus.Ready &&
       !isPreSendChecklistComplete(campaign.preSendChecklist)
     ) {
-      throw new OutreachValidationError(
-        "Pre-send checklist must be completed before Run.",
-      );
+      throw new OutreachValidationError("Pre-send checklist must be completed before Run.");
     }
 
     const all = await this.deps.campaignRepository.list();
@@ -397,10 +392,7 @@ export class OutreachService {
         campaignIdAsString(campaign.id),
       );
       for (const job of jobs) {
-        if (
-          job.status !== DeliveryJobStatus.Pending &&
-          job.status !== DeliveryJobStatus.Locked
-        ) {
+        if (job.status !== DeliveryJobStatus.Pending && job.status !== DeliveryJobStatus.Locked) {
           continue;
         }
         await this.deps.deliveryJobRepository.update(
@@ -451,10 +443,7 @@ export class OutreachService {
    */
   async enqueuePendingRecipients(campaignId: string, now: string): Promise<number> {
     const campaign = await this.requireCampaign(campaignId);
-    if (
-      campaign.status !== CampaignStatus.Running &&
-      campaign.status !== CampaignStatus.Ready
-    ) {
+    if (campaign.status !== CampaignStatus.Running && campaign.status !== CampaignStatus.Ready) {
       throw new OutreachValidationError("Enqueue requires a ready or running campaign.");
     }
 
@@ -557,12 +546,10 @@ export class OutreachService {
       text: rendered.text,
     });
 
-    await this.log(
-      campaignIdAsString(campaign.id),
-      `Test email sent to ${to}.`,
-      input.now,
-      { to, messageId: result.messageId },
-    );
+    await this.log(campaignIdAsString(campaign.id), `Test email sent to ${to}.`, input.now, {
+      to,
+      messageId: result.messageId,
+    });
 
     await this.deps.campaignRepository.update(
       createCampaign(
@@ -590,11 +577,7 @@ export class OutreachService {
     const preSendChecklist = mergePreSendChecklist(campaign.preSendChecklist, input.patch);
     const updated = createCampaign(toCreateInput(campaign, { preSendChecklist }));
     await this.deps.campaignRepository.update(updated);
-    await this.log(
-      campaignIdAsString(updated.id),
-      "Pre-send checklist updated.",
-      input.now,
-    );
+    await this.log(campaignIdAsString(updated.id), "Pre-send checklist updated.", input.now);
     return updated;
   }
 
@@ -652,10 +635,7 @@ export class OutreachService {
    * Marks all non-claimed recipients for an institution as claimed (conversion hook).
    * Not wired into claim approval in this PRD.
    */
-  async markRecipientClaimed(input: {
-    institutionId: string;
-    claimedAt: string;
-  }): Promise<number> {
+  async markRecipientClaimed(input: { institutionId: string; claimedAt: string }): Promise<number> {
     const rows = await this.deps.recipientRepository.listByInstitutionId(input.institutionId);
     let updated = 0;
     for (const recipient of rows) {
@@ -675,9 +655,7 @@ export class OutreachService {
     return updated;
   }
 
-  async countRecipientsByStatus(
-    campaignId: string,
-  ): Promise<Readonly<Record<string, number>>> {
+  async countRecipientsByStatus(campaignId: string): Promise<Readonly<Record<string, number>>> {
     const rows = await this.deps.recipientRepository.listByCampaignId(campaignId);
     const counts: Record<string, number> = {};
     for (const row of rows) {

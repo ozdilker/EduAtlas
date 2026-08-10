@@ -1,4 +1,5 @@
-import { InstitutionStatus, getInstitutionTypeSlug } from "@eduatlas/domain";
+import { assertOperationAllowed, isBillingProtectionError } from "@eduatlas/application";
+import { getInstitutionTypeSlug, InstitutionStatus } from "@eduatlas/domain";
 import { resolveGeoLabels } from "@eduatlas/firebase/server";
 import {
   buildSitemapDocuments,
@@ -9,6 +10,7 @@ import {
 } from "@eduatlas/seo";
 import { unstable_cache } from "next/cache";
 import { getSeoSiteConfig } from "@/lib/seo-site";
+import { getBillingProtectionDeps } from "@/server/billing-protection/repository";
 import { getInstitutionRepository } from "@/server/institutions/repository";
 
 /** Single list page large enough for current + near-term catalog sizes. */
@@ -18,6 +20,20 @@ const SITEMAP_REVALIDATE_SECONDS = 3600;
 
 async function buildSitemapSnapshotUncached(): Promise<SitemapSnapshot> {
   const site = getSeoSiteConfig();
+
+  try {
+    await assertOperationAllowed("SITEMAP_SCAN", await getBillingProtectionDeps());
+  } catch (error) {
+    if (isBillingProtectionError(error)) {
+      return createSitemapSnapshot({
+        siteUrl: site.siteUrl,
+        generatedAt: new Date().toISOString(),
+        institutions: [],
+      });
+    }
+    throw error;
+  }
+
   const repository = await getInstitutionRepository();
 
   // One repository.list → one store.listAll (filtered to Published in memory).
@@ -73,5 +89,4 @@ export async function loadSitemapDocuments(): Promise<LoadedSitemapDocuments> {
   });
 }
 
-export const SITEMAP_HTTP_CACHE_CONTROL =
-  `public, s-maxage=${SITEMAP_REVALIDATE_SECONDS}, stale-while-revalidate=86400`;
+export const SITEMAP_HTTP_CACHE_CONTROL = `public, s-maxage=${SITEMAP_REVALIDATE_SECONDS}, stale-while-revalidate=86400`;

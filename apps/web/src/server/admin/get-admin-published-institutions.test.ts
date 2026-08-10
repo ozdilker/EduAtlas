@@ -13,6 +13,10 @@ vi.mock("../institutions/repository", () => ({
   }),
 }));
 
+vi.mock("../billing-protection/repository", () => ({
+  getBillingProtectionDeps: async () => ({ billingProtectionRepository: null }),
+}));
+
 vi.mock("@eduatlas/firebase/server", () => ({
   buildTurkeyGeographySeedCatalog: () => ({
     cities: [{ id: { value: "city_ist" }, nameTr: "İstanbul" }],
