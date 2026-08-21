@@ -6,6 +6,7 @@ import { AdminShell } from "../admin-shell";
 import { buildAdminNavItems } from "../admin-nav";
 import { GrowthAuditLog } from "./audit-log";
 import { GrowthLiveDelivery } from "./live-delivery";
+import { EmailPreviewFrame } from "./email-preview-frame";
 import {
   GrowthLearningLog,
   GrowthLearningsForm,
@@ -435,11 +436,9 @@ export function GrowthCenterPage({
                   <p className="ea-admin-muted">Önizleme için kampanyayı kaydedin.</p>
                 )}
                 {previewHtml ? (
-                  <iframe
-                    className="ea-admin-outreach__iframe"
+                  <EmailPreviewFrame
+                    html={previewHtml}
                     title="Kampanya e-posta önizlemesi"
-                    srcDoc={previewHtml}
-                    sandbox=""
                   />
                 ) : null}
               </div>
@@ -688,11 +687,10 @@ export function GrowthCenterPage({
             <section className="ea-growth-panel" aria-label="Mail preview shortcut">
               <h2 className="ea-admin-section-title">Mail preview</h2>
               {previewHtml ? (
-                <iframe
-                  className="ea-admin-outreach__iframe ea-admin-outreach__iframe--compact"
+                <EmailPreviewFrame
+                  html={previewHtml}
                   title="Kampanya e-posta önizlemesi"
-                  srcDoc={previewHtml}
-                  sandbox=""
+                  className="ea-admin-outreach__iframe--full"
                 />
               ) : (
                 <p className="ea-admin-muted">Önizleme yok.</p>

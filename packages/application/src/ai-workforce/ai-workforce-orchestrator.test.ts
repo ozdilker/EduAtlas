@@ -63,7 +63,7 @@ describe("ai workforce orchestrator", () => {
     expect(byPoint.get(AgentIntegrationPoint.ReviewQueue)?.pathHint).toBe("/admin/review");
     expect(byPoint.get(AgentIntegrationPoint.QualityEngine)?.pathHint).toContain("acquisition");
     expect(byPoint.get(AgentIntegrationPoint.OwnerPortal)?.pathHint).toBe("/owner");
-    expect(byPoint.get(AgentIntegrationPoint.AdminOperations)?.pathHint).toBe("/admin/operations");
+    expect(byPoint.get(AgentIntegrationPoint.AdminOperations)?.pathHint).toBe("/admin");
 
     for (const route of routes) {
       expect(route.acceptsProposalsOnly).toBe(true);

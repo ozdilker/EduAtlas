@@ -82,9 +82,9 @@ export const ADMIN_OVERVIEW_QUICK_ACTIONS: readonly AdminOverviewQuickActionView
     href: "/admin/acquisition",
   },
   {
-    id: "operations",
-    label: "Operasyon",
-    description: "Veri operasyonları çalışma alanını açın.",
-    href: "/admin/operations",
+    id: "outreach",
+    label: "Growth Center",
+    description: "Kampanya hazırlama ve teslimat operasyonları.",
+    href: "/admin/outreach",
   },
 ]);

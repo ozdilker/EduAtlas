@@ -100,20 +100,6 @@ export type {
 } from "./admin/admin-outreach-page";
 export { AdminOutreachPage } from "./admin/admin-outreach-page";
 export type {
-  AdminOperationsActivityView,
-  AdminOperationsBucketView,
-  AdminOperationsHealthView,
-  AdminOperationsPublishedItemView,
-  AdminOperationsQuickAction,
-  AdminOperationsViewData,
-} from "./admin/admin-operations-content";
-export {
-  ADMIN_OPERATIONS_QUICK_ACTIONS,
-  adminOperationsPercent,
-} from "./admin/admin-operations-content";
-export type { AdminOperationsPageProps } from "./admin/admin-operations-page";
-export { AdminOperationsPage } from "./admin/admin-operations-page";
-export type {
   AdminOverviewActivityItemView,
   AdminOverviewAiRecommendationView,
   AdminOverviewQuickActionView,

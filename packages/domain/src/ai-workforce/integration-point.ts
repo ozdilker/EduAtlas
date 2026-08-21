@@ -43,6 +43,6 @@ export function getAgentIntegrationPointLabel(point: AgentIntegrationPoint): str
     case AgentIntegrationPoint.OwnerPortal:
       return "Owner Portal";
     case AgentIntegrationPoint.AdminOperations:
-      return "Admin Operations Workspace";
+      return "Admin Overview";
   }
 }

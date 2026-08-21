@@ -187,8 +187,8 @@ function routeFor(point: AgentIntegrationPoint): AgentIntegrationRoute {
     case AgentIntegrationPoint.AdminOperations:
       return Object.freeze({
         integrationPoint: point,
-        applicationSurface: "getAdminOperationsView (read-only workspace)",
-        pathHint: "/admin/operations",
+        applicationSurface: "admin overview / Growth Center (read-only proposals)",
+        pathHint: "/admin",
         acceptsProposalsOnly: true as const,
       });
   }

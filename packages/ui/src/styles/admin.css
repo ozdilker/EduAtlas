@@ -1274,16 +1274,18 @@
 }
 
 .ea-admin-outreach__iframe {
+  display: block;
   width: 100%;
-  min-height: 28rem;
+  min-height: 20rem;
   margin-top: var(--ea-space-3);
   border: 1px solid var(--ea-color-border);
   border-radius: var(--ea-radius-sm);
   background: #fff;
+  overflow: hidden;
 }
 
-.ea-admin-outreach__iframe--compact {
-  min-height: 16rem;
+.ea-admin-outreach__iframe--full {
+  min-height: 24rem;
 }
 
 .ea-growth-filters {

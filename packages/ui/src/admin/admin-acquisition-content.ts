@@ -11,7 +11,6 @@ export type AdminNavItemId =
   | "acquisition"
   | "home"
   | "import"
-  | "operations"
   | "review";
 
 export type AdminAcquisitionQueueTab = Readonly<{

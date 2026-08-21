@@ -12,7 +12,6 @@ export type AdminNavBadges = Readonly<{
 export function buildAdminNavItems(badges: AdminNavBadges = {}): readonly AdminShellNavItem[] {
   return Object.freeze([
     { id: "overview", label: "Genel bakış", href: "/admin" },
-    { id: "operations", label: "Operasyon", href: "/admin/operations" },
     {
       id: "acquisition",
       label: "Kurum edinimi",
