@@ -1,13 +1,7 @@
 import {
-  buildDeliveryIdempotencyKey,
   type Campaign,
-  CampaignChannel,
-  CampaignRecipientStatus,
   CampaignStatus,
   campaignIdAsString,
-  createCampaignRecipient,
-  createDeliveryJob,
-  DeliveryJobStatus,
   type Institution,
   institutionIdAsString,
 } from "@eduatlas/domain";
@@ -18,6 +12,7 @@ import type { InstitutionRepository } from "../institutions/institution-reposito
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 import type { CampaignRepository } from "./campaign-repository";
 import type { CampaignSegmentRepository } from "./campaign-segment-repository";
+import { enqueuePreparedTargets } from "./enqueue-prepared-targets";
 import { OutreachValidationError } from "./errors";
 import { institutionMatchesSegment } from "./institution-matches-segment";
 
@@ -45,13 +40,6 @@ export type PrepareCampaignDependencies = Readonly<{
   readonly billingProtectionRepository?: BillingProtectionRepository | null;
 }>;
 
-let prepareSeq = 0;
-
-function defaultId(prefix: string): string {
-  prepareSeq += 1;
-  return `${prefix}_${prepareSeq}_${Date.now().toString(36)}`;
-}
-
 /**
  * Incremental prepare: creates recipients/jobs up to targetLimit for a draft campaign.
  * Skips institutions that already have an idempotent DeliveryJob.
@@ -66,6 +54,11 @@ export async function prepareCampaign(
   }
   if (campaign.status !== CampaignStatus.Draft) {
     throw new OutreachValidationError("Only draft campaigns can be prepared.");
+  }
+  if (campaign.recipientSource === "external_import") {
+    throw new OutreachValidationError(
+      "Bu kampanya Excel/CSV alıcı kaynağı kullanıyor. Segment Prepare yerine Import Prepare kullanın.",
+    );
   }
 
   const targetLimit = Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize);
@@ -105,70 +98,39 @@ export async function prepareCampaign(
 
   const existingInstitutionIds = new Set(existingRecipients.map((r) => r.institutionId));
   const matched = page.items.filter((inst) => institutionMatchesSegment(inst, segment));
-  const slots = targetLimit - existingRecipients.length;
   const candidates = matched.filter(
     (inst) => !existingInstitutionIds.has(institutionIdAsString(inst.id)),
   );
 
-  let recipientCount = 0;
-  let skippedDuplicates = 0;
-
-  for (const institution of candidates) {
-    if (recipientCount >= slots) break;
-
-    const institutionId = institutionIdAsString(institution.id);
+  const targets = candidates.flatMap((institution) => {
     const email = institution.contact.email?.trim();
-    if (!email) {
-      skippedDuplicates += 1;
-      continue;
-    }
+    if (!email) return [];
+    return [
+      Object.freeze({
+        institutionId: institutionIdAsString(institution.id),
+        email,
+        displayName: institution.name,
+      }),
+    ];
+  });
 
-    const idempotencyKey = buildDeliveryIdempotencyKey({
-      campaignId,
-      institutionId,
-      channel: campaign.channel,
-    });
-    const existingJob = await deps.deliveryJobRepository.getByIdempotencyKey(idempotencyKey);
-    if (existingJob) {
-      skippedDuplicates += 1;
-      continue;
-    }
+  const skippedNoEmail = candidates.length - targets.length;
 
-    const recipientId = deps.nextRecipientId?.() ?? defaultId("crec");
-    const recipient = createCampaignRecipient({
-      id: recipientId,
-      campaignId,
-      institutionId,
-      email,
-      status: CampaignRecipientStatus.Queued,
-      createdAt: input.now,
-      updatedAt: input.now,
-    });
-    await deps.recipientRepository.save(recipient);
-
-    const job = createDeliveryJob({
-      id: deps.nextJobId?.() ?? defaultId("djob"),
-      channel: campaign.channel ?? CampaignChannel.Email,
-      campaignId,
-      recipientId,
-      institutionId,
-      status: DeliveryJobStatus.Pending,
-      idempotencyKey,
-      attemptCount: 0,
-      maxAttempts: deps.config.maxAttempts,
-      availableAt: input.now,
-      createdAt: input.now,
-      updatedAt: input.now,
-    });
-    await deps.deliveryJobRepository.save(job);
-    recipientCount += 1;
-  }
+  const result = await enqueuePreparedTargets(
+    {
+      campaign,
+      now: input.now,
+      targets,
+      targetLimit,
+      existingRecipientInstitutionIds: existingInstitutionIds,
+      existingRecipientCount: existingRecipients.length,
+    },
+    deps,
+  );
 
   return Object.freeze({
-    recipientCount,
-    skippedDuplicates,
-    totalRecipients: existingRecipients.length + recipientCount,
-    targetLimit,
+    ...result,
+    skippedDuplicates: result.skippedDuplicates + skippedNoEmail,
   });
 }
 

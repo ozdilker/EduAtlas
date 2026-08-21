@@ -39,6 +39,10 @@ import {
   type PrepareCampaignResult,
   prepareCampaign as prepareCampaignAction,
 } from "./prepare-campaign";
+import {
+  prepareCampaignFromImport as prepareCampaignFromImportAction,
+  type OutreachImportParseResult,
+} from "./import-campaign-recipients";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
 import {
   createDefaultWarmupSettings,
@@ -98,6 +102,8 @@ function toCreateInput(
     channel: campaign.channel,
     templateId: campaign.templateId,
     segmentId: campaign.segmentId,
+    recipientSource: campaign.recipientSource,
+    importMeta: campaign.importMeta,
     subjectOverride: campaign.subjectOverride,
     preheader: campaign.preheader,
     createdAt: campaign.createdAt,
@@ -137,6 +143,7 @@ export class OutreachService {
     segmentId: string;
     subjectOverride: string;
     preheader: string;
+    recipientSource?: "segment" | "external_import";
     now: string;
   }): Promise<Campaign> {
     const campaign = await this.requireCampaign(input.campaignId);
@@ -162,6 +169,8 @@ export class OutreachService {
       throw new OutreachValidationError("Campaign segment is missing.");
     }
 
+    const recipientSource = input.recipientSource ?? campaign.recipientSource ?? "segment";
+
     const updated = createCampaign(
       toCreateInput(campaign, {
         name: input.name,
@@ -170,6 +179,7 @@ export class OutreachService {
         segmentId: input.segmentId,
         subjectOverride,
         preheader,
+        recipientSource,
       }),
     );
     await this.deps.campaignRepository.update(updated);
@@ -267,6 +277,48 @@ export class OutreachService {
    */
   async expandWarmup(campaignId: string, now: string): Promise<PrepareCampaignResult> {
     return this.prepareCampaign(campaignId, now);
+  }
+
+  /**
+   * Excel/CSV import prepare — validates file, enqueues recipients/jobs, leaves draft.
+   */
+  async prepareCampaignFromImport(input: {
+    campaignId: string;
+    fileName: string;
+    content: Uint8Array;
+    now: string;
+  }): Promise<PrepareCampaignResult & { parse: OutreachImportParseResult }> {
+    if (!this.deps.deliveryJobRepository || !this.deps.institutionRepository) {
+      throw new OutreachValidationError("Delivery repositories are not configured.");
+    }
+    const config = this.deps.deliveryConfig ?? loadOutreachDeliveryConfig();
+    const targetLimit = this.deps.warmupSettingsRepository
+      ? currentWarmupLimit(await this.getWarmupSettings())
+      : config.warmupBatchSize;
+    const result = await prepareCampaignFromImportAction(
+      {
+        campaignId: input.campaignId,
+        fileName: input.fileName,
+        content: input.content,
+        now: input.now,
+      },
+      {
+        campaignRepository: this.deps.campaignRepository,
+        segmentRepository: this.deps.segmentRepository,
+        recipientRepository: this.deps.recipientRepository,
+        deliveryJobRepository: this.deps.deliveryJobRepository,
+        institutionRepository: this.deps.institutionRepository,
+        config,
+        targetLimit,
+        billingProtectionRepository: this.deps.billingProtectionRepository,
+      },
+    );
+    await this.log(
+      input.campaignId.trim(),
+      `Import prepared ${result.recipientCount} recipient(s) (total ${result.totalRecipients}/${result.targetLimit}); file=${input.fileName}; accepted=${result.parse.accepted.length}; rejected=${result.parse.rejected.length}; dupEmails=${result.parse.duplicateEmailCount}.`,
+      input.now,
+    );
+    return result;
   }
 
   async getWarmupSettings(): Promise<OutreachWarmupSettings> {

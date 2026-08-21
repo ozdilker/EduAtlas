@@ -54,6 +54,9 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
   const description = formString(formData, "description");
   const templateId = formString(formData, "templateId") || CLAIM_INVITATION_TEMPLATE_ID;
   const segmentId = formString(formData, "segmentId") || ISTANBUL_UNCLAIMED_SEGMENT_ID;
+  const recipientSourceRaw = formString(formData, "recipientSource");
+  const recipientSource =
+    recipientSourceRaw === "external_import" ? "external_import" : "segment";
   const subjectOverride =
     formString(formData, "subjectOverride") || CLAIM_INVITATION_DEFAULT_SUBJECT;
   const preheader =
@@ -69,6 +72,7 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
         segmentId,
         subjectOverride,
         preheader,
+        recipientSource,
         now,
       });
       outreachRedirect({
@@ -83,6 +87,7 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
       description: description || undefined,
       templateId,
       segmentId,
+      recipientSource,
       subjectOverride,
       preheader,
       createdAt: now,
@@ -174,6 +179,40 @@ export async function prepareOutreachCampaignAction(formData: FormData): Promise
       notice: `Prepare tamam: ${result.recipientCount} alıcı (${result.skippedDuplicates} atlandı).`,
     };
   });
+}
+
+export async function prepareOutreachImportAction(formData: FormData): Promise<void> {
+  await requireAdminSession();
+  const service = await getOutreachService();
+  const campaignId = formString(formData, "campaignId");
+  if (!campaignId) {
+    outreachRedirect({ error: "Kampanya seçilmedi." });
+  }
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size <= 0) {
+    outreachRedirect({ id: campaignId, error: "CSV veya XLSX dosyası seçin." });
+  }
+  const now = new Date().toISOString();
+  try {
+    const content = new Uint8Array(await file.arrayBuffer());
+    const result = await service.prepareCampaignFromImport({
+      campaignId,
+      fileName: file.name,
+      content,
+      now,
+    });
+    outreachRedirect({
+      id: campaignId,
+      notice: `Import prepare: ${result.recipientCount} alıcı (kabul ${result.parse.accepted.length}, red ${result.parse.rejected.length}, tekrar ${result.parse.duplicateEmailCount}).`,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Import prepare başarısız.";
+    outreachRedirect({ id: campaignId, error: message });
+  }
 }
 
 export async function approveOutreachCampaignAction(formData: FormData): Promise<void> {

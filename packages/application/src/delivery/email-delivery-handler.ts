@@ -49,9 +49,9 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
         });
       }
 
-      const institutionName = await this.options.resolveInstitutionName(
-        input.job.institutionId,
-      );
+      const institutionName =
+        input.recipient.displayName?.trim() ||
+        (await this.options.resolveInstitutionName(input.job.institutionId));
       const subject = input.campaign.subjectOverride?.trim() || template.subject;
       const preheader = input.campaign.preheader?.trim() || template.preview;
 

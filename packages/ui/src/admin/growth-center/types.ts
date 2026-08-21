@@ -18,6 +18,7 @@ export type GrowthFormValues = Readonly<{
   description: string;
   templateId: string;
   segmentId: string;
+  recipientSource: "segment" | "external_import";
   subjectOverride: string;
   preheader: string;
 }>;
@@ -35,6 +36,7 @@ export type GrowthProgressView = Readonly<{
 export type GrowthRecipientView = Readonly<{
   id: string;
   institutionId: string;
+  displayName?: string;
   email: string;
   status: string;
 }>;
@@ -148,6 +150,7 @@ export type GrowthCenterPageProps = {
   saveAction: (formData: FormData) => Promise<void>;
   testSendAction: (formData: FormData) => Promise<void>;
   prepareAction?: (formData: FormData) => Promise<void>;
+  prepareImportAction?: (formData: FormData) => Promise<void>;
   approveAction?: (formData: FormData) => Promise<void>;
   runAction?: (formData: FormData) => Promise<void>;
   pauseAction?: (formData: FormData) => Promise<void>;
@@ -174,7 +177,7 @@ export const GROWTH_LIST_FILTERS = Object.freeze([
 export const WIZARD_STEPS = Object.freeze([
   { id: 1, label: "Genel bilgiler" },
   { id: 2, label: "Template" },
-  { id: 3, label: "Segment" },
+  { id: 3, label: "Alıcı kaynağı" },
   { id: 4, label: "Recipient preview" },
   { id: 5, label: "Mail preview" },
   { id: 6, label: "Test mail" },

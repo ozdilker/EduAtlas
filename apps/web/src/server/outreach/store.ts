@@ -107,8 +107,15 @@ async function buildRuntime(): Promise<OutreachRuntime> {
           ctaHref,
           mailLogoUrl,
           resolveInstitutionName: async (institutionId) => {
-            const inst = await institutionRepository.getById(createInstitutionId(institutionId));
-            return inst?.name ?? "Kurumunuz";
+            if (institutionId.startsWith("ext:")) {
+              return "Kurumunuz";
+            }
+            try {
+              const inst = await institutionRepository.getById(createInstitutionId(institutionId));
+              return inst?.name ?? "Kurumunuz";
+            } catch {
+              return "Kurumunuz";
+            }
           },
         }),
       ],
@@ -161,8 +168,15 @@ async function buildRuntime(): Promise<OutreachRuntime> {
         ctaHref,
         mailLogoUrl,
         resolveInstitutionName: async (institutionId) => {
-          const inst = await institutionRepository.getById(createInstitutionId(institutionId));
-          return inst?.name ?? "Kurumunuz";
+          if (institutionId.startsWith("ext:")) {
+            return "Kurumunuz";
+          }
+          try {
+            const inst = await institutionRepository.getById(createInstitutionId(institutionId));
+            return inst?.name ?? "Kurumunuz";
+          } catch {
+            return "Kurumunuz";
+          }
         },
       }),
     ],

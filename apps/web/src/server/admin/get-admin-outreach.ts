@@ -31,12 +31,21 @@ export type AdminOutreachCampaignRow = Readonly<{
   status: string;
   templateId: string;
   segmentId: string;
+  recipientSource: "segment" | "external_import";
   subjectOverride: string;
   preheader: string;
   description: string;
   recipientCount: number;
   listBucket: string;
   listBucketLabel: string;
+}>;
+
+export type AdminOutreachRecipientRow = Readonly<{
+  id: string;
+  institutionId: string;
+  displayName?: string;
+  email: string;
+  status: string;
 }>;
 
 export type AdminOutreachOption = Readonly<{
@@ -52,13 +61,6 @@ export type AdminOutreachProgress = Readonly<{
   failed: number;
   bounced: number;
   percent: number;
-}>;
-
-export type AdminOutreachRecipientRow = Readonly<{
-  id: string;
-  institutionId: string;
-  email: string;
-  status: string;
 }>;
 
 export type AdminOutreachLogRow = Readonly<{
@@ -183,6 +185,7 @@ export async function getAdminOutreachPageData(searchParams: {
       status: c.status,
       templateId: c.templateId,
       segmentId: c.segmentId,
+      recipientSource: c.recipientSource === "external_import" ? "external_import" : "segment",
       subjectOverride: c.subjectOverride?.trim() || templateSubjectById.get(c.templateId) || "",
       preheader: c.preheader?.trim() || templatePreviewById.get(c.templateId) || "",
       description: c.description ?? "",
@@ -263,6 +266,7 @@ export async function getAdminOutreachPageData(searchParams: {
     recipients = recipientRows.map((r) => ({
       id: r.id,
       institutionId: r.institutionId,
+      ...(r.displayName ? { displayName: r.displayName } : {}),
       email: r.email,
       status: r.status,
     }));

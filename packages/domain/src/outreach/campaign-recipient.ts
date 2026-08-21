@@ -8,6 +8,8 @@ export type CampaignRecipient = Readonly<{
   readonly id: string;
   readonly campaignId: string;
   readonly institutionId: string;
+  /** Optional display name for mail tokens (external import). */
+  readonly displayName?: string;
   readonly email: string;
   readonly status: CampaignRecipientStatusType;
   readonly sentAt?: string;
@@ -23,6 +25,7 @@ export type CreateCampaignRecipientInput = {
   id: string;
   campaignId: string;
   institutionId: string;
+  displayName?: string;
   email: string;
   status?: CampaignRecipientStatusType | string;
   sentAt?: string;
@@ -41,6 +44,7 @@ export function createCampaignRecipient(input: CreateCampaignRecipientInput): Ca
   const id = input.id.trim();
   const campaignId = input.campaignId.trim();
   const institutionId = input.institutionId.trim();
+  const displayName = input.displayName?.trim();
   const email = input.email.trim().toLowerCase();
   const lastError = input.lastError?.trim();
   const status =
@@ -69,6 +73,7 @@ export function createCampaignRecipient(input: CreateCampaignRecipientInput): Ca
     id,
     campaignId,
     institutionId,
+    ...(displayName ? { displayName } : {}),
     email,
     status,
     ...(input.sentAt ? { sentAt: input.sentAt } : {}),

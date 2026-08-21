@@ -12,6 +12,7 @@ import {
   expandOutreachWarmupAction,
   pauseOutreachCampaignAction,
   prepareOutreachCampaignAction,
+  prepareOutreachImportAction,
   resumeOutreachCampaignAction,
   runOutreachCampaignAction,
   saveOutreachCampaignAction,
@@ -45,6 +46,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         description: data.selected.description,
         templateId: data.selected.templateId,
         segmentId: data.selected.segmentId,
+        recipientSource: data.selected.recipientSource,
         subjectOverride: data.selected.subjectOverride,
         preheader: data.selected.preheader,
       }
@@ -54,6 +56,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         description: "",
         templateId: data.templates[0]?.id ?? CLAIM_INVITATION_TEMPLATE_ID,
         segmentId: data.segments[0]?.id ?? ISTANBUL_UNCLAIMED_SEGMENT_ID,
+        recipientSource: "segment" as const,
         subjectOverride: CLAIM_INVITATION_DEFAULT_SUBJECT,
         preheader: CLAIM_INVITATION_DEFAULT_PREHEADER,
       };
@@ -92,6 +95,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       saveAction={saveOutreachCampaignAction}
       testSendAction={sendOutreachTestEmailAction}
       prepareAction={prepareOutreachCampaignAction}
+      prepareImportAction={prepareOutreachImportAction}
       approveAction={approveOutreachCampaignAction}
       runAction={runOutreachCampaignAction}
       pauseAction={pauseOutreachCampaignAction}

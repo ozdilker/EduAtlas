@@ -12,8 +12,14 @@ export {
   campaignKey,
   createCampaign,
   type Campaign,
+  type CampaignImportMeta,
+  type CampaignRecipientSource,
   type CreateCampaignInput,
 } from "./campaign";
+export {
+  buildExternalInstitutionId,
+  isExternalInstitutionId,
+} from "./external-institution-id";
 export {
   emptyPreSendChecklist,
   isPreSendChecklistComplete,

@@ -82,6 +82,53 @@ describe("createCampaignRecipient", () => {
     });
     expect(r.status).toBe(CampaignRecipientStatus.Pending);
   });
+
+  it("stores optional displayName", () => {
+    const r = createCampaignRecipient({
+      id: "rec_2",
+      campaignId: "camp_1",
+      institutionId: "ext:abc",
+      displayName: "  Örnek Okul  ",
+      email: "okul@example.com",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    });
+    expect(r.displayName).toBe("Örnek Okul");
+  });
+});
+
+describe("createCampaign recipientSource", () => {
+  it("stores external_import source and importMeta", () => {
+    const c = createCampaign({
+      id: "camp_imp",
+      name: "Import camp",
+      templateId: "tpl_1",
+      segmentId: "seg_1",
+      recipientSource: "external_import",
+      importMeta: {
+        fileName: "liste.csv",
+        rowCount: 10,
+        acceptedCount: 8,
+        rejectedCount: 1,
+        duplicateEmailCount: 1,
+        importedAt: "2026-08-21T00:00:00.000Z",
+      },
+      createdAt: "2026-08-02T00:00:00.000Z",
+      createdBy: "admin_1",
+    });
+    expect(c.recipientSource).toBe("external_import");
+    expect(c.importMeta?.acceptedCount).toBe(8);
+  });
+});
+
+describe("buildExternalInstitutionId", () => {
+  it("is stable for the same email", async () => {
+    const { buildExternalInstitutionId } = await import("./external-institution-id");
+    const a = buildExternalInstitutionId("School@Example.com");
+    const b = buildExternalInstitutionId("school@example.com");
+    expect(a).toBe(b);
+    expect(a.startsWith("ext:")).toBe(true);
+  });
 });
 
 describe("createCampaignTemplate", () => {

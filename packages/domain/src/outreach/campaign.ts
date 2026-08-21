@@ -18,6 +18,17 @@ import {
   type CampaignStatus as CampaignStatusType,
 } from "./campaign-status";
 
+export type CampaignRecipientSource = "segment" | "external_import";
+
+export type CampaignImportMeta = Readonly<{
+  readonly fileName: string;
+  readonly rowCount: number;
+  readonly acceptedCount: number;
+  readonly rejectedCount: number;
+  readonly duplicateEmailCount: number;
+  readonly importedAt: string;
+}>;
+
 export type Campaign = Readonly<{
   readonly id: CampaignId;
   readonly name: string;
@@ -26,6 +37,10 @@ export type Campaign = Readonly<{
   readonly channel: CampaignChannelType;
   readonly templateId: string;
   readonly segmentId: string;
+  /** Audience origin — segment (default) or Excel/CSV import. */
+  readonly recipientSource?: CampaignRecipientSource;
+  /** Metadata from the last successful external import prepare (file not stored). */
+  readonly importMeta?: CampaignImportMeta;
   /** When set, overrides the linked template subject at preview/send time. */
   readonly subjectOverride?: string;
   /** Inbox preview text (preheader). */
@@ -48,6 +63,8 @@ export type CreateCampaignInput = {
   channel?: CampaignChannelType | string;
   templateId: string;
   segmentId: string;
+  recipientSource?: CampaignRecipientSource;
+  importMeta?: CampaignImportMeta;
   subjectOverride?: string;
   preheader?: string;
   createdAt: string;
@@ -103,6 +120,8 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
     channel,
     templateId,
     segmentId,
+    ...(input.recipientSource ? { recipientSource: input.recipientSource } : {}),
+    ...(input.importMeta ? { importMeta: normalizeImportMeta(input.importMeta) } : {}),
     ...(subjectOverride ? { subjectOverride } : {}),
     ...(preheader ? { preheader } : {}),
     createdAt: input.createdAt,
@@ -118,6 +137,20 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
 
 export function campaignKey(campaign: Campaign): string {
   return campaignIdAsString(campaign.id);
+}
+
+function normalizeImportMeta(meta: CampaignImportMeta): CampaignImportMeta {
+  const fileName = meta.fileName.trim();
+  if (!fileName) throw new Error("Campaign.importMeta.fileName is required.");
+  assertIso(meta.importedAt, "importMeta.importedAt");
+  return Object.freeze({
+    fileName,
+    rowCount: Math.max(0, Math.floor(meta.rowCount)),
+    acceptedCount: Math.max(0, Math.floor(meta.acceptedCount)),
+    rejectedCount: Math.max(0, Math.floor(meta.rejectedCount)),
+    duplicateEmailCount: Math.max(0, Math.floor(meta.duplicateEmailCount)),
+    importedAt: meta.importedAt,
+  });
 }
 
 function normalizeExecution(

@@ -75,6 +75,24 @@ export {
 } from "./delivery-eta";
 export { prepareCampaign, type PrepareCampaignResult } from "./prepare-campaign";
 export {
+  OUTREACH_IMPORT_MAX_BYTES,
+  OUTREACH_IMPORT_MAX_ROWS,
+  parseOutreachRecipientImport,
+  prepareCampaignFromImport,
+  sanitizeOutreachImportCell,
+  type OutreachImportAcceptedRow,
+  type OutreachImportParseResult,
+  type OutreachImportRowError,
+  type PrepareCampaignFromImportDependencies,
+  type PrepareCampaignFromImportInput,
+} from "./import-campaign-recipients";
+export {
+  enqueuePreparedTargets,
+  type EnqueuePreparedTargetsDependencies,
+  type EnqueuePreparedTargetsInput,
+  type PreparedTarget,
+} from "./enqueue-prepared-targets";
+export {
   countSegmentMatches,
   previewSegmentInstitutions,
   type PreviewSegmentInstitutionsDependencies,
