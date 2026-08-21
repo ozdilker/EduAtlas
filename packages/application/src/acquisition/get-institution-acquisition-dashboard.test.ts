@@ -291,7 +291,7 @@ describe("buildInstitutionQualityIndicators", () => {
 });
 
 describe("getInstitutionAcquisitionDashboard", () => {
-  it("uses listAdminPage for normal table and never list(50_000)", async () => {
+  it("keeps stats but lists no rows without filters on queue=all", async () => {
     const repo = new InMemoryInstitutionRepository();
     await seedRepo(repo);
 
@@ -305,18 +305,35 @@ describe("getInstitutionAcquisitionDashboard", () => {
     );
 
     expect(repo.listCalls).toHaveLength(0);
-    expect(repo.listAdminCalls.length).toBeGreaterThan(0);
-    expect(repo.listAdminCalls.some((call) => call.pageSize === 50 || call.pageSize <= 50)).toBe(
-      true,
-    );
+    expect(dashboard.rows).toHaveLength(0);
+    expect(dashboard.matchedCount).toBe(0);
+    expect(dashboard.searchNotice).toBeTruthy();
     expect(dashboard.usedCatalogScan).toBe(false);
     expect(dashboard.statistics.totalInstitutions).toBe(4);
     expect(dashboard.statistics.queueCounts.import).toBe(1);
     expect(dashboard.statistics.queueCounts.verified).toBe(1);
     expect(dashboard.statistics.claimRatePercent).toBeGreaterThan(0);
     expect(dashboard.statistics.byType.length).toBeGreaterThan(0);
+    expect(repo.listAdminCalls.every((call) => call.pageSize !== 50)).toBe(true);
+  });
+
+  it("lists rows when a structured filter is present", async () => {
+    const repo = new InMemoryInstitutionRepository();
+    await seedRepo(repo);
+
+    const dashboard = await getInstitutionAcquisitionDashboard(
+      {
+        queue: "all",
+        cityId: "city_ist",
+        pageSize: 50,
+        now: "2026-07-15T12:00:00.000Z",
+      },
+      { institutionRepository: repo },
+    );
+
     expect(dashboard.rows.length).toBeGreaterThan(0);
-    expect(dashboard.rows.length).toBeLessThanOrEqual(50);
+    expect(dashboard.searchNotice).toBeFalsy();
+    expect(repo.listAdminCalls.some((call) => call.pageSize === 50)).toBe(true);
   });
 
   it("applies city/district/type filters before limit on bounded path", async () => {
@@ -442,7 +459,7 @@ describe("getInstitutionAcquisitionDashboard", () => {
     }
 
     const firstPage = await getInstitutionAcquisitionDashboard(
-      { queue: "all", page: 1, pageSize: 2 },
+      { queue: "all", cityId: "city_ist", page: 1, pageSize: 2 },
       { institutionRepository: repo },
     );
     expect(firstPage.matchedCount).toBe(5);
@@ -459,7 +476,13 @@ describe("getInstitutionAcquisitionDashboard", () => {
     expect(repo.listCalls).toHaveLength(0);
 
     const secondPage = await getInstitutionAcquisitionDashboard(
-      { queue: "all", page: 2, pageSize: 2, cursor: firstPage.nextCursor },
+      {
+        queue: "all",
+        cityId: "city_ist",
+        page: 2,
+        pageSize: 2,
+        cursor: firstPage.nextCursor,
+      },
       { institutionRepository: repo },
     );
     expect(secondPage.matchedCount).toBe(5);
@@ -482,7 +505,7 @@ describe("getInstitutionAcquisitionDashboard", () => {
     expect(repo.listAdminCalls.every((call) => call.pageSize !== 50)).toBe(true);
   });
 
-  it("cost regression: normal acquisition never uses list({ pageSize: 50_000 })", async () => {
+  it("cost regression: unfiltered acquisition never lists the table or list(50_000)", async () => {
     const repo = new InMemoryInstitutionRepository();
     await seedRepo(repo);
 
@@ -501,7 +524,7 @@ describe("getInstitutionAcquisitionDashboard", () => {
       ),
     ).toBe(false);
     expect(repo.listCalls).toHaveLength(0);
-    expect(repo.listAdminCalls.some((call) => call.pageSize === 50)).toBe(true);
+    expect(repo.listAdminCalls.some((call) => call.pageSize === 50)).toBe(false);
   });
 
   it("quality distribution uses stored score bands without page-limiting counts", async () => {
@@ -509,11 +532,11 @@ describe("getInstitutionAcquisitionDashboard", () => {
     await seedRepo(repo);
 
     const dashboard = await getInstitutionAcquisitionDashboard(
-      { queue: "all", pageSize: 1 },
+      { queue: "import", pageSize: 1 },
       { institutionRepository: repo },
     );
 
-    expect(dashboard.rows).toHaveLength(1);
+    expect(dashboard.rows.length).toBeGreaterThanOrEqual(1);
     const distributionTotal =
       dashboard.statistics.qualityDistribution.low +
       dashboard.statistics.qualityDistribution.medium +

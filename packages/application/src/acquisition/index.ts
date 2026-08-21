@@ -4,8 +4,10 @@ export type {
   GetInstitutionAcquisitionDashboardInput,
 } from "./get-institution-acquisition-dashboard";
 export {
+  ACQUISITION_LIST_FILTER_REQUIRED_MESSAGE,
   buildInstitutionQualityIndicators,
   getInstitutionAcquisitionDashboard,
+  hasAcquisitionListFilter,
 } from "./get-institution-acquisition-dashboard";
 export type {
   AcquisitionCountBucket,

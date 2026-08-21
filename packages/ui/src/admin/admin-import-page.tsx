@@ -292,7 +292,7 @@ function ImportFormBody({
       <p className="ea-admin-muted">
         Önce “Önizle”, sonra “İçe aktar”. Büyük MEB listelerinde yazma küçük partiler halinde
         ilerler; yukarıdaki çubuktan takip edebilirsiniz. Aynı dosyayı tekrar içe aktarmak
-        yinelenenleri atlar — kurumlar zaten varsa /admin/published’da görünür.
+        yinelenenleri atlar — kurumlar zaten varsa inceleme kuyruğunun Yayında sekmesinde görünür.
       </p>
     </>
   );

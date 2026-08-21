@@ -14,11 +14,12 @@ describe("admin overview content", () => {
     expect(byId.get("outreach")).toBe("/admin/outreach");
   });
 
-  it("puts Overview first in shared admin nav and omits retired operations", () => {
+  it("puts Overview first in shared admin nav and omits retired pages", () => {
     const nav = buildAdminNavItems({ review: 3, acquisition: 12 });
     expect(nav[0]?.id).toBe("overview");
     expect(nav[0]?.href).toBe("/admin");
     expect(nav.find((item) => item.id === "operations")).toBeUndefined();
+    expect(nav.find((item) => item.id === "published")).toBeUndefined();
     expect(nav.find((item) => item.id === "review")?.badge).toBe(3);
     expect(nav.find((item) => item.id === "acquisition")?.badge).toBe(12);
     expect(nav.at(-1)).toEqual({ id: "site", label: "Ana siteye dön", href: "/" });

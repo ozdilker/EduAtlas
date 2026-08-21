@@ -17,8 +17,10 @@ export type {
   InstitutionQualityIndicators,
 } from "./acquisition";
 export {
+  ACQUISITION_LIST_FILTER_REQUIRED_MESSAGE,
   buildInstitutionQualityIndicators,
   getInstitutionAcquisitionDashboard,
+  hasAcquisitionListFilter,
 } from "./acquisition";
 export {
   type AgentIntegrationRoute,

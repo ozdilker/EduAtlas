@@ -61,19 +61,6 @@ export { AdminImportPage } from "./admin/admin-import-page";
 export type { AdminNavBadges } from "./admin/admin-nav";
 export { buildAdminNavItems } from "./admin/admin-nav";
 export type {
-  AdminPublishedFilterOption,
-  AdminPublishedInstitutionRow,
-  AdminPublishedInstitutionsViewData,
-  AdminPublishedPagination,
-} from "./admin/admin-published-content";
-export {
-  ADMIN_PUBLISHED_PAGE_SIZE,
-  buildAdminPublishedHref,
-  buildAdminPublishedPageNumbers,
-} from "./admin/admin-published-content";
-export type { AdminPublishedPageProps } from "./admin/admin-published-page";
-export { AdminPublishedPage } from "./admin/admin-published-page";
-export type {
   AdminVisualsPageData,
   AdminVisualsPageProps,
   AdminVisualSlotView,

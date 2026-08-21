@@ -85,6 +85,29 @@ const ACQUISITION_CATALOG_SCAN_PAGE_SIZE = 50_000;
 
 const ALL_TYPES = Object.freeze(Object.values(InstitutionType));
 
+/** Shown when the acquisition table would otherwise load the unscoped nationwide list. */
+export const ACQUISITION_LIST_FILTER_REQUIRED_MESSAGE =
+  "Kurum listesi için en az bir filtre seçin (şehir, ilçe, tür, durum, doğrulama, sahiplik veya kuyruk sekmesi).";
+
+/**
+ * True when the acquisition table has enough scope to list institutions.
+ * Unfiltered queue=all must never materialize the nationwide table.
+ */
+export function hasAcquisitionListFilter(
+  input: GetInstitutionAcquisitionDashboardInput,
+): boolean {
+  if (input.cityId?.trim()) return true;
+  if (input.districtId?.trim()) return true;
+  if (input.primaryType) return true;
+  if (input.status) return true;
+  if (input.verification) return true;
+  if (input.ownership) return true;
+  if (input.query?.trim()) return true;
+  if ((input.queue ?? "all") !== "all") return true;
+  if (input.sort === "missing_fields") return true;
+  return false;
+}
+
 /**
  * Builds quality gap flags for acquisition moderation (presentation helpers).
  */
@@ -799,9 +822,10 @@ async function boundedDashboard(
   }
 
   const cityIdsForCounts = input.cityIdsForCounts ?? [];
+  const skipTable = input.lightweight || !hasAcquisitionListFilter(input);
   const [{ statistics, availableCities, availableDistricts }, page] = await Promise.all([
     buildBoundedStatistics(base, deps, cityIdsForCounts),
-    input.lightweight
+    skipTable
       ? Promise.resolve({
           items: Object.freeze([]) as readonly Institution[],
           pageSize: listPageSize,
@@ -825,7 +849,11 @@ async function boundedDashboard(
         })(),
   ]);
 
-  const matchedCount = input.lightweight ? statistics.totalInstitutions : page.totalItems;
+  const matchedCount = input.lightweight
+    ? statistics.totalInstitutions
+    : skipTable
+      ? 0
+      : page.totalItems;
   const totalPages = Math.max(1, Math.ceil(matchedCount / listPageSize));
   const pageNumber = Math.min(requestedPage, totalPages);
   const rows = Object.freeze(
@@ -869,6 +897,9 @@ async function boundedDashboard(
     availableDistricts,
     usedCatalogScan: false,
     nextCursor: page.nextCursor,
+    ...(skipTable && !input.lightweight
+      ? { searchNotice: ACQUISITION_LIST_FILTER_REQUIRED_MESSAGE }
+      : {}),
   });
 }
 

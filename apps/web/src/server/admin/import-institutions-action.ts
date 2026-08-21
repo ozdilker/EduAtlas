@@ -392,7 +392,7 @@ function buildExecuteState(
   const baseMessage = dryRun
     ? `Deneme tamamlandı (${sourceLabel(execution.sourceId)}): ${execution.result.wouldCreateCount} satır aktarılabilirdi. Hiçbir şey yazılmadı.`
     : alreadyInDb
-      ? `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): 0 yeni kurum — ${execution.result.duplicateCount} satır zaten Firestore’da kayıtlı (yinelenen). /admin/published sayfasından kontrol edin.`
+      ? `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): 0 yeni kurum — ${execution.result.duplicateCount} satır zaten Firestore’da kayıtlı (yinelenen). /admin/review?queue=published sayfasından kontrol edin.`
       : `İçe aktarma tamamlandı (${sourceLabel(execution.sourceId)}): ${execution.result.createdCount} kurum yayına alındı, ${skipped} satır atlandı${execution.result.failedCount ? `, ${execution.result.failedCount} hatalı` : ""}.`;
   const message = truncated
     ? `${baseMessage} Tabloda ${rows.length}/${execution.rows.length} örnek satır gösteriliyor.`
