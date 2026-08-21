@@ -34,7 +34,7 @@ export function InstitutionProfileSidebarLeadDialog({
   const [claimOpen, setClaimOpen] = useState(false);
 
   return (
-    <>
+    <aside className="ea-profile-page__aside">
       <InstitutionSidebar
         profile={profile}
         onLeadClick={leadAction ? () => setLeadOpen(true) : undefined}
@@ -70,6 +70,6 @@ export function InstitutionProfileSidebarLeadDialog({
           />
         </InstitutionProfileDialog>
       ) : null}
-    </>
+    </aside>
   );
 }

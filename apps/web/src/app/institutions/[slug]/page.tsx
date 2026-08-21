@@ -109,10 +109,23 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
         <div className="ea-profile-page">
           <Container size="xl" className="ea-profile-page__top">
             <InstitutionBreadcrumb items={profile.breadcrumbs} />
-            <InstitutionHero profile={profile} />
           </Container>
 
           <Container size="xl" className="ea-profile-page__layout">
+            <InstitutionHero profile={profile} />
+
+            <InstitutionProfileSidebarLeadDialog
+              profile={profile}
+              institutionId={institutionIdAsString(institution.id)}
+              leadAction={submitInstitutionLeadAction}
+              claimAction={
+                institution.verification === InstitutionVerification.Verified ||
+                institution.verification === InstitutionVerification.Pending
+                  ? undefined
+                  : submitInstitutionClaimAction
+              }
+            />
+
             <div className="ea-profile-page__main">
               <InstitutionTrustStrip profile={profile} />
               <InstitutionQuickInfo facts={profile.quickFacts} />
@@ -127,18 +140,6 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
                 <InstitutionBelowFold profile={profile} relatedPromise={relatedPromise} />
               </Suspense>
             </div>
-
-            <InstitutionProfileSidebarLeadDialog
-              profile={profile}
-              institutionId={institutionIdAsString(institution.id)}
-              leadAction={submitInstitutionLeadAction}
-              claimAction={
-                institution.verification === InstitutionVerification.Verified ||
-                institution.verification === InstitutionVerification.Pending
-                  ? undefined
-                  : submitInstitutionClaimAction
-              }
-            />
           </Container>
         </div>
       </>

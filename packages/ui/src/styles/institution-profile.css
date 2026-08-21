@@ -20,6 +20,18 @@
   display: grid;
   gap: var(--ea-space-8);
   grid-template-columns: 1fr;
+  align-items: start;
+}
+
+.ea-profile-page__layout .ea-profile-hero {
+  min-width: 0;
+}
+
+.ea-profile-page__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-6);
+  min-width: 0;
 }
 
 .ea-profile-page__main {
@@ -102,7 +114,8 @@
 
 .ea-profile-hero__cover {
   position: relative;
-  min-height: 13rem;
+  aspect-ratio: 4 / 3;
+  width: 100%;
   overflow: hidden;
   background:
     var(--ea-atmosphere-atlas),
@@ -115,16 +128,18 @@
 }
 
 .ea-profile-hero__cover-image {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 13rem;
-  max-height: 18rem;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .ea-profile-hero__cover-placeholder {
-  min-height: 12rem;
+  aspect-ratio: 4 / 3;
+  width: 100%;
 }
 
 .ea-profile-hero__body {
@@ -851,21 +866,29 @@ a.ea-profile-social__value:hover {
 }
 
 @media (min-width: 1024px) {
-  .ea-profile-hero__cover,
-  .ea-profile-hero__cover-placeholder {
-    min-height: 16rem;
-  }
-
+  /* Hero (~2/3) + CTA sidebar (~1/3); main content continues under hero */
   .ea-profile-page__layout.ea-container {
-    grid-template-columns: minmax(0, 1fr) 20rem;
-    align-items: start;
+    grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+    grid-template-areas:
+      "hero sidebar"
+      "main sidebar";
   }
 
-  .ea-profile-sidebar {
+  .ea-profile-page__layout .ea-profile-hero {
+    grid-area: hero;
+  }
+
+  .ea-profile-page__layout .ea-profile-page__aside {
+    grid-area: sidebar;
     position: sticky;
     /* Sticky below public header (4.5rem) with at least 30px gap */
     top: calc(4.5rem + 30px);
     z-index: 1;
+    align-self: start;
+  }
+
+  .ea-profile-page__layout .ea-profile-page__main {
+    grid-area: main;
   }
 
   .ea-profile-quickinfo__grid {

@@ -53,10 +53,19 @@ export function InstitutionProfilePage({
     <div className={cn("ea-profile-page", className)}>
       <Container size="xl" className="ea-profile-page__top">
         <InstitutionBreadcrumb items={profile.breadcrumbs} />
-        <InstitutionHero profile={profile} />
       </Container>
 
       <Container size="xl" className="ea-profile-page__layout">
+        <InstitutionHero profile={profile} />
+
+        <aside className="ea-profile-page__aside">
+          <InstitutionSidebar
+            profile={profile}
+            onLeadClick={leadAction ? () => setLeadOpen(true) : undefined}
+            onClaimClick={claimAction ? () => setClaimOpen(true) : undefined}
+          />
+        </aside>
+
         <div className="ea-profile-page__main">
           <InstitutionTrustStrip profile={profile} />
           <InstitutionQuickInfo facts={profile.quickFacts} />
@@ -86,12 +95,6 @@ export function InstitutionProfilePage({
             ]}
           />
         </div>
-
-        <InstitutionSidebar
-          profile={profile}
-          onLeadClick={leadAction ? () => setLeadOpen(true) : undefined}
-          onClaimClick={claimAction ? () => setClaimOpen(true) : undefined}
-        />
       </Container>
 
       {leadAction ? (
