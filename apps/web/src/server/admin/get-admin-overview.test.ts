@@ -139,6 +139,17 @@ describe("getAdminOverviewView countAdmin usage", () => {
       expect.anything(),
     );
     expect(list).not.toHaveBeenCalled();
-    expect(listAdminPage).toHaveBeenCalled();
+    expect(listAdminPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort: "created_desc",
+        filters: { status: InstitutionStatus.Published },
+      }),
+    );
+    expect(listAdminPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort: "created_desc",
+        filters: { status: InstitutionStatus.Draft },
+      }),
+    );
   });
 });

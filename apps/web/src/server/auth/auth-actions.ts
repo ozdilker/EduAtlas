@@ -59,8 +59,9 @@ function resolvePostAuthPath(role: AppRole, requestedNext: string): string {
   if (role === AppRole.Owner && (next.startsWith("/veli") || next.startsWith("/admin"))) {
     return "/owner";
   }
-  if (role === AppRole.Admin && next.startsWith("/veli")) {
-    return "/admin";
+  // Admin always lands in the admin portal (Genel bakış), never owner/veli defaults from /login.
+  if (role === AppRole.Admin) {
+    return next.startsWith("/admin") ? next : "/admin";
   }
   return next;
 }

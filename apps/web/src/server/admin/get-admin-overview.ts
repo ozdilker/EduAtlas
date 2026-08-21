@@ -56,6 +56,8 @@ export async function getAdminOverviewView(): Promise<AdminOverviewViewData> {
     ? institutionRepository.listAdminPage({
         pageSize: ACTIVITY_LIMIT,
         sort: "created_desc",
+        // Equality filter uses existing lifecycleStatus+createdAt index (bare createdAt+__name__ is unavailable).
+        filters: { status: InstitutionStatus.Published },
       })
     : Promise.resolve({ items: [] as const });
   const draftSamplePromise = institutionRepository.listAdminPage

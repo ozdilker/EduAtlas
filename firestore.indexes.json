@@ -294,14 +294,6 @@
       "collectionGroup": "institutions",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "institutions",
-      "queryScope": "COLLECTION",
-      "fields": [
         { "fieldPath": "cityId", "order": "ASCENDING" },
         { "fieldPath": "qualityScore", "order": "DESCENDING" },
         { "fieldPath": "__name__", "order": "ASCENDING" }
