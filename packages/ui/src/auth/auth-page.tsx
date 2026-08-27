@@ -6,6 +6,7 @@ export type AuthPageNotice =
   | "session_expired"
   | "unauthenticated"
   | "email_unverified"
+  | "email_verified"
   | "forbidden"
   | "logged_out"
   | "verify_email"
@@ -23,6 +24,7 @@ const NOTICE_COPY: Record<string, string> = {
   session_expired: "Oturumunuzun süresi doldu. Devam etmek için yeniden giriş yapın.",
   unauthenticated: "Bu sayfaya erişmek için giriş yapmanız gerekir.",
   email_unverified: "Devam etmeden önce e-posta adresinizi doğrulayın.",
+  email_verified: "E-posta adresiniz doğrulandı. Giriş yapabilirsiniz.",
   forbidden: "Bu alana erişim yetkiniz yok.",
   logged_out: "Güvenli bir şekilde çıkış yaptınız.",
   verify_email:

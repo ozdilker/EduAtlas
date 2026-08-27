@@ -5,7 +5,6 @@ import {
   emitWelcome,
 } from "../notifications/emit-notification-events";
 import type { NotificationService } from "../notifications/notification-service";
-import { resolveEmailCtaHref } from "../notifications/resolve-email-cta-href";
 import type {
   AuthenticationService,
   CreateSessionFromIdTokenInput,
@@ -16,6 +15,7 @@ import type {
 } from "./authentication-service";
 import { AuthenticationError } from "./errors";
 import { assertPasswordPolicy, isValidEmailFormat, normalizeEmail } from "./password-policy";
+import { resolveEmailVerificationContinueUrl } from "./resolve-email-verification-continue-url";
 
 export type SignInDependencies = {
   authenticationService: AuthenticationService;
@@ -75,9 +75,10 @@ export async function signUpWithEmailPassword(
   let verificationLink: string | undefined;
   if (accountRole === "parent") {
     try {
-      const continueUrl =
-        resolveEmailCtaHref("/veli/giris?notice=verify_email", deps.siteBaseUrl) ??
-        "https://eduatlas.com.tr/veli/giris?notice=verify_email";
+      const continueUrl = resolveEmailVerificationContinueUrl({
+        accountRole: "parent",
+        siteBaseUrl: deps.siteBaseUrl,
+      });
       verificationLink = await deps.authenticationService.generateEmailVerificationLink({
         email,
         continueUrl,

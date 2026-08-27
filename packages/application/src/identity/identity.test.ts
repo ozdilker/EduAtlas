@@ -90,7 +90,7 @@ describe("AuthenticationService (in-memory)", () => {
       {
         authenticationService,
         notificationService,
-        siteBaseUrl: "https://eduatlas.com.tr",
+        siteBaseUrl: "http://localhost:3000",
       },
     );
 
@@ -102,6 +102,23 @@ describe("AuthenticationService (in-memory)", () => {
     expect(emailService.sent[1]?.subject).toContain("Veli hesabınızı doğrulayın");
     expect(emailService.sent[1]?.text).toContain("E-postamı doğrula");
     expect(emailService.sent[1]?.html).toContain("__/auth/action?mode=verifyEmail");
+    expect(emailService.sent[1]?.html).toContain(
+      encodeURIComponent("https://eduatlas.com.tr/veli/giris?notice=email_verified"),
+    );
+  });
+});
+
+describe("resolveEmailVerificationContinueUrl", () => {
+  it("uses production parent login when site base is localhost", async () => {
+    const { resolveEmailVerificationContinueUrl } = await import(
+      "./resolve-email-verification-continue-url"
+    );
+    expect(
+      resolveEmailVerificationContinueUrl({
+        accountRole: "parent",
+        siteBaseUrl: "http://localhost:3000",
+      }),
+    ).toBe("https://eduatlas.com.tr/veli/giris?notice=email_verified");
   });
 });
 

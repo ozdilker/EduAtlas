@@ -7,6 +7,7 @@ export {
   signUpWithEmailPassword,
   verifySession,
 } from "./auth-use-cases";
+export { resolveEmailVerificationContinueUrl } from "./resolve-email-verification-continue-url";
 export type {
   AuthenticationService,
   CreateSessionFromIdTokenInput,
