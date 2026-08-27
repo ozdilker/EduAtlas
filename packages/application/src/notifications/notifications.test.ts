@@ -102,6 +102,41 @@ describe("email templates", () => {
     });
     expect(rendered.subject).toContain("Sahiplenme");
   });
+
+  it("uses custom subject and CTA label when provided", () => {
+    const rendered = renderNotificationEmail({
+      type: NotificationType.EmailVerification,
+      title: "Veli hesabı e-posta doğrulama",
+      body: "Doğrulayın.",
+      href: "https://eduatlas.com.tr/__/auth/action?mode=verifyEmail",
+      subject: "EduAtlas — Veli hesabınızı doğrulayın",
+      ctaLabel: "E-postamı doğrula",
+    });
+    expect(rendered.subject).toBe("EduAtlas — Veli hesabınızı doğrulayın");
+    expect(rendered.html).toContain("E-postamı doğrula");
+  });
+});
+
+describe("parent notification copy", () => {
+  it("builds parent welcome and verification copy", async () => {
+    const { buildNotificationCopy } = await import("./notification-copy");
+    const welcome = buildNotificationCopy({
+      type: NotificationType.Welcome,
+      accountRole: "parent",
+    });
+    expect(welcome.subject).toContain("Veli hesabınız oluşturuldu");
+    expect(welcome.href).toBe("/veli/giris");
+    expect(welcome.body).not.toContain("sahiplik");
+
+    const verify = buildNotificationCopy({
+      type: NotificationType.EmailVerification,
+      accountRole: "parent",
+      verificationLink: "https://example.test/verify",
+    });
+    expect(verify.subject).toContain("Veli hesabınızı doğrulayın");
+    expect(verify.ctaLabel).toBe("E-postamı doğrula");
+    expect(verify.href).toBe("/veli/giris");
+  });
 });
 
 describe("resolveEmailCtaHref", () => {

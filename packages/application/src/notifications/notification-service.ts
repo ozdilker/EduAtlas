@@ -116,7 +116,12 @@ export class NotificationService {
         type: input.type,
         title: copy.title,
         body: copy.body,
-        href: resolveEmailCtaHref(copy.href, this.deps.siteBaseUrl),
+        href: resolveEmailCtaHref(
+          input.verificationLink?.trim() || copy.href,
+          this.deps.siteBaseUrl,
+        ),
+        subject: copy.subject,
+        ctaLabel: copy.ctaLabel,
       });
       const result = await this.deps.emailService.send({
         to: input.email.trim().toLowerCase(),

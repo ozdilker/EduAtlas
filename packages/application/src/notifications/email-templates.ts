@@ -76,13 +76,17 @@ export function renderNotificationEmail(input: {
   title: string;
   body: string;
   href?: string;
+  subject?: string;
+  ctaLabel?: string;
 }): RenderedEmail {
-  const subject = TYPE_SUBJECTS[input.type] ?? input.title;
+  const subject = input.subject?.trim() || TYPE_SUBJECTS[input.type] || input.title;
   return renderEmailTemplate({
     title: subject,
     preview: input.body.slice(0, 120),
     bodyLines: [input.body],
-    ctaLabel: input.href ? "EduAtlas’ta görüntüle" : undefined,
+    ctaLabel: input.href
+      ? input.ctaLabel?.trim() || "EduAtlas’ta görüntüle"
+      : undefined,
     ctaHref: input.href,
   });
 }

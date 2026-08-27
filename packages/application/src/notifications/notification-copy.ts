@@ -4,7 +4,13 @@ export type NotificationCopy = Readonly<{
   readonly title: string;
   readonly body: string;
   readonly href?: string;
+  /** Optional email subject override (defaults to type subject map). */
+  readonly subject?: string;
+  /** Optional CTA label when href is present. */
+  readonly ctaLabel?: string;
 }>;
+
+export type NotificationAccountRole = "parent" | "owner";
 
 export type NotificationEventPayload = {
   type: NotificationType;
@@ -13,6 +19,10 @@ export type NotificationEventPayload = {
   leadId?: string;
   claimRequestId?: string;
   actorEmail?: string;
+  /** Account role for welcome / verification copy. Defaults to owner. */
+  accountRole?: NotificationAccountRole;
+  /** Absolute Firebase email-verification link (parent branded mail). */
+  verificationLink?: string;
 };
 
 /**
@@ -57,17 +67,44 @@ export function buildNotificationCopy(payload: NotificationEventPayload): Notifi
         href: "/login",
       });
     case NotificationType.Welcome:
+      if (payload.accountRole === "parent") {
+        return Object.freeze({
+          title: "EduAtlas’a hoş geldiniz",
+          subject: "EduAtlas — Veli hesabınız oluşturuldu",
+          body: "Veli hesabınız oluşturuldu. E-posta adresinizi doğruladıktan sonra favori kurumlarınızı kaydedebilir ve kıyaslayabilirsiniz.",
+          href: "/veli/giris",
+          ctaLabel: "Veli girişine git",
+        });
+      }
       return Object.freeze({
         title: "EduAtlas’a hoş geldiniz",
+        subject: "EduAtlas — Kurum hesabınız oluşturuldu",
         body: "Hesabınız oluşturuldu. E-posta doğrulaması ve sahiplik onayı sonrası kurum paneli açılır.",
         href: "/owner/onboarding",
+        ctaLabel: "Kurum paneline git",
       });
-    case NotificationType.EmailVerification:
+    case NotificationType.EmailVerification: {
+      const hasVerificationLink = Boolean(payload.verificationLink?.trim());
+      if (payload.accountRole === "parent") {
+        return Object.freeze({
+          title: "Veli hesabı e-posta doğrulama",
+          subject: "EduAtlas — Veli hesabınızı doğrulayın",
+          body: hasVerificationLink
+            ? "Veli hesabınızı tamamlamak için e-posta adresinizi doğrulayın. Aşağıdaki düğmeye tıklayın; ardından giriş yapabilirsiniz."
+            : "Veli hesabınızı tamamlamak için e-posta adresinizi doğrulayın. Gelen kutunuzdaki doğrulama bağlantısını kullanın, ardından giriş yapın.",
+          // In-app stays on portal; SMTP CTA uses verificationLink when present.
+          href: "/veli/giris",
+          ctaLabel: hasVerificationLink ? "E-postamı doğrula" : "Veli girişine git",
+        });
+      }
       return Object.freeze({
         title: "E-posta doğrulama",
+        subject: "EduAtlas — Kurum hesabı e-posta doğrulama",
         body: "Devam etmek için e-posta adresinizi doğrulayın. Gelen kutunuza gönderilen bağlantıyı kullanın.",
         href: "/login",
+        ctaLabel: "Kurum girişine git",
       });
+    }
     default: {
       const exhaustive: never = payload.type;
       throw new Error(`Unsupported notification type: ${String(exhaustive)}`);

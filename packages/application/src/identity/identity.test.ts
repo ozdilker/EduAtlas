@@ -1,5 +1,8 @@
 import { AppRole, createOwnerBinding } from "@eduatlas/domain";
 import { describe, expect, it } from "vitest";
+import { createConsoleEmailService } from "../notifications/console-email-service";
+import { createInMemoryNotificationRepository } from "../notifications/in-memory-notification-repository";
+import { createNotificationService } from "../notifications/notification-service";
 import {
   requestPasswordReset,
   signInWithEmailPassword,
@@ -65,6 +68,40 @@ describe("AuthenticationService (in-memory)", () => {
     const authenticationService = createInMemoryAuthenticationService();
     await requestPasswordReset({ email: "missing@eduatlas.dev" }, { authenticationService });
     expect(authenticationService.passwordResetRequests).toContain("missing@eduatlas.dev");
+  });
+
+  it("sends branded parent verification email instead of institution welcome copy", async () => {
+    const authenticationService = createInMemoryAuthenticationService();
+    const notificationRepository = createInMemoryNotificationRepository();
+    const emailService = createConsoleEmailService();
+    const notificationService = createNotificationService({
+      notificationRepository,
+      emailService,
+      siteBaseUrl: "https://eduatlas.com.tr",
+    });
+
+    await signUpWithEmailPassword(
+      {
+        email: "veli@eduatlas.dev",
+        password: "secure-pass-1",
+        displayName: "Ayşe Veli",
+        role: "parent",
+      },
+      {
+        authenticationService,
+        notificationService,
+        siteBaseUrl: "https://eduatlas.com.tr",
+      },
+    );
+
+    expect(authenticationService.verificationRequests).toContain("veli@eduatlas.dev");
+    expect(emailService.sent).toHaveLength(2);
+    expect(emailService.sent[0]?.subject).toContain("Veli hesabınız oluşturuldu");
+    expect(emailService.sent[0]?.text).toContain("Veli hesabınız oluşturuldu");
+    expect(emailService.sent[0]?.text).not.toContain("sahiplik onayı");
+    expect(emailService.sent[1]?.subject).toContain("Veli hesabınızı doğrulayın");
+    expect(emailService.sent[1]?.text).toContain("E-postamı doğrula");
+    expect(emailService.sent[1]?.html).toContain("__/auth/action?mode=verifyEmail");
   });
 });
 

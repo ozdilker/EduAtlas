@@ -5,6 +5,7 @@ import {
   emitWelcome,
 } from "../notifications/emit-notification-events";
 import type { NotificationService } from "../notifications/notification-service";
+import { resolveEmailCtaHref } from "../notifications/resolve-email-cta-href";
 import type {
   AuthenticationService,
   CreateSessionFromIdTokenInput,
@@ -20,6 +21,8 @@ export type SignInDependencies = {
   authenticationService: AuthenticationService;
   sessionExpiresInMs?: number;
   notificationService?: NotificationService;
+  /** Public site origin for parent email-verification continue URL. */
+  siteBaseUrl?: string;
 };
 
 export type SignInWithSessionResult = Readonly<{
@@ -61,14 +64,35 @@ export async function signUpWithEmailPassword(
   }
   assertPasswordPolicy(input.password);
 
+  const accountRole = input.role === "parent" ? "parent" : "owner";
   const signIn = await deps.authenticationService.signUpWithEmailPassword({
     email,
     password: input.password,
     displayName: input.displayName?.trim(),
-    role: input.role,
+    role: accountRole,
   });
 
-  if (signIn.idToken) {
+  let verificationLink: string | undefined;
+  if (accountRole === "parent") {
+    try {
+      const continueUrl =
+        resolveEmailCtaHref("/veli/giris?notice=verify_email", deps.siteBaseUrl) ??
+        "https://eduatlas.com.tr/veli/giris?notice=verify_email";
+      verificationLink = await deps.authenticationService.generateEmailVerificationLink({
+        email,
+        continueUrl,
+      });
+    } catch {
+      // Fall back to Firebase's default verification email if link generation fails.
+      if (signIn.idToken) {
+        try {
+          await deps.authenticationService.sendEmailVerification({ idToken: signIn.idToken });
+        } catch {
+          // Best-effort.
+        }
+      }
+    }
+  } else if (signIn.idToken) {
     try {
       await deps.authenticationService.sendEmailVerification({ idToken: signIn.idToken });
     } catch {
@@ -81,11 +105,23 @@ export async function signUpWithEmailPassword(
       await emitWelcome(deps.notificationService, {
         userId: signIn.user.uid,
         email: signIn.user.email,
+        accountRole,
       });
-      // In-app only — Firebase Identity Toolkit already sends the verify link email.
-      await emitEmailVerification(deps.notificationService, {
-        userId: signIn.user.uid,
-      });
+      if (accountRole === "parent") {
+        // Branded SMTP verification mail (skips Firebase default template when link exists).
+        await emitEmailVerification(deps.notificationService, {
+          userId: signIn.user.uid,
+          email: signIn.user.email,
+          accountRole: "parent",
+          verificationLink,
+        });
+      } else {
+        // In-app only — Firebase Identity Toolkit already sends the verify link email.
+        await emitEmailVerification(deps.notificationService, {
+          userId: signIn.user.uid,
+          accountRole: "owner",
+        });
+      }
     } catch {
       // Fail-open: account already created.
     }

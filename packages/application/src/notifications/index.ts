@@ -35,6 +35,7 @@ export type {
 } from "./mail-delivery-log-repository";
 export {
   buildNotificationCopy,
+  type NotificationAccountRole,
   type NotificationCopy,
   type NotificationEventPayload,
 } from "./notification-copy";

@@ -3,6 +3,7 @@ import {
   assertPasswordPolicy,
   type CreateSessionFromIdTokenInput,
   EmailAlreadyInUseError,
+  type GenerateEmailVerificationLinkInput,
   InvalidCredentialsError,
   normalizeEmail,
   type RequestPasswordResetInput,
@@ -111,6 +112,19 @@ export class FirebaseAuthenticationService implements AuthenticationService {
   async sendEmailVerification(input: SendEmailVerificationInput): Promise<void> {
     try {
       await this.identityToolkit.sendEmailVerification(input.idToken);
+    } catch (error) {
+      throw mapIdentityToolkitError(error);
+    }
+  }
+
+  async generateEmailVerificationLink(
+    input: GenerateEmailVerificationLinkInput,
+  ): Promise<string> {
+    try {
+      return await this.adminAuth.generateEmailVerificationLink(normalizeEmail(input.email), {
+        url: input.continueUrl.trim(),
+        handleCodeInApp: false,
+      });
     } catch (error) {
       throw mapIdentityToolkitError(error);
     }

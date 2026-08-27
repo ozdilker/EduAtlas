@@ -10,6 +10,7 @@ export {
 export type {
   AuthenticationService,
   CreateSessionFromIdTokenInput,
+  GenerateEmailVerificationLinkInput,
   RequestPasswordResetInput,
   SendEmailVerificationInput,
   SignInResult,

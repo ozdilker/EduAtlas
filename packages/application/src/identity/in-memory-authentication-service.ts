@@ -9,6 +9,7 @@ import {
 import type {
   AuthenticationService,
   CreateSessionFromIdTokenInput,
+  GenerateEmailVerificationLinkInput,
   RequestPasswordResetInput,
   SendEmailVerificationInput,
   SignInResult,
@@ -129,6 +130,19 @@ export class InMemoryAuthenticationService implements AuthenticationService {
       this.verificationEmails.push(user.email);
       user.emailVerified = true;
     }
+  }
+
+  async generateEmailVerificationLink(
+    input: GenerateEmailVerificationLinkInput,
+  ): Promise<string> {
+    const email = normalizeEmail(input.email);
+    const user = this.usersByEmail.get(email);
+    if (!user) {
+      throw new InvalidCredentialsError("Kullanıcı bulunamadı.");
+    }
+    this.verificationEmails.push(email);
+    const continueUrl = encodeURIComponent(input.continueUrl.trim());
+    return `https://example.test/__/auth/action?mode=verifyEmail&oobCode=mem_${user.uid}&continueUrl=${continueUrl}`;
   }
 
   async createSessionFromIdToken(input: CreateSessionFromIdTokenInput): Promise<Session> {

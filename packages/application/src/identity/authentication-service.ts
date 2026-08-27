@@ -21,6 +21,12 @@ export type SendEmailVerificationInput = {
   idToken: string;
 };
 
+export type GenerateEmailVerificationLinkInput = {
+  email: string;
+  /** Absolute continue URL after the user verifies (must be an authorized domain). */
+  continueUrl: string;
+};
+
 export type CreateSessionFromIdTokenInput = {
   idToken: string;
   /** Absolute session TTL in milliseconds. */
@@ -43,6 +49,8 @@ export interface AuthenticationService {
   signUpWithEmailPassword(input: SignUpWithEmailPasswordInput): Promise<SignInResult>;
   requestPasswordReset(input: RequestPasswordResetInput): Promise<void>;
   sendEmailVerification(input: SendEmailVerificationInput): Promise<void>;
+  /** Builds a one-time verification URL for branded SMTP delivery (parents). */
+  generateEmailVerificationLink(input: GenerateEmailVerificationLinkInput): Promise<string>;
   createSessionFromIdToken(input: CreateSessionFromIdTokenInput): Promise<Session>;
   verifySessionCookie(sessionCookie: string): Promise<Session>;
   revokeSession(sessionCookie: string): Promise<void>;

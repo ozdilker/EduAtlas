@@ -105,24 +105,38 @@ export async function emitPasswordReset(
 
 export async function emitWelcome(
   service: NotificationService,
-  input: { userId: string; email: string; now?: string },
+  input: {
+    userId: string;
+    email: string;
+    accountRole?: "parent" | "owner";
+    now?: string;
+  },
 ): Promise<EmitNotificationResult> {
   return service.emit({
     type: NotificationType.Welcome,
     userId: input.userId,
     email: input.email,
+    accountRole: input.accountRole,
     now: input.now,
   });
 }
 
 export async function emitEmailVerification(
   service: NotificationService,
-  input: { userId: string; email?: string; now?: string },
+  input: {
+    userId: string;
+    email?: string;
+    accountRole?: "parent" | "owner";
+    verificationLink?: string;
+    now?: string;
+  },
 ): Promise<EmitNotificationResult> {
   return service.emit({
     type: NotificationType.EmailVerification,
     userId: input.userId,
     email: input.email,
+    accountRole: input.accountRole,
+    verificationLink: input.verificationLink,
     now: input.now,
   });
 }

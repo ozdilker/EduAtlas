@@ -15,6 +15,7 @@ import {
 import { AppRole } from "@eduatlas/domain";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getSeoSiteConfig } from "@/lib/seo-site";
 import { getNotificationService } from "../notifications/repository";
 import { getAuthenticationService } from "./authentication-service";
 import {
@@ -162,6 +163,7 @@ export async function registerAction(
       {
         authenticationService: getAuthenticationService(),
         notificationService,
+        siteBaseUrl: getSeoSiteConfig().siteUrl,
       },
     );
     redirect(`${loginPath}?notice=verify_email&next=${encodeURIComponent(next)}`);
