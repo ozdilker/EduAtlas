@@ -31,6 +31,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  /**
+   * Canonical host is apex (`eduatlas.com.tr`). Session cookies are host-only,
+   * so www and non-www must not both serve the app independently.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.eduatlas.com.tr" }],
+        destination: "https://eduatlas.com.tr/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
