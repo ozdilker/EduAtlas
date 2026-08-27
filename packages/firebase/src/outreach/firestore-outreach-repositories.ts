@@ -23,7 +23,7 @@ import {
   type CampaignTemplate,
   type DeliveryJob,
 } from "@eduatlas/domain";
-import type { Firestore } from "firebase-admin/firestore";
+import type { Firestore, QuerySnapshot } from "firebase-admin/firestore";
 
 export const OUTREACH_CAMPAIGNS = "outreach_campaigns";
 export const OUTREACH_RECIPIENTS = "outreach_recipients";
@@ -86,6 +86,10 @@ export class FirestoreCampaignRepository implements CampaignRepository {
       }),
     );
   }
+
+  async delete(id: string): Promise<void> {
+    await this.db.collection(OUTREACH_CAMPAIGNS).doc(id.trim()).delete();
+  }
 }
 
 export class FirestoreCampaignRecipientRepository implements CampaignRecipientRepository {
@@ -144,6 +148,15 @@ export class FirestoreCampaignRecipientRepository implements CampaignRecipientRe
         }),
       ),
     );
+  }
+
+  async deleteByCampaignId(campaignId: string): Promise<number> {
+    const snap = await this.db
+      .collection(OUTREACH_RECIPIENTS)
+      .where("campaignId", "==", campaignId.trim())
+      .get();
+    await deleteQuerySnapshot(this.db, snap);
+    return snap.size;
   }
 }
 
@@ -236,6 +249,15 @@ export class FirestoreCampaignLogRepository implements CampaignLogRepository {
       ),
     );
   }
+
+  async deleteByCampaignId(campaignId: string): Promise<number> {
+    const snap = await this.db
+      .collection(OUTREACH_LOGS)
+      .where("campaignId", "==", campaignId.trim())
+      .get();
+    await deleteQuerySnapshot(this.db, snap);
+    return snap.size;
+  }
 }
 
 export class FirestoreDeliveryJobRepository implements DeliveryJobRepository {
@@ -282,6 +304,15 @@ export class FirestoreDeliveryJobRepository implements DeliveryJobRepository {
       .where("campaignId", "==", campaignId.trim())
       .get();
     return Object.freeze(snap.docs.map((doc) => fromJobDoc(doc.data() as Record<string, unknown>)));
+  }
+
+  async deleteByCampaignId(campaignId: string): Promise<number> {
+    const snap = await this.db
+      .collection(OUTREACH_JOBS)
+      .where("campaignId", "==", campaignId.trim())
+      .get();
+    await deleteQuerySnapshot(this.db, snap);
+    return snap.size;
   }
 
   async claimNext(input: {
@@ -373,6 +404,17 @@ export class FirestoreDeliverySendBudget implements DeliverySendBudget {
         { merge: true },
       );
     });
+  }
+}
+
+async function deleteQuerySnapshot(db: Firestore, snap: QuerySnapshot): Promise<void> {
+  const batchSize = 400;
+  for (let i = 0; i < snap.docs.length; i += batchSize) {
+    const batch = db.batch();
+    for (const doc of snap.docs.slice(i, i + batchSize)) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
   }
 }
 

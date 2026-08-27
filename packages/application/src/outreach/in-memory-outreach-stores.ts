@@ -40,6 +40,10 @@ export class InMemoryCampaignRepository implements CampaignRepository {
   async list(): Promise<readonly Campaign[]> {
     return Object.freeze([...this.items.values()]);
   }
+
+  async delete(id: string): Promise<void> {
+    this.items.delete(id.trim());
+  }
 }
 
 export class InMemoryCampaignRecipientRepository implements CampaignRecipientRepository {
@@ -73,6 +77,18 @@ export class InMemoryCampaignRecipientRepository implements CampaignRecipientRep
   async listByInstitutionId(institutionId: string): Promise<readonly CampaignRecipient[]> {
     const id = institutionId.trim();
     return Object.freeze([...this.items.values()].filter((r) => r.institutionId === id));
+  }
+
+  async deleteByCampaignId(campaignId: string): Promise<number> {
+    const id = campaignId.trim();
+    let count = 0;
+    for (const [key, recipient] of this.items) {
+      if (recipient.campaignId === id) {
+        this.items.delete(key);
+        count += 1;
+      }
+    }
+    return count;
   }
 }
 
@@ -143,6 +159,15 @@ export class InMemoryCampaignLogRepository implements CampaignLogRepository {
   async listByCampaignId(campaignId: string): Promise<readonly CampaignLog[]> {
     const id = campaignId.trim();
     return Object.freeze(this.items.filter((log) => log.campaignId === id));
+  }
+
+  async deleteByCampaignId(campaignId: string): Promise<number> {
+    const id = campaignId.trim();
+    const before = this.items.length;
+    const kept = this.items.filter((log) => log.campaignId !== id);
+    this.items.length = 0;
+    this.items.push(...kept);
+    return before - kept.length;
   }
 }
 

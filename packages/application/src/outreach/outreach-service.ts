@@ -447,6 +447,24 @@ export class OutreachService {
     return this.start(campaignId, now);
   }
 
+  /**
+   * Permanently deletes a draft campaign and its recipients, logs, and delivery jobs.
+   * Only `CampaignStatus.Draft` is allowed (includes UI “prepared” bucket).
+   */
+  async deleteDraft(campaignId: string): Promise<void> {
+    const campaign = await this.requireCampaign(campaignId);
+    if (campaign.status !== CampaignStatus.Draft) {
+      throw new OutreachValidationError("Only draft campaigns can be deleted.");
+    }
+    const id = campaignIdAsString(campaign.id);
+    await this.deps.recipientRepository.deleteByCampaignId(id);
+    await this.deps.logRepository.deleteByCampaignId(id);
+    if (this.deps.deliveryJobRepository) {
+      await this.deps.deliveryJobRepository.deleteByCampaignId(id);
+    }
+    await this.deps.campaignRepository.delete(id);
+  }
+
   async cancel(campaignId: string, now: string): Promise<Campaign> {
     const campaign = await this.requireCampaign(campaignId);
     if (
@@ -581,9 +599,36 @@ export class OutreachService {
     campaignId: string;
     institutionName: string;
     ctaHref: string;
+    /** When set, overrides persisted campaign subject for live preview. */
+    subjectOverride?: string;
+    /** When set, overrides persisted campaign preheader for live preview. */
+    preheader?: string;
   }): Promise<RenderedEmail> {
     const campaign = await this.requireCampaign(input.campaignId);
-    return this.renderCampaignMail(campaign, {
+    return this.renderMailContent({
+      templateId: campaign.templateId,
+      subject: input.subjectOverride?.trim() || campaign.subjectOverride || "",
+      preheader: input.preheader?.trim() || campaign.preheader || "",
+      institutionName: input.institutionName,
+      ctaHref: input.ctaHref,
+    });
+  }
+
+  /**
+   * Renders mail from draft fields (no campaign persistence required).
+   * Used by Growth Center live preview while editing subject/preheader.
+   */
+  async previewMailDraft(input: {
+    templateId: string;
+    subject: string;
+    preheader: string;
+    institutionName: string;
+    ctaHref: string;
+  }): Promise<RenderedEmail> {
+    return this.renderMailContent({
+      templateId: input.templateId,
+      subject: input.subject,
+      preheader: input.preheader,
       institutionName: input.institutionName,
       ctaHref: input.ctaHref,
     });
@@ -753,13 +798,29 @@ export class OutreachService {
     campaign: Campaign,
     tokens: { institutionName: string; ctaHref: string },
   ): Promise<RenderedEmail> {
-    const template = await this.deps.templateRepository.getById(campaign.templateId);
+    return this.renderMailContent({
+      templateId: campaign.templateId,
+      subject: campaign.subjectOverride ?? "",
+      preheader: campaign.preheader ?? "",
+      institutionName: tokens.institutionName,
+      ctaHref: tokens.ctaHref,
+    });
+  }
+
+  private async renderMailContent(input: {
+    templateId: string;
+    subject: string;
+    preheader: string;
+    institutionName: string;
+    ctaHref: string;
+  }): Promise<RenderedEmail> {
+    const template = await this.deps.templateRepository.getById(input.templateId.trim());
     if (!template) {
       throw new OutreachValidationError("Campaign template is missing.");
     }
 
-    const subject = campaign.subjectOverride?.trim() || template.subject;
-    const preheader = campaign.preheader?.trim() || template.preview;
+    const subject = input.subject.trim() || template.subject;
+    const preheader = input.preheader.trim() || template.preview;
     if (!subject.trim()) {
       throw new OutreachValidationError("Campaign subject is required.");
     }
@@ -771,23 +832,22 @@ export class OutreachService {
       return renderClaimInvitationMail({
         subject,
         preheader,
-        institutionName: tokens.institutionName,
-        ctaHref: tokens.ctaHref,
+        institutionName: input.institutionName,
+        ctaHref: input.ctaHref,
         bodyLines: template.bodyLines,
         ...(this.deps.mailLogoUrl ? { logoUrl: this.deps.mailLogoUrl } : {}),
       });
     }
 
     const personalized = {
-      institutionName: tokens.institutionName,
+      institutionName: input.institutionName,
     };
-    const rendered = renderCampaignTemplatePreview({
+    return renderCampaignTemplatePreview({
       ...template,
       subject: applyMailTokens(subject, personalized),
       preview: applyMailTokens(preheader, personalized),
       bodyLines: template.bodyLines.map((line) => applyMailTokens(line, personalized)),
     });
-    return rendered;
   }
 
   private async setStatus(

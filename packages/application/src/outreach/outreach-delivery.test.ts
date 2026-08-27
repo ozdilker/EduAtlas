@@ -1,5 +1,8 @@
 import {
+  CampaignRecipientStatus,
   CampaignStatus,
+  createCampaign,
+  createCampaignRecipient,
   createCampaignSegment,
   createCampaignTemplate,
   createInstitution,
@@ -292,5 +295,80 @@ describe("OutreachService prepare/approve/run", () => {
       createdBy: "admin",
     });
     await expect(service.approveCampaign("camp_a", NOW)).rejects.toThrow(/prepared/i);
+  });
+
+  it("deletes draft campaigns and cascades recipients/logs/jobs", async () => {
+    const stores = createInMemoryOutreachStores();
+    const jobs = createInMemoryDeliveryJobRepository();
+    const queue = createInMemoryOutreachQueue();
+    const service = createOutreachService({
+      ...stores,
+      queue,
+      deliveryJobRepository: jobs,
+    });
+    await stores.templateRepository.save(
+      createCampaignTemplate({
+        id: "tpl_del",
+        name: "T",
+        subject: "S",
+        preview: "P",
+        bodyLines: ["B"],
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    await stores.segmentRepository.save(
+      createCampaignSegment({
+        id: "seg_del",
+        name: "S",
+        filters: {},
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    await service.createCampaign({
+      id: "camp_del",
+      name: "Silinecek",
+      templateId: "tpl_del",
+      segmentId: "seg_del",
+      createdAt: NOW,
+      createdBy: "admin",
+    });
+    await stores.recipientRepository.save(
+      createCampaignRecipient({
+        id: "crec_del",
+        campaignId: "camp_del",
+        institutionId: "inst_1",
+        email: "a@example.com",
+        status: CampaignRecipientStatus.Pending,
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+
+    await service.deleteDraft("camp_del");
+    expect(await stores.campaignRepository.getById("camp_del")).toBeNull();
+    expect(await stores.recipientRepository.listByCampaignId("camp_del")).toHaveLength(0);
+
+    const ready = await service.createCampaign({
+      id: "camp_ready",
+      name: "Ready",
+      templateId: "tpl_del",
+      segmentId: "seg_del",
+      createdAt: NOW,
+      createdBy: "admin",
+    });
+    await stores.campaignRepository.update(
+      createCampaign({
+        id: "camp_ready",
+        name: ready.name,
+        templateId: "tpl_del",
+        segmentId: "seg_del",
+        status: CampaignStatus.Ready,
+        createdAt: NOW,
+        createdBy: "admin",
+      }),
+    );
+    await expect(service.deleteDraft("camp_ready")).rejects.toThrow(/draft/i);
   });
 });

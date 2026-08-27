@@ -6,4 +6,6 @@ export interface CampaignRecipientRepository {
   update(recipient: CampaignRecipient): Promise<CampaignRecipient>;
   listByCampaignId(campaignId: string): Promise<readonly CampaignRecipient[]>;
   listByInstitutionId(institutionId: string): Promise<readonly CampaignRecipient[]>;
+  /** Removes all recipients for a campaign. Returns deleted count. */
+  deleteByCampaignId(campaignId: string): Promise<number>;
 }

@@ -5,4 +5,5 @@ export interface CampaignRepository {
   save(campaign: Campaign): Promise<Campaign>;
   update(campaign: Campaign): Promise<Campaign>;
   list(): Promise<readonly Campaign[]>;
+  delete(id: string): Promise<void>;
 }

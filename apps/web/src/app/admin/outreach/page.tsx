@@ -8,6 +8,7 @@ import { AdminOutreachPage } from "@eduatlas/ui";
 import {
   approveOutreachCampaignAction,
   cancelOutreachCampaignAction,
+  deleteOutreachDraftCampaignAction,
   elevateOutreachWarmupStageAction,
   expandOutreachWarmupAction,
   lowerOutreachWarmupStageAction,
@@ -106,6 +107,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       elevateWarmupAction={elevateOutreachWarmupStageAction}
       lowerWarmupAction={lowerOutreachWarmupStageAction}
       cancelAction={cancelOutreachCampaignAction}
+      deleteAction={deleteOutreachDraftCampaignAction}
       checklistAction={updateOutreachPreSendChecklistAction}
       learningsAction={updateOutreachLearningsAction}
     />

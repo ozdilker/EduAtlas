@@ -6,6 +6,8 @@ export interface DeliveryJobRepository {
   save(job: DeliveryJob): Promise<DeliveryJob>;
   update(job: DeliveryJob): Promise<DeliveryJob>;
   listByCampaignId(campaignId: string): Promise<readonly DeliveryJob[]>;
+  /** Removes all delivery jobs for a campaign. Returns deleted count. */
+  deleteByCampaignId(campaignId: string): Promise<number>;
   claimNext(input: {
     now: string;
     lockedBy: string;

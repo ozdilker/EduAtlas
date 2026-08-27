@@ -5,8 +5,8 @@ import { Button } from "../../components/button";
 import { AdminShell } from "../admin-shell";
 import { buildAdminNavItems } from "../admin-nav";
 import { GrowthAuditLog } from "./audit-log";
+import { CampaignMailPreview } from "./campaign-mail-preview";
 import { GrowthLiveDelivery } from "./live-delivery";
-import { EmailPreviewFrame } from "./email-preview-frame";
 import {
   GrowthLearningLog,
   GrowthLearningsForm,
@@ -119,6 +119,7 @@ export function GrowthCenterPage({
   elevateWarmupAction,
   lowerWarmupAction,
   cancelAction,
+  deleteAction,
   checklistAction,
   learningsAction,
 }: GrowthCenterPageProps) {
@@ -272,7 +273,7 @@ export function GrowthCenterPage({
           ) : (
             <ul className="ea-admin-outreach__campaigns">
               {filteredCampaigns.map((campaign) => (
-                <li key={campaign.id}>
+                <li key={campaign.id} className="ea-admin-outreach__campaign-item">
                   <a
                     className={
                       campaign.id === form.id
@@ -289,6 +290,26 @@ export function GrowthCenterPage({
                         : ` · ${campaign.status}`}
                     </span>
                   </a>
+                  {deleteAction && campaign.status === "draft" ? (
+                    <form
+                      action={deleteAction}
+                      className="ea-admin-outreach__campaign-delete"
+                      onSubmit={(event) => {
+                        if (
+                          !window.confirm(
+                            `"${campaign.name}" taslağını silmek istediğinize emin misiniz?`,
+                          )
+                        ) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="campaignId" value={campaign.id} />
+                      <Button type="submit" size="sm" variant="destructive">
+                        Sil
+                      </Button>
+                    </form>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -623,21 +644,16 @@ export function GrowthCenterPage({
               </div>
             ) : null}
 
-            {step === 5 && isExisting ? (
+            {step === 5 ? (
               <div>
-                {previewSubject ? (
-                  <p className="ea-admin-muted">
-                    Konu: <strong>{previewSubject}</strong>
-                  </p>
-                ) : (
-                  <p className="ea-admin-muted">Önizleme için kampanyayı kaydedin.</p>
-                )}
-                {previewHtml ? (
-                  <EmailPreviewFrame
-                    html={previewHtml}
-                    title="Kampanya e-posta önizlemesi"
-                  />
-                ) : null}
+                <CampaignMailPreview
+                  templateId={draft.templateId}
+                  subject={draft.subjectOverride}
+                  preheader={draft.preheader}
+                  institutionName={sampleInstitutionName}
+                  initialHtml={previewHtml}
+                  initialSubject={previewSubject}
+                />
               </div>
             ) : null}
 
@@ -912,18 +928,18 @@ export function GrowthCenterPage({
             lowerWarmupAction={lowerWarmupAction}
             campaignId={form.id || undefined}
           />
-          {isExisting && step !== 5 ? (
+          {step !== 5 ? (
             <section className="ea-growth-panel" aria-label="Mail preview shortcut">
               <h2 className="ea-admin-section-title">Mail preview</h2>
-              {previewHtml ? (
-                <EmailPreviewFrame
-                  html={previewHtml}
-                  title="Kampanya e-posta önizlemesi"
-                  className="ea-admin-outreach__iframe--full"
-                />
-              ) : (
-                <p className="ea-admin-muted">Önizleme yok.</p>
-              )}
+              <CampaignMailPreview
+                templateId={draft.templateId}
+                subject={draft.subjectOverride}
+                preheader={draft.preheader}
+                institutionName={sampleInstitutionName}
+                initialHtml={previewHtml}
+                initialSubject={previewSubject}
+                className="ea-admin-outreach__iframe--full"
+              />
             </section>
           ) : null}
           {isExisting ? <GrowthAuditLog logs={logs} /> : null}

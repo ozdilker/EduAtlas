@@ -123,6 +123,16 @@ describe("OutreachService builder flows", () => {
     expect(preview.subject).toBe("Örnek Anaokulu için davet");
     expect(preview.html).toContain(CLAIM_INVITATION_CTA_LABEL);
 
+    const live = await service.previewMailDraft({
+      templateId: CLAIM_INVITATION_TEMPLATE_ID,
+      subject: "{{institutionName}} canlı konu",
+      preheader: "Canlı preheader metni",
+      institutionName: "Örnek Anaokulu",
+      ctaHref: "https://eduatlas.com.tr/login",
+    });
+    expect(live.subject).toBe("Örnek Anaokulu canlı konu");
+    expect(live.html).toContain("Canlı preheader metni");
+
     const sent = await service.sendTestEmail({
       campaignId: "camp_builder_1",
       to: "admin@eduatlas.com.tr",

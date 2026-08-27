@@ -342,6 +342,26 @@ export async function cancelOutreachCampaignAction(formData: FormData): Promise<
   });
 }
 
+export async function deleteOutreachDraftCampaignAction(formData: FormData): Promise<void> {
+  await requireAdminSession();
+  const campaignId = formString(formData, "campaignId");
+  if (!campaignId) {
+    outreachRedirect({ error: "Kampanya seçilmedi." });
+  }
+  const service = await getOutreachService();
+  try {
+    await service.deleteDraft(campaignId);
+    outreachRedirect({ notice: "Taslak kampanya silindi." });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Taslak silinemedi.";
+    outreachRedirect({ id: campaignId, error: message });
+  }
+}
+
 export async function updateOutreachPreSendChecklistAction(formData: FormData): Promise<void> {
   const service = await getOutreachService();
   await campaignAction(formData, async (campaignId, now) => {

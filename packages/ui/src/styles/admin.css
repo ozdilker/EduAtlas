@@ -1213,6 +1213,17 @@
   list-style: none;
 }
 
+.ea-admin-outreach__campaign-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+
+.ea-admin-outreach__campaign-delete {
+  padding: 0 0.65rem 0.15rem;
+}
+
 .ea-admin-outreach__link {
   display: flex;
   flex-direction: column;
@@ -1286,6 +1297,45 @@
 
 .ea-admin-outreach__iframe--full {
   min-height: 24rem;
+}
+
+.ea-mail-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ea-space-3);
+}
+
+.ea-mail-preview__inbox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--ea-color-border);
+  border-radius: var(--ea-radius-sm);
+  background: color-mix(in srgb, var(--ea-color-surface, #fff) 92%, var(--ea-color-primary-600) 8%);
+}
+
+.ea-mail-preview__row {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: start;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.ea-mail-preview__label {
+  color: var(--ea-color-muted, #667);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-top: 0.1rem;
+}
+
+.ea-mail-preview__status {
+  margin: 0.15rem 0 0;
+  font-size: 0.8rem;
 }
 
 .ea-growth-filters {

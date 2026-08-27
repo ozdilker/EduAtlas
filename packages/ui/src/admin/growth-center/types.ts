@@ -161,6 +161,8 @@ export type GrowthCenterPageProps = {
   elevateWarmupAction?: (formData: FormData) => Promise<void>;
   lowerWarmupAction?: (formData: FormData) => Promise<void>;
   cancelAction?: (formData: FormData) => Promise<void>;
+  /** Permanently delete draft campaigns (domain status draft). */
+  deleteAction?: (formData: FormData) => Promise<void>;
   checklistAction?: (formData: FormData) => Promise<void>;
   learningsAction?: (formData: FormData) => Promise<void>;
 };

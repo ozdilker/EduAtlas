@@ -47,6 +47,18 @@ export class InMemoryDeliveryJobRepository implements DeliveryJobRepository {
     return Object.freeze([...this.byId.values()].filter((j) => j.campaignId === id));
   }
 
+  async deleteByCampaignId(campaignId: string): Promise<number> {
+    const id = campaignId.trim();
+    let count = 0;
+    for (const job of [...this.byId.values()]) {
+      if (job.campaignId !== id) continue;
+      this.byId.delete(job.id);
+      this.byKey.delete(job.idempotencyKey);
+      count += 1;
+    }
+    return count;
+  }
+
   async claimNext(input: {
     now: string;
     lockedBy: string;
