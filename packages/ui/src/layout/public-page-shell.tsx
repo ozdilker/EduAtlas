@@ -14,6 +14,7 @@ export type PublicPageShellProps = {
   isParentLoggedIn?: boolean;
   /** Signed-in account chip; hides Veli/Kurum giriş CTAs when set. */
   authAccount?: SiteHeaderAuthAccount | null;
+  logoutAction?: () => Promise<void>;
   organizationContact?: SiteFooterContact;
 };
 
@@ -28,6 +29,7 @@ export function PublicPageShell({
   mainClassName,
   isParentLoggedIn = false,
   authAccount = null,
+  logoutAction,
   organizationContact,
 }: PublicPageShellProps) {
   return (
@@ -38,6 +40,7 @@ export function PublicPageShell({
         currentPath={currentPath}
         isParentLoggedIn={isParentLoggedIn}
         authAccount={authAccount}
+        logoutAction={logoutAction}
       />
       <main id="main-content" className={cn("ea-main", mainClassName)} tabIndex={-1}>
         {children}

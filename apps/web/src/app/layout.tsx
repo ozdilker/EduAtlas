@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { AppProviders } from "@/components/app-providers";
 import { PublicShell } from "@/components/public-shell";
 import { getSeoSiteConfig, toFooterContact } from "@/lib/seo-site";
+import { logoutAction } from "@/server/auth/auth-actions";
 import { getCurrentSession } from "@/server/auth/current-session";
 import { getPublicOrganizationContact } from "@/server/site/get-public-organization-contact";
 import "@eduatlas/ui/styles.css";
@@ -34,9 +35,19 @@ export const metadata: Metadata = {
   applicationName: site.siteName,
 };
 
-function accountLabel(displayName: string | undefined, email: string): string {
+function accountLabel(
+  role: AppRole,
+  displayName: string | undefined,
+  email: string,
+): string {
+  if (role === AppRole.Admin) {
+    return "admin";
+  }
   const named = displayName?.trim();
-  if (named) return named;
+  if (named) {
+    const withoutDemo = named.replace(/^Demo\s+/i, "").trim();
+    return withoutDemo || named;
+  }
   const local = email.split("@")[0]?.trim();
   return local || email;
 }
@@ -51,7 +62,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const authAccount =
     session && session.user.emailVerified
       ? {
-          label: accountLabel(session.user.displayName, session.user.email),
+          label: accountLabel(session.user.role, session.user.displayName, session.user.email),
           href:
             session.user.role === AppRole.Admin
               ? "/admin"
@@ -79,6 +90,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             appName={site.siteName}
             isParentLoggedIn={isParentLoggedIn}
             authAccount={authAccount}
+            logoutAction={logoutAction}
             {...(organizationContact
               ? { organizationContact: toFooterContact(organizationContact) }
               : {})}

@@ -10,6 +10,7 @@ export type PublicShellProps = {
   /** Favorilerim only after parent (veli) session. */
   isParentLoggedIn?: boolean;
   authAccount?: SiteHeaderAuthAccount | null;
+  logoutAction?: () => Promise<void>;
   organizationContact?: SiteFooterContact;
 };
 
@@ -21,6 +22,7 @@ export function PublicShell({
   appName,
   isParentLoggedIn = false,
   authAccount = null,
+  logoutAction,
   organizationContact,
 }: PublicShellProps) {
   const pathname = usePathname();
@@ -35,6 +37,7 @@ export function PublicShell({
       currentPath={pathname ?? undefined}
       isParentLoggedIn={isParentLoggedIn}
       authAccount={authAccount}
+      logoutAction={logoutAction}
       {...(organizationContact ? { organizationContact } : {})}
     >
       {children}

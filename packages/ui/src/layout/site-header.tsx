@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { LogoutButton } from "../auth/logout-button";
 import { EduAtlasLogo } from "../brand/eduatlas-logo";
 import { getButtonClassName } from "../components/button-classes";
 import { Container } from "../components/container";
@@ -27,8 +28,10 @@ export type SiteHeaderProps = {
   className?: string;
   /** Show Favorilerim only after parent (veli) login. */
   isParentLoggedIn?: boolean;
-  /** When set, login CTAs are replaced by the signed-in account chip. */
+  /** When set, login CTAs are replaced by the signed-in account + logout. */
   authAccount?: SiteHeaderAuthAccount | null;
+  /** Clears session cookie via server action. */
+  logoutAction?: () => Promise<void>;
 };
 
 /**
@@ -40,6 +43,7 @@ export function SiteHeader({
   className,
   isParentLoggedIn = false,
   authAccount = null,
+  logoutAction,
 }: SiteHeaderProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavId = useId();
@@ -101,21 +105,28 @@ export function SiteHeader({
 
         <div className="ea-header__actions">
           {isSignedIn && authAccount ? (
-            <a
-              href={authAccount.href}
-              className={cn(
-                getButtonClassName({ variant: "secondary", size: "sm" }),
-                "ea-header__cta ea-header__cta--account",
-                isNavItemActive(authAccount.href, currentPath) && "ea-header__cta--account-current",
-              )}
-              aria-label={
-                authAccount.roleLabel
-                  ? `${authAccount.roleLabel}: ${authAccount.label}`
-                  : `Hesabım: ${authAccount.label}`
-              }
-            >
-              <span className="ea-header__account-label">{authAccount.label}</span>
-            </a>
+            <div className="ea-header__account">
+              <a
+                href={authAccount.href}
+                className="ea-header__account-name"
+                aria-label={
+                  authAccount.roleLabel
+                    ? `${authAccount.roleLabel}: ${authAccount.label}`
+                    : `Hesabım: ${authAccount.label}`
+                }
+              >
+                {authAccount.label}
+              </a>
+              {logoutAction ? (
+                <LogoutButton
+                  action={logoutAction}
+                  label="Çıkış"
+                  className="ea-header__logout"
+                  variant="secondary"
+                  size="sm"
+                />
+              ) : null}
+            </div>
           ) : (
             <>
               <a
@@ -234,12 +245,17 @@ export function SiteHeader({
 
           <div className="ea-header__mobile-cta">
             {isSignedIn && authAccount ? (
-              <a
-                href={authAccount.href}
-                className={cn(getButtonClassName({ variant: "primary", size: "md" }))}
-              >
-                Hesabım
-              </a>
+              <>
+                <a
+                  href={authAccount.href}
+                  className={cn(getButtonClassName({ variant: "secondary", size: "md" }))}
+                >
+                  Hesabım
+                </a>
+                {logoutAction ? (
+                  <LogoutButton action={logoutAction} label="Çıkış" size="md" variant="primary" />
+                ) : null}
+              </>
             ) : (
               <>
                 <a

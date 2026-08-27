@@ -107,6 +107,33 @@
   padding-inline: var(--ea-space-5);
 }
 
+.ea-header__account {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ea-space-2);
+  max-width: 100%;
+}
+
+.ea-header__account-name {
+  display: inline-block;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--ea-font-size-sm);
+  font-weight: 600;
+  color: var(--ea-color-ink-700);
+  text-decoration: none;
+}
+
+.ea-header__account-name:hover {
+  color: var(--ea-color-brand-700);
+}
+
+.ea-header__logout {
+  margin: 0;
+}
+
 .ea-header__cta--account {
   max-width: 12rem;
   overflow: hidden;
