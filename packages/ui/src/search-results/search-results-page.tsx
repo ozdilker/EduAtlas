@@ -54,7 +54,7 @@ export function SearchResultsPage({
   className,
 }: SearchResultsPageProps) {
   const trimmedQuery = query.trim();
-  const showLocationGate = Boolean(locationRequired && trimmedQuery);
+  const showLocationGate = Boolean(locationRequired);
   const isEmpty = !loading && !showLocationGate && resultCount === 0;
   const countLabel =
     resultCount === 0 ? "0 kurum" : resultCount === 1 ? "1 kurum" : `${resultCount} kurum`;

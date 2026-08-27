@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { SiteFooter, type SiteFooterContact } from "./site-footer";
-import { SiteHeader } from "./site-header";
+import { SiteHeader, type SiteHeaderAuthAccount } from "./site-header";
 import { SkipLink } from "./skip-link";
 
 export type PublicPageShellProps = {
@@ -12,6 +12,8 @@ export type PublicPageShellProps = {
   mainClassName?: string;
   /** Show Favorilerim in header/mobile nav only after parent login. */
   isParentLoggedIn?: boolean;
+  /** Signed-in account chip; hides Veli/Kurum giriş CTAs when set. */
+  authAccount?: SiteHeaderAuthAccount | null;
   organizationContact?: SiteFooterContact;
 };
 
@@ -25,6 +27,7 @@ export function PublicPageShell({
   className,
   mainClassName,
   isParentLoggedIn = false,
+  authAccount = null,
   organizationContact,
 }: PublicPageShellProps) {
   return (
@@ -34,6 +37,7 @@ export function PublicPageShell({
         appName={appName}
         currentPath={currentPath}
         isParentLoggedIn={isParentLoggedIn}
+        authAccount={authAccount}
       />
       <main id="main-content" className={cn("ea-main", mainClassName)} tabIndex={-1}>
         {children}

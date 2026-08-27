@@ -128,8 +128,9 @@ export function SearchLocationGate({ query, filters, className }: SearchLocation
         Yakınınızdaki eğitim kurumlarını bulalım
       </h2>
       <p className="ea-search-location-gate__lede">
-        “{query}” araması için önce bir şehir seçmeniz gerekiyor. Konumunuzu kullanabilir veya şehri
-        elle seçebilirsiniz.
+        {query.trim()
+          ? `“${query.trim()}” araması için önce bir şehir seçmeniz gerekiyor. Konumunuzu kullanabilir veya şehri elle seçebilirsiniz.`
+          : "Kurumları listelemek için önce bir şehir seçmeniz gerekiyor. Konumunuzu kullanabilir veya şehri elle seçebilirsiniz."}
       </p>
 
       <div className="ea-search-location-gate__actions">

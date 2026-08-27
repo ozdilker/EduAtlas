@@ -1,6 +1,7 @@
 import { AuthPage, RegisterForm } from "@eduatlas/ui";
 import type { Metadata } from "next";
 import { registerAction } from "@/server/auth/auth-actions";
+import { redirectIfAuthenticated } from "@/server/auth/redirect-if-authenticated";
 
 export const metadata: Metadata = {
   title: "Veli hesabı oluştur",
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 /**
  * Parent registration — creates a parent-role account.
  */
-export default function ParentRegisterPage() {
+export default async function ParentRegisterPage() {
+  await redirectIfAuthenticated({ preferredNext: "/veli" });
+
   return (
     <AuthPage
       title="Veli hesabı oluştur"

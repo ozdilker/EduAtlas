@@ -81,7 +81,7 @@ export async function requireAdminSession(): Promise<Session> {
 }
 
 export async function requireParentSession(): Promise<Session> {
-  const session = await requireSession({ requireEmailVerified: false });
+  const session = await requireSession({ requireEmailVerified: true });
   if (!canAccessParentPortal(session.user.role)) {
     throw new UnauthorizedError("Veli profili için yetkiniz yok.");
   }

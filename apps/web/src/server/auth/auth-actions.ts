@@ -3,6 +3,7 @@
 import {
   isAuthenticationError,
   isEmailAlreadyInUseError,
+  isEmailNotVerifiedError,
   isInvalidCredentialsError,
   isWeakPasswordError,
   requestPasswordReset,
@@ -106,6 +107,14 @@ export async function loginAction(
       { authenticationService: getAuthenticationService() },
     );
     const role = result.session.user.role;
+
+    if (!result.session.user.emailVerified) {
+      return {
+        ok: false,
+        message:
+          "E-posta adresiniz henüz doğrulanmamış. Gelen kutunuzdaki bağlantıya tıklayın, ardından tekrar giriş yapın.",
+      };
+    }
 
     if (portal === "parent" && role !== AppRole.Parent) {
       return {
@@ -221,7 +230,10 @@ export async function logoutAction(): Promise<void> {
 
 function toAuthMessage(error: unknown, fallback: string): string {
   if (isInvalidCredentialsError(error)) {
-    return "E-posta veya şifre hatalı.";
+    return "E-posta veya şifre hatalı. Bu e-posta ile kayıtlı bir hesap yoksa önce kayıt olun.";
+  }
+  if (isEmailNotVerifiedError(error)) {
+    return "E-posta adresinizi doğrulamadan giriş yapamazsınız. Gelen kutunuzu kontrol edin.";
   }
   if (isEmailAlreadyInUseError(error)) {
     return "Bu e-posta adresi zaten kayıtlı.";

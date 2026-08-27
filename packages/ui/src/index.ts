@@ -385,7 +385,7 @@ export type {
 export { NotFoundPageView, PublicLoadingState, PublicStatusBlock } from "./layout/public-status";
 export type { SiteFooterContact, SiteFooterProps } from "./layout/site-footer";
 export { SiteFooter } from "./layout/site-footer";
-export type { SiteHeaderProps } from "./layout/site-header";
+export type { SiteHeaderAuthAccount, SiteHeaderProps } from "./layout/site-header";
 export { SiteHeader } from "./layout/site-header";
 export type { SkipLinkProps } from "./layout/skip-link";
 export { SkipLink } from "./layout/skip-link";

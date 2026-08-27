@@ -61,7 +61,7 @@ export async function assertAdminPortalAccess(pathname = "/admin"): Promise<void
 }
 
 /**
- * Protects /veli/* authenticated pages — parent session required.
+ * Protects /veli/* authenticated pages — parent session + verified email required.
  */
 export async function assertParentPortalAccess(pathname = "/veli"): Promise<void> {
   const jar = await cookies();
@@ -75,6 +75,9 @@ export async function assertParentPortalAccess(pathname = "/veli"): Promise<void
   try {
     await requireParentSession();
   } catch {
+    if (!session.user.emailVerified) {
+      loginRedirect(pathname, "email_unverified", "/veli/giris");
+    }
     loginRedirect(pathname, "forbidden", "/veli/giris");
   }
 }

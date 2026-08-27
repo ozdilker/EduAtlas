@@ -107,6 +107,26 @@
   padding-inline: var(--ea-space-5);
 }
 
+.ea-header__cta--account {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ea-header__account-label {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ea-header__cta--account-current {
+  border-color: var(--ea-color-brand-500);
+  color: var(--ea-color-brand-700);
+}
+
 .ea-header__nav {
   display: none;
 }

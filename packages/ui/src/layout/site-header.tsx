@@ -12,12 +12,23 @@ import {
   isNavItemActive,
 } from "./navigation";
 
+export type SiteHeaderAuthAccount = Readonly<{
+  /** Visible name (displayName or email local-part). */
+  readonly label: string;
+  /** Portal home for the signed-in role. */
+  readonly href: string;
+  /** Optional short role label for aria / mobile. */
+  readonly roleLabel?: string;
+}>;
+
 export type SiteHeaderProps = {
   appName?: string;
   currentPath?: string;
   className?: string;
   /** Show Favorilerim only after parent (veli) login. */
   isParentLoggedIn?: boolean;
+  /** When set, login CTAs are replaced by the signed-in account chip. */
+  authAccount?: SiteHeaderAuthAccount | null;
 };
 
 /**
@@ -28,12 +39,14 @@ export function SiteHeader({
   currentPath,
   className,
   isParentLoggedIn = false,
+  authAccount = null,
 }: SiteHeaderProps) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const mobileNavId = useId();
   const navItems = getPrimaryNavItems();
   const cityLinks = getPriorityCityLinks().slice(0, 4);
   const categoryLinks = getPriorityCategoryLinks().slice(0, 4);
+  const isSignedIn = Boolean(authAccount);
 
   return (
     <header className={cn("ea-header", className)}>
@@ -87,24 +100,44 @@ export function SiteHeader({
         ) : null}
 
         <div className="ea-header__actions">
-          <a
-            href="/login"
-            className={cn(
-              getButtonClassName({ variant: "secondary", size: "sm" }),
-              "ea-header__cta ea-header__cta--outline",
-            )}
-          >
-            Kurum Girişi
-          </a>
-          <a
-            href="/veli/giris"
-            className={cn(
-              getButtonClassName({ variant: "primary", size: "sm" }),
-              "ea-header__cta ea-header__cta--pill",
-            )}
-          >
-            Veli Girişi
-          </a>
+          {isSignedIn && authAccount ? (
+            <a
+              href={authAccount.href}
+              className={cn(
+                getButtonClassName({ variant: "secondary", size: "sm" }),
+                "ea-header__cta ea-header__cta--account",
+                isNavItemActive(authAccount.href, currentPath) && "ea-header__cta--account-current",
+              )}
+              aria-label={
+                authAccount.roleLabel
+                  ? `${authAccount.roleLabel}: ${authAccount.label}`
+                  : `Hesabım: ${authAccount.label}`
+              }
+            >
+              <span className="ea-header__account-label">{authAccount.label}</span>
+            </a>
+          ) : (
+            <>
+              <a
+                href="/login"
+                className={cn(
+                  getButtonClassName({ variant: "secondary", size: "sm" }),
+                  "ea-header__cta ea-header__cta--outline",
+                )}
+              >
+                Kurum Girişi
+              </a>
+              <a
+                href="/veli/giris"
+                className={cn(
+                  getButtonClassName({ variant: "primary", size: "sm" }),
+                  "ea-header__cta ea-header__cta--pill",
+                )}
+              >
+                Veli Girişi
+              </a>
+            </>
+          )}
         </div>
 
         <button
@@ -126,6 +159,19 @@ export function SiteHeader({
         <Container size="xl">
           <nav aria-label="Mobil birincil">
             <ul className="ea-header__mobile-list">
+              {isSignedIn && authAccount ? (
+                <li>
+                  <a
+                    href={authAccount.href}
+                    aria-current={
+                      isNavItemActive(authAccount.href, currentPath) ? "page" : undefined
+                    }
+                  >
+                    {authAccount.label}
+                    {authAccount.roleLabel ? ` (${authAccount.roleLabel})` : ""}
+                  </a>
+                </li>
+              ) : null}
               {isParentLoggedIn ? (
                 <li>
                   <a
@@ -187,18 +233,29 @@ export function SiteHeader({
           </nav>
 
           <div className="ea-header__mobile-cta">
-            <a
-              href="/veli/giris"
-              className={cn(getButtonClassName({ variant: "primary", size: "md" }))}
-            >
-              Veli Girişi
-            </a>
-            <a href="/login" className="ea-header__mobile-login">
-              Kurum Girişi
-            </a>
-            <a href="/register" className="ea-header__mobile-login">
-              Kurumunu Kaydet
-            </a>
+            {isSignedIn && authAccount ? (
+              <a
+                href={authAccount.href}
+                className={cn(getButtonClassName({ variant: "primary", size: "md" }))}
+              >
+                Hesabım
+              </a>
+            ) : (
+              <>
+                <a
+                  href="/veli/giris"
+                  className={cn(getButtonClassName({ variant: "primary", size: "md" }))}
+                >
+                  Veli Girişi
+                </a>
+                <a href="/login" className="ea-header__mobile-login">
+                  Kurum Girişi
+                </a>
+                <a href="/register" className="ea-header__mobile-login">
+                  Kurumunu Kaydet
+                </a>
+              </>
+            )}
           </div>
         </Container>
       </div>

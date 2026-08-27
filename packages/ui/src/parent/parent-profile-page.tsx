@@ -13,6 +13,7 @@ import {
   removeFavoriteInstitution,
   writeFavoriteInstitutions,
 } from "./parent-favorites-storage";
+import { getLastSearchCityId } from "./parent-search-location-storage";
 
 export type ParentProfilePageProps = {
   displayName?: string;
@@ -85,7 +86,10 @@ export function ParentProfilePage({
 
   function goToSearch(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
-    window.location.assign("/search");
+    const cityId = getLastSearchCityId();
+    window.location.assign(
+      cityId ? `/search?city=${encodeURIComponent(cityId)}` : "/search",
+    );
   }
 
   const greeting = displayName?.trim() || email;

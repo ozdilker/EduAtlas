@@ -112,6 +112,21 @@ export async function searchPublicInstitutions(options: {
     });
   }
 
+  // Empty browse without city/district/type is also gated — no nationwide "tüm kurumlar".
+  const hasBrowseScope = Boolean(
+    cityId || filters.districtId?.trim() || filters.primaryType,
+  );
+  if (!text && !hasBrowseScope) {
+    return buildLocationRequiredView({
+      text: "",
+      page,
+      pageSize,
+      sort,
+      filters,
+      cursor: options.cursor,
+    });
+  }
+
   const searchQuery = createInstitutionSearchQuery({
     text,
     sort,

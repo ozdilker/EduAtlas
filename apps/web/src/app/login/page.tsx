@@ -1,6 +1,7 @@
 import { AuthPage, LoginForm } from "@eduatlas/ui";
 import type { Metadata } from "next";
 import { loginAction } from "@/server/auth/auth-actions";
+import { redirectIfAuthenticated } from "@/server/auth/redirect-if-authenticated";
 
 export const metadata: Metadata = {
   title: "Kurum Girişi",
@@ -27,10 +28,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const nextPath = first(params.next) || "/owner";
   const notice = first(params.notice) || first(params.reason);
 
+  await redirectIfAuthenticated({
+    preferredNext: nextPath.startsWith("/") ? nextPath : "/owner",
+  });
+
   return (
     <AuthPage
       title="Kurum Girişi"
-      description="Kurum sahibi veya yönetici hesabınızla giriş yapın. Yönetici: admin@eduatlas.dev"
+      description="Kurum sahibi veya yönetici hesabınızla giriş yapın."
       notice={notice}
     >
       <LoginForm

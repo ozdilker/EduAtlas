@@ -8,10 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import { searchPublicInstitutions } from "./search-public-institutions";
 
 describe("searchPublicInstitutions", () => {
-  it("empty search uses structured browse path without unbounded list", async () => {
-    const repository = await createSeededInstitutionRepository();
-    const listSpy = vi.spyOn(repository, "list");
-    const browseSpy = vi.spyOn(repository, "listPublishedBrowsePage");
+  it("empty unscoped browse requires city (no repository call)", async () => {
+    const repository = (await createSeededInstitutionRepository()) as InstitutionSearchRepository;
     const searchSpy = vi.spyOn(repository, "search");
 
     const view = await searchPublicInstitutions({
@@ -20,9 +18,25 @@ describe("searchPublicInstitutions", () => {
       repository,
     });
 
+    expect(searchSpy).not.toHaveBeenCalled();
+    expect(view.locationRequired).toBe(true);
+    expect(view.institutions).toEqual([]);
+  });
+
+  it("empty browse with city scope uses structured browse path", async () => {
+    const repository = await createSeededInstitutionRepository();
+    const listSpy = vi.spyOn(repository, "list");
+    const searchSpy = vi.spyOn(repository, "search");
+
+    const view = await searchPublicInstitutions({
+      text: "",
+      pageSize: 12,
+      filters: { cityId: "city_istanbul" },
+      repository,
+    });
+
     expect(searchSpy).toHaveBeenCalled();
     expect(listSpy).not.toHaveBeenCalled();
-    expect(browseSpy).not.toHaveBeenCalled();
     expect(view.locationRequired).toBe(false);
     expect(view.institutions.length).toBeLessThanOrEqual(12);
     expect(view.result.page.pageSize).toBe(12);

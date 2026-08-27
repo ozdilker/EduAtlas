@@ -1,6 +1,7 @@
 import { AuthPage, RegisterForm } from "@eduatlas/ui";
 import type { Metadata } from "next";
 import { registerAction } from "@/server/auth/auth-actions";
+import { redirectIfAuthenticated } from "@/server/auth/redirect-if-authenticated";
 
 export const metadata: Metadata = {
   title: "Kurum hesabı oluştur",
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 /**
  * Email/password registration with verification email (server-side).
  */
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  await redirectIfAuthenticated({ preferredNext: "/owner" });
+
   return (
     <AuthPage
       title="Kurum hesabı oluştur"

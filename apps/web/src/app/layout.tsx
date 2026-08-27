@@ -34,12 +34,38 @@ export const metadata: Metadata = {
   applicationName: site.siteName,
 };
 
+function accountLabel(displayName: string | undefined, email: string): string {
+  const named = displayName?.trim();
+  if (named) return named;
+  const local = email.split("@")[0]?.trim();
+  return local || email;
+}
+
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   const [session, organizationContact] = await Promise.all([
     getCurrentSession(),
     getPublicOrganizationContact().catch(() => null),
   ]);
-  const isParentLoggedIn = session?.user.role === AppRole.Parent;
+  const isParentLoggedIn =
+    session?.user.role === AppRole.Parent && Boolean(session.user.emailVerified);
+  const authAccount =
+    session && session.user.emailVerified
+      ? {
+          label: accountLabel(session.user.displayName, session.user.email),
+          href:
+            session.user.role === AppRole.Admin
+              ? "/admin"
+              : session.user.role === AppRole.Parent
+                ? "/veli"
+                : "/owner",
+          roleLabel:
+            session.user.role === AppRole.Admin
+              ? "Yönetici"
+              : session.user.role === AppRole.Parent
+                ? "Veli"
+                : "Kurum",
+        }
+      : null;
 
   return (
     <html
@@ -52,6 +78,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           <PublicShell
             appName={site.siteName}
             isParentLoggedIn={isParentLoggedIn}
+            authAccount={authAccount}
             {...(organizationContact
               ? { organizationContact: toFooterContact(organizationContact) }
               : {})}

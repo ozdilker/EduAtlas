@@ -1,6 +1,7 @@
 import { AuthPage, LoginForm } from "@eduatlas/ui";
 import type { Metadata } from "next";
 import { loginAction } from "@/server/auth/auth-actions";
+import { redirectIfAuthenticated } from "@/server/auth/redirect-if-authenticated";
 
 export const metadata: Metadata = {
   title: "Veli girişi",
@@ -26,6 +27,10 @@ export default async function ParentLoginPage({ searchParams }: ParentLoginPageP
   const params = await searchParams;
   const nextPath = first(params.next) || "/veli";
   const notice = first(params.notice) || first(params.reason);
+
+  await redirectIfAuthenticated({
+    preferredNext: nextPath.startsWith("/") ? nextPath : "/veli",
+  });
 
   return (
     <AuthPage
