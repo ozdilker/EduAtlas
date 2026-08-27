@@ -465,6 +465,7 @@ export {
 } from "./notifications";
 export {
   applyMailTokens,
+  resolveCampaignBodyLines,
   buildCampaignPostSummary,
   buildRecipientChecklist,
   CampaignListBucket,

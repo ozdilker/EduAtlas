@@ -60,12 +60,19 @@ export type RenderClaimInvitationMailInput = Readonly<{
   readonly institutionName: string;
   readonly ctaHref: string;
   readonly bodyLines?: readonly string[];
+  /**
+   * Hero H1. Defaults to personalized subject so Growth Center copy appears
+   * in the visible template shell (not only the inbox subject line).
+   */
+  readonly heroTitle?: string;
   /** Absolute URL for header mark; defaults to production brand asset. */
   readonly logoUrl?: string;
 }>;
 
 /**
  * Institution Claim Invitation — Growth Center HTML template composition.
+ * Shell (stats / features / steps) stays fixed; subject, preheader, and body
+ * lines come from campaign draft fields.
  */
 export function renderClaimInvitationMail(
   input: RenderClaimInvitationMailInput,
@@ -77,10 +84,15 @@ export function renderClaimInvitationMail(
   const bodyLines = (input.bodyLines?.length ? input.bodyLines : DEFAULT_BODY_LINES).map(
     (line) => applyMailTokens(line, tokens),
   );
+  const heroTitle = applyMailTokens(
+    (input.heroTitle?.trim() || input.subject.trim()),
+    tokens,
+  );
 
   if (!subject) throw new Error("Claim invitation subject is required.");
   if (!preheader) throw new Error("Claim invitation preheader is required.");
   if (!ctaHref) throw new Error("Claim invitation ctaHref is required.");
+  if (!heroTitle) throw new Error("Claim invitation hero title is required.");
 
   const institutionLabel = tokens.institutionName.trim() || "Kurumunuz";
   const heroBody =
@@ -91,7 +103,7 @@ export function renderClaimInvitationMail(
   const bodyHtml = [
     renderMailHero({
       eyebrow: "Kurumlar için",
-      title: "EduAtlas'ta Kurum Profilinizi Sahiplenin",
+      title: heroTitle,
       body: heroBody,
       ctaLabel: CLAIM_INVITATION_CTA_LABEL,
       ctaHref,
@@ -117,7 +129,7 @@ ${renderMailSecondaryCta(CLAIM_INVITATION_SECONDARY_CTA_LABEL, ctaHref)}
   const text = [
     subject,
     "",
-    "EduAtlas'ta Kurum Profilinizi Sahiplenin",
+    heroTitle,
     heroBody,
     "",
     "Neden sahiplenmelisiniz?",

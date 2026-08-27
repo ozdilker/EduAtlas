@@ -7,6 +7,7 @@ export type CampaignMailPreviewProps = {
   templateId: string;
   subject: string;
   preheader: string;
+  description?: string;
   institutionName: string;
   /** Server-rendered fallback while live preview loads. */
   initialHtml?: string;
@@ -21,12 +22,14 @@ function personalize(text: string, institutionName: string): string {
 }
 
 /**
- * Inbox-style chrome + live HTML preview driven by draft subject/preheader.
+ * Inbox chrome + live HTML preview from draft subject/preheader/body.
+ * HTML uses the claim-invitation template shell with campaign copy in hero slots.
  */
 export function CampaignMailPreview({
   templateId,
   subject,
   preheader,
+  description = "",
   institutionName,
   initialHtml = "",
   initialSubject = "",
@@ -68,6 +71,7 @@ export function CampaignMailPreview({
             templateId: trimmedTemplateId,
             subject: trimmedSubject,
             preheader: trimmedPreheader,
+            description,
             institutionName,
           }),
           signal: controller.signal,
@@ -84,7 +88,7 @@ export function CampaignMailPreview({
         }
         setHtml(payload.html);
         setResolvedSubject(payload.subject || displaySubject);
-      } catch (err) {
+      } catch {
         if (controller.signal.aborted) return;
         setError("Önizleme isteği başarısız.");
       } finally {
@@ -96,7 +100,7 @@ export function CampaignMailPreview({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [subject, preheader, templateId, institutionName, displaySubject]);
+  }, [subject, preheader, description, templateId, institutionName, displaySubject]);
 
   return (
     <div className="ea-mail-preview">
@@ -116,7 +120,7 @@ export function CampaignMailPreview({
         <EmailPreviewFrame html={html} title={title} className={className} />
       ) : (
         <p className="ea-admin-muted">
-          Konu ve preheader doldurulunca HTML önizleme burada görünür.
+          Konu ve preheader doldurulunca şablon önizlemesi burada görünür.
         </p>
       )}
     </div>

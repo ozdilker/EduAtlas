@@ -9,6 +9,7 @@ import { renderClaimInvitationMail } from "../outreach/claim-invitation-mail";
 import { CLAIM_INVITATION_TEMPLATE_ID } from "../outreach/outreach-seeds";
 import { applyMailTokens } from "../outreach/apply-mail-tokens";
 import { renderCampaignTemplatePreview } from "../outreach/render-campaign-template";
+import { resolveCampaignBodyLines } from "../outreach/resolve-campaign-body-lines";
 import type { EmailService } from "../notifications/email-service";
 import { classifySmtpError } from "./classify-smtp-error";
 import type {
@@ -54,6 +55,10 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
         (await this.options.resolveInstitutionName(input.job.institutionId));
       const subject = input.campaign.subjectOverride?.trim() || template.subject;
       const preheader = input.campaign.preheader?.trim() || template.preview;
+      const bodyLines = resolveCampaignBodyLines({
+        description: input.campaign.description,
+        templateBodyLines: template.bodyLines,
+      });
 
       const rendered =
         template.id === CLAIM_INVITATION_TEMPLATE_ID
@@ -62,7 +67,7 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
               preheader,
               institutionName,
               ctaHref: this.options.ctaHref,
-              bodyLines: template.bodyLines,
+              bodyLines,
               ...(this.options.mailLogoUrl
                 ? { logoUrl: this.options.mailLogoUrl }
                 : {}),
@@ -71,7 +76,7 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
               ...template,
               subject: applyMailTokens(subject, { institutionName }),
               preview: applyMailTokens(preheader, { institutionName }),
-              bodyLines: template.bodyLines.map((line) =>
+              bodyLines: bodyLines.map((line) =>
                 applyMailTokens(line, { institutionName }),
               ),
             });

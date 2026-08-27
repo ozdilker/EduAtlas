@@ -1,4 +1,5 @@
 export { applyMailTokens, type MailPersonalizationTokens } from "./apply-mail-tokens";
+export { resolveCampaignBodyLines } from "./resolve-campaign-body-lines";
 export type { CampaignLogRepository } from "./campaign-log-repository";
 export type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 export type { CampaignRepository } from "./campaign-repository";

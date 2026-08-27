@@ -9,6 +9,7 @@ import {
   loadOutreachDeliveryConfig,
   previewSegmentInstitutions,
   remainingDeliveryJobs,
+  resolveCampaignBodyLines,
   resolveCampaignListBucket,
   type SegmentInstitutionPreview,
 } from "@eduatlas/application";
@@ -229,7 +230,10 @@ export async function getAdminOutreachPageData(searchParams: {
     const template = templateById.get(selected.templateId);
     const subject = selected.subjectOverride;
     const preheader = selected.preheader;
-    const bodyLines = template?.bodyLines ?? [];
+    const bodyLines = resolveCampaignBodyLines({
+      description: selected.description,
+      templateBodyLines: template?.bodyLines ?? [],
+    });
     const qualityScore = computeCampaignQualityScore({
       subject,
       preheader,

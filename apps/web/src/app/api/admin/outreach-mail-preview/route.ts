@@ -13,11 +13,12 @@ type PreviewBody = {
   templateId?: string;
   subject?: string;
   preheader?: string;
+  description?: string;
   institutionName?: string;
 };
 
 /**
- * Live Growth Center mail preview from draft subject/preheader (no save required).
+ * Live Growth Center mail preview from draft subject/preheader/body (no save required).
  */
 export async function POST(request: Request) {
   try {
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     const templateId = String(body.templateId ?? "").trim();
     const subject = String(body.subject ?? "").trim();
     const preheader = String(body.preheader ?? "").trim();
+    const description = String(body.description ?? "");
     const institutionName =
       String(body.institutionName ?? "").trim() || "Örnek Anaokulu";
 
@@ -63,6 +65,7 @@ export async function POST(request: Request) {
       templateId,
       subject,
       preheader,
+      description,
       institutionName,
       ctaHref,
     });

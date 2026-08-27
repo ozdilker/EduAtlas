@@ -50,6 +50,24 @@ describe("renderClaimInvitationMail", () => {
     expect(rendered.html).toContain("Örnek Anaokulu");
     expect(rendered.subject).toContain("Örnek Anaokulu");
     expect(rendered.html).not.toContain("{{institutionName}}");
+    // Subject drives visible hero title in the template shell.
+    expect(rendered.html).toContain("Örnek Anaokulu için EduAtlas kurum paneli hazır");
+  });
+
+  it("uses custom body lines in the hero and keeps template chrome", () => {
+    const rendered = renderClaimInvitationMail({
+      subject: "Özel konu {{institutionName}}",
+      preheader: "Özel preheader",
+      institutionName: "Demo Okul",
+      ctaHref: "https://eduatlas.com.tr/login",
+      bodyLines: ["Birinci paragraf {{institutionName}} için.", "İkinci satır."],
+    });
+    expect(rendered.html).toContain("Özel konu Demo Okul");
+    expect(rendered.html).toContain("Birinci paragraf Demo Okul için.");
+    expect(rendered.html).toContain("İkinci satır.");
+    expect(rendered.html).toContain("Özel preheader");
+    expect(rendered.html).toContain("Neden sahiplenmelisiniz?");
+    expect(rendered.html).toContain("Nasıl çalışır?");
   });
 });
 
@@ -127,11 +145,15 @@ describe("OutreachService builder flows", () => {
       templateId: CLAIM_INVITATION_TEMPLATE_ID,
       subject: "{{institutionName}} canlı konu",
       preheader: "Canlı preheader metni",
+      description: "Canlı gövde satırı bir\nCanlı gövde satırı iki",
       institutionName: "Örnek Anaokulu",
       ctaHref: "https://eduatlas.com.tr/login",
     });
     expect(live.subject).toBe("Örnek Anaokulu canlı konu");
     expect(live.html).toContain("Canlı preheader metni");
+    expect(live.html).toContain("Örnek Anaokulu canlı konu");
+    expect(live.html).toContain("Canlı gövde satırı bir");
+    expect(live.html).toContain("Canlı gövde satırı iki");
 
     const sent = await service.sendTestEmail({
       campaignId: "camp_builder_1",

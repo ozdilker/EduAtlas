@@ -77,8 +77,7 @@ export async function ensureOutreachSeeds(deps: {
         createCampaign({
           id: SEED_CLAIM_INVITATION_CAMPAIGN_ID,
           name: "İlk kampanya — İstanbul Claim Invitation",
-          description:
-            "Growth Center First Campaign Kit seed (draft). Prepare → checklist → Approve → Run.",
+          description: "",
           status: CampaignStatus.Draft,
           templateId: CLAIM_INVITATION_TEMPLATE_ID,
           segmentId: ISTANBUL_UNCLAIMED_SEGMENT_ID,

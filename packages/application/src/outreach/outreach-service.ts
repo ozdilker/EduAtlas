@@ -44,6 +44,7 @@ import {
   type OutreachImportParseResult,
 } from "./import-campaign-recipients";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
+import { resolveCampaignBodyLines } from "./resolve-campaign-body-lines";
 import {
   createDefaultWarmupSettings,
   currentWarmupLimit,
@@ -603,12 +604,18 @@ export class OutreachService {
     subjectOverride?: string;
     /** When set, overrides persisted campaign preheader for live preview. */
     preheader?: string;
+    /** When set, overrides persisted campaign description for live preview. */
+    description?: string;
   }): Promise<RenderedEmail> {
     const campaign = await this.requireCampaign(input.campaignId);
     return this.renderMailContent({
       templateId: campaign.templateId,
       subject: input.subjectOverride?.trim() || campaign.subjectOverride || "",
       preheader: input.preheader?.trim() || campaign.preheader || "",
+      description:
+        input.description !== undefined
+          ? input.description
+          : (campaign.description ?? ""),
       institutionName: input.institutionName,
       ctaHref: input.ctaHref,
     });
@@ -616,12 +623,13 @@ export class OutreachService {
 
   /**
    * Renders mail from draft fields (no campaign persistence required).
-   * Used by Growth Center live preview while editing subject/preheader.
+   * Used by Growth Center live preview while editing subject/preheader/body.
    */
   async previewMailDraft(input: {
     templateId: string;
     subject: string;
     preheader: string;
+    description?: string;
     institutionName: string;
     ctaHref: string;
   }): Promise<RenderedEmail> {
@@ -629,6 +637,7 @@ export class OutreachService {
       templateId: input.templateId,
       subject: input.subject,
       preheader: input.preheader,
+      description: input.description ?? "",
       institutionName: input.institutionName,
       ctaHref: input.ctaHref,
     });
@@ -802,6 +811,7 @@ export class OutreachService {
       templateId: campaign.templateId,
       subject: campaign.subjectOverride ?? "",
       preheader: campaign.preheader ?? "",
+      description: campaign.description ?? "",
       institutionName: tokens.institutionName,
       ctaHref: tokens.ctaHref,
     });
@@ -811,6 +821,7 @@ export class OutreachService {
     templateId: string;
     subject: string;
     preheader: string;
+    description?: string;
     institutionName: string;
     ctaHref: string;
   }): Promise<RenderedEmail> {
@@ -828,13 +839,18 @@ export class OutreachService {
       throw new OutreachValidationError("Campaign preheader is required.");
     }
 
+    const bodyLines = resolveCampaignBodyLines({
+      description: input.description,
+      templateBodyLines: template.bodyLines,
+    });
+
     if (template.id === CLAIM_INVITATION_TEMPLATE_ID) {
       return renderClaimInvitationMail({
         subject,
         preheader,
         institutionName: input.institutionName,
         ctaHref: input.ctaHref,
-        bodyLines: template.bodyLines,
+        bodyLines,
         ...(this.deps.mailLogoUrl ? { logoUrl: this.deps.mailLogoUrl } : {}),
       });
     }
@@ -846,7 +862,7 @@ export class OutreachService {
       ...template,
       subject: applyMailTokens(subject, personalized),
       preview: applyMailTokens(preheader, personalized),
-      bodyLines: template.bodyLines.map((line) => applyMailTokens(line, personalized)),
+      bodyLines: bodyLines.map((line) => applyMailTokens(line, personalized)),
     });
   }
 

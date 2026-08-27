@@ -247,7 +247,8 @@ export function GrowthCenterPage({
         </p>
       ) : null}
 
-      <div className="ea-admin-outreach ea-growth-center">
+      <div className="ea-growth-center">
+      <div className="ea-admin-outreach">
         <aside className="ea-admin-outreach__list" aria-label="Kampanya listesi">
           <h2 className="ea-admin-section-title">Kampanyalar</h2>
           <div className="ea-growth-filters" role="tablist" aria-label="Durum filtreleri">
@@ -366,12 +367,12 @@ export function GrowthCenterPage({
                       />
                     </div>
                     <div className="ea-admin-field">
-                      <label htmlFor="outreach-description">Açıklama</label>
+                      <label htmlFor="outreach-description">Mail gövde metni</label>
                       <textarea
                         id="outreach-description"
                         className="ea-admin-select"
                         name="description"
-                        rows={2}
+                        rows={4}
                         value={draft.description}
                         onChange={(event) =>
                           setDraft((current) => ({
@@ -379,7 +380,12 @@ export function GrowthCenterPage({
                             description: event.target.value,
                           }))
                         }
+                        placeholder="Şablon hero bölümünde görünür. Her satır bir paragraf olur. {{institutionName}} kullanabilirsiniz."
                       />
+                      <p className="ea-admin-muted">
+                        Konu → mail başlığı (hero); preheader → inbox önizleme; bu metin → hero
+                        gövde. Alt bloklar (istatistik / özellikler / adımlar) şablondan gelir.
+                      </p>
                     </div>
                     <div className="ea-admin-field">
                       <label htmlFor="outreach-subject">Konu</label>
@@ -646,14 +652,10 @@ export function GrowthCenterPage({
 
             {step === 5 ? (
               <div>
-                <CampaignMailPreview
-                  templateId={draft.templateId}
-                  subject={draft.subjectOverride}
-                  preheader={draft.preheader}
-                  institutionName={sampleInstitutionName}
-                  initialHtml={previewHtml}
-                  initialSubject={previewSubject}
-                />
+                <p className="ea-admin-muted">
+                  Canlı şablon önizlemesi sağ sütunda. Konu, preheader ve gövde metni
+                  kaydetmeden de yansır; gönderimde aynı şablon kullanılır.
+                </p>
               </div>
             ) : null}
 
@@ -918,32 +920,35 @@ export function GrowthCenterPage({
           </div>
         </section>
 
-        <aside className="ea-growth-right" aria-label="Summary and audit">
-          <GrowthSummaryPanel
-            summary={summary}
-            progress={progress}
-            domainStatus={status}
-            warmup={warmup}
-            elevateWarmupAction={elevateWarmupAction}
-            lowerWarmupAction={lowerWarmupAction}
-            campaignId={form.id || undefined}
-          />
-          {step !== 5 ? (
-            <section className="ea-growth-panel" aria-label="Mail preview shortcut">
-              <h2 className="ea-admin-section-title">Mail preview</h2>
-              <CampaignMailPreview
-                templateId={draft.templateId}
-                subject={draft.subjectOverride}
-                preheader={draft.preheader}
-                institutionName={sampleInstitutionName}
-                initialHtml={previewHtml}
-                initialSubject={previewSubject}
-                className="ea-admin-outreach__iframe--full"
-              />
-            </section>
-          ) : null}
-          {isExisting ? <GrowthAuditLog logs={logs} /> : null}
+        <aside className="ea-growth-right" aria-label="Mail preview">
+          <section className="ea-growth-panel" aria-label="Mail preview">
+            <h2 className="ea-admin-section-title">Mail preview</h2>
+            <CampaignMailPreview
+              templateId={draft.templateId}
+              subject={draft.subjectOverride}
+              preheader={draft.preheader}
+              description={draft.description}
+              institutionName={sampleInstitutionName}
+              initialHtml={previewHtml}
+              initialSubject={previewSubject}
+              className="ea-admin-outreach__iframe--full"
+            />
+          </section>
         </aside>
+      </div>
+
+      <div className="ea-growth-below">
+        <GrowthSummaryPanel
+          summary={summary}
+          progress={progress}
+          domainStatus={status}
+          warmup={warmup}
+          elevateWarmupAction={elevateWarmupAction}
+          lowerWarmupAction={lowerWarmupAction}
+          campaignId={form.id || undefined}
+        />
+        {isExisting ? <GrowthAuditLog logs={logs} /> : null}
+      </div>
       </div>
     </AdminShell>
   );
