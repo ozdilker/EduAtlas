@@ -76,6 +76,7 @@ export type GrowthWarmupView = Readonly<{
   stage: number;
   limit: number;
   canElevate: boolean;
+  canLower: boolean;
 }>;
 
 export type GrowthPreSendChecklist = Readonly<{
@@ -158,6 +159,7 @@ export type GrowthCenterPageProps = {
   tickAction?: (formData: FormData) => Promise<void>;
   expandWarmupAction?: (formData: FormData) => Promise<void>;
   elevateWarmupAction?: (formData: FormData) => Promise<void>;
+  lowerWarmupAction?: (formData: FormData) => Promise<void>;
   cancelAction?: (formData: FormData) => Promise<void>;
   checklistAction?: (formData: FormData) => Promise<void>;
   learningsAction?: (formData: FormData) => Promise<void>;

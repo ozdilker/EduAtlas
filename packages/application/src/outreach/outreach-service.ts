@@ -48,6 +48,7 @@ import {
   createDefaultWarmupSettings,
   currentWarmupLimit,
   elevateWarmupSettings,
+  lowerWarmupSettings,
   type OutreachWarmupSettings,
 } from "./warmup-settings";
 import type { OutreachWarmupSettingsRepository } from "./warmup-settings-repository";
@@ -349,6 +350,33 @@ export class OutreachService {
     await this.log(
       "platform",
       `Warm-up stage elevated to ${saved.stage} (limit ${currentWarmupLimit(saved)}).`,
+      input.now,
+      { stage: String(saved.stage) },
+    );
+    return saved;
+  }
+
+  async lowerWarmupStage(input: {
+    now: string;
+    by?: string;
+    note?: string;
+  }): Promise<OutreachWarmupSettings> {
+    if (!this.deps.warmupSettingsRepository) {
+      throw new OutreachValidationError("Warm-up settings repository is not configured.");
+    }
+    const current = await this.deps.warmupSettingsRepository.get();
+    const lowered = lowerWarmupSettings(current, {
+      now: input.now,
+      by: input.by,
+      note: input.note,
+    });
+    if (!lowered) {
+      throw new OutreachValidationError("Warm-up stage is already at minimum (1).");
+    }
+    const saved = await this.deps.warmupSettingsRepository.save(lowered);
+    await this.log(
+      "platform",
+      `Warm-up stage lowered to ${saved.stage} (limit ${currentWarmupLimit(saved)}).`,
       input.now,
       { stage: String(saved.stage) },
     );

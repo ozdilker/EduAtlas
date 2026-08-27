@@ -108,6 +108,7 @@ export {
   limitForStage,
   nextWarmupStage,
   parseWarmupStage,
+  previousWarmupStage,
   type WarmupStage,
   type WarmupStageLimits,
 } from "./warmup-stage";
@@ -115,6 +116,7 @@ export {
   createDefaultWarmupSettings,
   currentWarmupLimit,
   elevateWarmupSettings,
+  lowerWarmupSettings,
   type OutreachWarmupHistoryEntry,
   type OutreachWarmupSettings,
 } from "./warmup-settings";

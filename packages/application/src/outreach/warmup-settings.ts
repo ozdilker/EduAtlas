@@ -3,6 +3,7 @@ import {
   limitForStage,
   nextWarmupStage,
   parseWarmupStage,
+  previousWarmupStage,
   type WarmupStage,
   type WarmupStageLimits,
 } from "./warmup-stage";
@@ -49,6 +50,26 @@ export function elevateWarmupSettings(
 ): OutreachWarmupSettings | null {
   const toStage = nextWarmupStage(settings.stage);
   if (!toStage) return null;
+  return applyWarmupStageChange(settings, toStage, input);
+}
+
+/**
+ * Lowers platform warm-up stage by one (admin-only). Returns null if already at min.
+ */
+export function lowerWarmupSettings(
+  settings: OutreachWarmupSettings,
+  input: { now: string; by?: string; note?: string; snapshot?: Omit<OutreachWarmupHistoryEntry, "at" | "fromStage" | "toStage" | "by" | "note"> },
+): OutreachWarmupSettings | null {
+  const toStage = previousWarmupStage(settings.stage);
+  if (!toStage) return null;
+  return applyWarmupStageChange(settings, toStage, input);
+}
+
+function applyWarmupStageChange(
+  settings: OutreachWarmupSettings,
+  toStage: WarmupStage,
+  input: { now: string; by?: string; note?: string; snapshot?: Omit<OutreachWarmupHistoryEntry, "at" | "fromStage" | "toStage" | "by" | "note"> },
+): OutreachWarmupSettings {
   const fromStage = parseWarmupStage(settings.stage);
   const entry: OutreachWarmupHistoryEntry = Object.freeze({
     at: input.now,

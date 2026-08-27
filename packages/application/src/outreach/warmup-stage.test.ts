@@ -3,11 +3,13 @@ import {
   DEFAULT_WARMUP_STAGE_LIMITS,
   limitForStage,
   nextWarmupStage,
+  previousWarmupStage,
 } from "./warmup-stage";
 import {
   createDefaultWarmupSettings,
   currentWarmupLimit,
   elevateWarmupSettings,
+  lowerWarmupSettings,
 } from "./warmup-settings";
 
 describe("limitForStage", () => {
@@ -44,6 +46,31 @@ describe("elevateWarmupSettings", () => {
         { ...base, stage: 4, history: [] },
         { now: "2026-08-07T12:00:00.000Z" },
       ),
+    ).toBeNull();
+  });
+});
+
+describe("lowerWarmupSettings", () => {
+  it("lowers stage by one and appends history", () => {
+    const base = elevateWarmupSettings(createDefaultWarmupSettings("2026-08-07T10:00:00.000Z"), {
+      now: "2026-08-07T11:00:00.000Z",
+    });
+    expect(base?.stage).toBe(2);
+    const lowered = lowerWarmupSettings(base!, {
+      now: "2026-08-07T12:00:00.000Z",
+      by: "admin",
+      note: "Stage İndir",
+    });
+    expect(lowered?.stage).toBe(1);
+    expect(currentWarmupLimit(lowered!)).toBe(20);
+    expect(lowered?.history).toHaveLength(2);
+    expect(lowered?.history[1]?.fromStage).toBe(2);
+    expect(lowered?.history[1]?.toStage).toBe(1);
+    expect(previousWarmupStage(1)).toBeNull();
+    expect(
+      lowerWarmupSettings(createDefaultWarmupSettings("2026-08-07T10:00:00.000Z"), {
+        now: "2026-08-07T12:00:00.000Z",
+      }),
     ).toBeNull();
   });
 });

@@ -117,6 +117,7 @@ export function GrowthCenterPage({
   tickAction,
   expandWarmupAction,
   elevateWarmupAction,
+  lowerWarmupAction,
   cancelAction,
   checklistAction,
   learningsAction,
@@ -908,6 +909,7 @@ export function GrowthCenterPage({
             domainStatus={status}
             warmup={warmup}
             elevateWarmupAction={elevateWarmupAction}
+            lowerWarmupAction={lowerWarmupAction}
             campaignId={form.id || undefined}
           />
           {isExisting && step !== 5 ? (

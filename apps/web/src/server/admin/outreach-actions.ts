@@ -309,6 +309,31 @@ export async function elevateOutreachWarmupStageAction(formData: FormData): Prom
   }
 }
 
+export async function lowerOutreachWarmupStageAction(formData: FormData): Promise<void> {
+  const session = await requireAdminSession();
+  const service = await getOutreachService();
+  const campaignId = formString(formData, "campaignId");
+  const now = new Date().toISOString();
+  try {
+    const settings = await service.lowerWarmupStage({
+      now,
+      by: session.user.uid,
+      note: "Admin Stage İndir",
+    });
+    outreachRedirect({
+      id: campaignId || undefined,
+      notice: `Warm-up stage ${settings.stage} (limit ${settings.limits[settings.stage]}).`,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Stage indirilemedi.";
+    outreachRedirect({ id: campaignId || undefined, error: message });
+  }
+}
+
 export async function cancelOutreachCampaignAction(formData: FormData): Promise<void> {
   const service = await getOutreachService();
   await campaignAction(formData, async (campaignId, now) => {

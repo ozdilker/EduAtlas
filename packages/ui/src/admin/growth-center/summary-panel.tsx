@@ -7,6 +7,7 @@ export function GrowthSummaryPanel({
   domainStatus,
   warmup,
   elevateWarmupAction,
+  lowerWarmupAction,
   campaignId,
 }: {
   summary: GrowthSummaryView | null;
@@ -14,8 +15,12 @@ export function GrowthSummaryPanel({
   domainStatus: string;
   warmup?: GrowthWarmupView;
   elevateWarmupAction?: (formData: FormData) => Promise<void>;
+  lowerWarmupAction?: (formData: FormData) => Promise<void>;
   campaignId?: string;
 }) {
+  const showElevate = Boolean(warmup && elevateWarmupAction && warmup.canElevate);
+  const showLower = Boolean(warmup && lowerWarmupAction && warmup.canLower);
+
   return (
     <section className="ea-growth-panel" aria-label="Campaign summary">
       <h2 className="ea-admin-section-title">Campaign Summary</h2>
@@ -29,13 +34,25 @@ export function GrowthSummaryPanel({
           </li>
         </ul>
       ) : null}
-      {warmup && elevateWarmupAction && warmup.canElevate ? (
-        <form action={elevateWarmupAction} className="ea-growth-inline-form">
-          {campaignId ? <input type="hidden" name="campaignId" value={campaignId} /> : null}
-          <Button type="submit" size="sm">
-            Stage Yükselt
-          </Button>
-        </form>
+      {showElevate || showLower ? (
+        <div className="ea-growth-stage-actions">
+          {showLower ? (
+            <form action={lowerWarmupAction} className="ea-growth-inline-form">
+              {campaignId ? <input type="hidden" name="campaignId" value={campaignId} /> : null}
+              <Button type="submit" size="sm" variant="secondary">
+                Stage İndir
+              </Button>
+            </form>
+          ) : null}
+          {showElevate ? (
+            <form action={elevateWarmupAction} className="ea-growth-inline-form">
+              {campaignId ? <input type="hidden" name="campaignId" value={campaignId} /> : null}
+              <Button type="submit" size="sm">
+                Stage Yükselt
+              </Button>
+            </form>
+          ) : null}
+        </div>
       ) : null}
       {!summary ? (
         <p className="ea-admin-muted">Kampanya seçin veya kaydedin.</p>

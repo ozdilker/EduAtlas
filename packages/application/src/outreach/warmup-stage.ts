@@ -49,3 +49,9 @@ export function nextWarmupStage(stage: number): WarmupStage | null {
   if (s >= 4) return null;
   return (s + 1) as WarmupStage;
 }
+
+export function previousWarmupStage(stage: number): WarmupStage | null {
+  const s = parseWarmupStage(stage);
+  if (s <= 1) return null;
+  return (s - 1) as WarmupStage;
+}

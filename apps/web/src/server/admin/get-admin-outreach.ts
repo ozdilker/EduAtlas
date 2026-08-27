@@ -86,6 +86,7 @@ export type AdminOutreachWarmupView = Readonly<{
   stage: number;
   limit: number;
   canElevate: boolean;
+  canLower: boolean;
 }>;
 
 export type AdminOutreachLearningRow = Readonly<{
@@ -154,6 +155,7 @@ export async function getAdminOutreachPageData(searchParams: {
     stage: warmupSettings.stage,
     limit: warmupLimit,
     canElevate: warmupSettings.stage < 4,
+    canLower: warmupSettings.stage > 1,
   };
 
   const [campaigns, templates, segments] = await Promise.all([

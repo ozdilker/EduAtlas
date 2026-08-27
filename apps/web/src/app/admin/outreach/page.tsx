@@ -10,6 +10,7 @@ import {
   cancelOutreachCampaignAction,
   elevateOutreachWarmupStageAction,
   expandOutreachWarmupAction,
+  lowerOutreachWarmupStageAction,
   pauseOutreachCampaignAction,
   prepareOutreachCampaignAction,
   prepareOutreachImportAction,
@@ -103,6 +104,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       tickAction={tickOutreachDeliveryAction}
       expandWarmupAction={expandOutreachWarmupAction}
       elevateWarmupAction={elevateOutreachWarmupStageAction}
+      lowerWarmupAction={lowerOutreachWarmupStageAction}
       cancelAction={cancelOutreachCampaignAction}
       checklistAction={updateOutreachPreSendChecklistAction}
       learningsAction={updateOutreachLearningsAction}

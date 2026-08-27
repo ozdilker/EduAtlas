@@ -1469,6 +1469,13 @@
 }
 
 .ea-growth-inline-form {
+  margin: 0;
+}
+
+.ea-growth-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
   margin: 0.35rem 0 0.75rem;
 }
 
