@@ -120,7 +120,8 @@ describe("renderCampaignTemplatePreview", () => {
     });
     const rendered = renderCampaignTemplatePreview(template);
     expect(rendered.html).toContain("max-width:600px");
-    expect(rendered.html).toContain("#e62846");
+    expect(rendered.html).toContain("#d1272c");
+    expect(rendered.html).toContain("#0d8a8e");
     expect(rendered.subject).toBe("Kurumunu sahiplen");
   });
 });

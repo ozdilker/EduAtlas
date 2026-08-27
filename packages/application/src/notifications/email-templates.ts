@@ -1,10 +1,7 @@
 import { NotificationType } from "@eduatlas/domain";
 import {
-  escapeHtml,
-  mailTheme,
+  renderMailBodyBlock,
   renderMailDocument,
-  renderMailPrimaryCta,
-  renderMailTitle,
 } from "../mail-design";
 
 export type EmailTemplateModel = {
@@ -32,8 +29,7 @@ const TYPE_SUBJECTS: Record<NotificationType, string> = {
 };
 
 /**
- * Reusable HTML + plain-text email template renderer (EMDS layout).
- * Responsive table layout, semantic structure, plain-text fallback.
+ * Reusable HTML + plain-text email template renderer (Growth Center / EMDS shell).
  */
 export function renderEmailTemplate(model: EmailTemplateModel): RenderedEmail {
   const subject = model.title.trim();
@@ -48,14 +44,12 @@ export function renderEmailTemplate(model: EmailTemplateModel): RenderedEmail {
   }
   const text = textParts.join("\n");
 
-  const bodyHtml = [
-    renderMailTitle(subject),
-    ...lines.map(
-      (line) =>
-        `<p style="margin:0 0 ${mailTheme.space[12]}px;font-family:${mailTheme.font.family};font-size:${mailTheme.font.size.md}px;line-height:1.55;color:${mailTheme.color.text};">${escapeHtml(line)}</p>`,
-    ),
-    ctaLabel && ctaHref ? renderMailPrimaryCta(ctaLabel, ctaHref) : "",
-  ].join("");
+  const bodyHtml = renderMailBodyBlock({
+    title: subject,
+    bodyLines: lines,
+    ctaLabel,
+    ctaHref,
+  });
 
   const document = renderMailDocument({
     subject,

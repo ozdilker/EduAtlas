@@ -25,29 +25,21 @@ export type MailLogoOptions = Readonly<{
 
 /**
  * EduAtlas mark + wordmark (+ optional badge) for email headers.
- * When `logoUrl` is set, the image sits to the left of the title block.
  */
 export function renderMailLogo(options: MailLogoOptions = {}): string {
   const t = mailTheme;
-  const wordmark = `<p style="margin:0;font-family:${t.font.family};font-size:${t.font.size.lg}px;font-weight:700;line-height:1.2;color:${t.color.brandNavy};letter-spacing:-0.02em;">Edu<span style="color:${t.color.brandRed};">Atlas</span></p>`;
+  const wordmark = `Edu<span style="color:${t.color.brandRed};">Atlas</span>`;
   const badgeHtml = options.badge?.trim()
     ? `<div style="margin-top:${t.space[4]}px;">${renderMailBadge(options.badge)}</div>`
     : "";
-  const titleBlock = `${wordmark}${badgeHtml}`;
 
   const logoUrl = options.logoUrl?.trim();
   if (!logoUrl) {
-    return titleBlock;
+    return `<span style="font-family:${t.font.family};font-size:${t.font.size.xl}px;font-weight:bold;color:${t.color.brandNavy};letter-spacing:0.2px;">${wordmark}</span>${badgeHtml}`;
   }
 
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-  <tr>
-    <td valign="middle" style="padding:0 ${t.space[12]}px 0 0;">
-      <img src="${escapeAttribute(logoUrl)}" width="52" height="52" alt="${escapeHtml("EduAtlas")}" style="display:block;width:52px;height:52px;border:0;outline:none;text-decoration:none;" />
-    </td>
-    <td valign="middle" style="padding:0;">
-      ${titleBlock}
-    </td>
-  </tr>
-</table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+<td valign="middle" style="padding-right:10px;"><img src="${escapeAttribute(logoUrl)}" width="26" height="26" alt="${escapeHtml("EduAtlas")}" style="display:block;border:0;width:26px;height:26px;"></td>
+<td valign="middle" style="font-family:${t.font.family};font-size:${t.font.size.xl}px;font-weight:bold;color:${t.color.brandNavy};letter-spacing:0.2px;">${wordmark}${badgeHtml}</td>
+</tr></table>`;
 }

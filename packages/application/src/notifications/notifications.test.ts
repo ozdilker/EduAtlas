@@ -86,9 +86,9 @@ describe("email templates", () => {
     expect(rendered.html).toContain('lang="tr"');
     expect(rendered.html).toContain('role="presentation"');
     expect(rendered.html).toContain("max-width:600px");
-    expect(rendered.html).toContain("#e62846");
-    expect(rendered.html).not.toContain("#0f766e");
-    expect(rendered.html).not.toContain("Georgia");
+    expect(rendered.html).toContain("#d1272c");
+    expect(rendered.html).toContain("#0d8a8e");
+    expect(rendered.html).toContain("Georgia");
     expect(rendered.text).toContain("Line one");
     expect(rendered.text).toContain("https://eduatlas.example/owner");
   });

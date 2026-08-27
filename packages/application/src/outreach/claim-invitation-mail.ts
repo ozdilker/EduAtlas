@@ -1,29 +1,57 @@
 import {
-  escapeHtml,
   mailTheme,
   renderMailDocument,
-  renderMailInfoBox,
-  renderMailPrimaryCta,
-  renderMailSection,
-  renderMailSubtitle,
-  renderMailTitle,
+  renderMailFeatureList,
+  renderMailHero,
+  renderMailSecondaryCta,
+  renderMailStatsRow,
+  renderMailStepsBox,
   resolveMailLogoUrl,
 } from "../mail-design";
 import type { RenderedEmail } from "../notifications/email-templates";
 import { applyMailTokens } from "./apply-mail-tokens";
 
-export const CLAIM_INVITATION_CTA_LABEL = "Kurum Panelini Aç";
+export const CLAIM_INVITATION_CTA_LABEL = "Kurumunu Sahiplen →";
+export const CLAIM_INVITATION_SECONDARY_CTA_LABEL = "Kurumunu Ücretsiz Sahiplen";
 
 const DEFAULT_BODY_LINES = Object.freeze([
-  "EduAtlas, velilerin eğitim kurumu aradığı platformdur. {{institutionName}} profiliniz burada listeleniyor olabilir.",
-  "Kurum panelinden bilgilerinizi güncelleyin, gelen talepleri görün ve velilerle doğrudan iletişim kurun.",
+  "Kurumunuz zaten EduAtlas'ta listeleniyor olabilir. Profilinizi sahiplenin; bilgilerinizi siz güncelleyin, doğru ailelere doğru bilgiyle ulaşın.",
 ]);
 
-const BENEFITS = Object.freeze([
-  "Velilerden gelen bilgi taleplerini tek panelden yönetin",
-  "Kurum profilinizi ücretsiz sahiplenin ve doğrulayın",
-  "İletişim ve konum bilgilerinizi güncel tutun",
-  "Arama sonuçlarında güven veren bir kurum görünümü sunun",
+const FEATURES = Object.freeze([
+  {
+    title: "Doğru bilgi, sizden",
+    body: "Program, iletişim ve konum bilgilerinizi siz güncelleyin — eksik ya da yanlış bilgi ailelerin kararını etkilemesin.",
+    accent: "teal" as const,
+  },
+  {
+    title: "Doğru ailelere erişim",
+    body: "Şehrinizde arama yapan, kurumunuzun sunduğu programı arayan ailelerin karşısına çıkın.",
+    accent: "red" as const,
+  },
+  {
+    title: "Tek yerden bilgi talepleri",
+    body: "İlgilenen aileler tek formla size ulaşsın; dağınık aramalarla değil, doğrudan panelinizden takip edin.",
+    accent: "teal" as const,
+  },
+  {
+    title: "Ücretsiz ve hızlı",
+    body: "Doğrulama birkaç dakika sürer; kurum belgenizle sahiplenme talebini hemen başlatın.",
+    accent: "red" as const,
+  },
+]);
+
+const STATS = Object.freeze([
+  { value: "37.000+", label: "Eğitim Kurumu" },
+  { value: "1.250.000+", label: "Mutlu Öğrenci" },
+  { value: "81", label: "İlde Hizmet" },
+  { value: "4,9 / 5", label: "Kullanıcı Puanı" },
+]);
+
+const STEPS = Object.freeze([
+  { label: 'Kurumunuzu arayın ve "Kurumunu Sahiplen" ile talebi başlatın.' },
+  { label: "Kurum belgenizle kimliğinizi doğrulayın." },
+  { label: "Profilinizi güncelleyin, bilgi taleplerini karşılamaya başlayın." },
 ]);
 
 export type RenderClaimInvitationMailInput = Readonly<{
@@ -37,7 +65,7 @@ export type RenderClaimInvitationMailInput = Readonly<{
 }>;
 
 /**
- * Institution Claim Invitation — EMDS-only composition (no custom HTML shell).
+ * Institution Claim Invitation — Growth Center HTML template composition.
  */
 export function renderClaimInvitationMail(
   input: RenderClaimInvitationMailInput,
@@ -55,38 +83,50 @@ export function renderClaimInvitationMail(
   if (!ctaHref) throw new Error("Claim invitation ctaHref is required.");
 
   const institutionLabel = tokens.institutionName.trim() || "Kurumunuz";
-  const title = `${institutionLabel} için EduAtlas kurum paneli hazır`;
-  const subtitle = "Velilerden gelen talepleri kaçırmayın — kurumunuzu ücretsiz sahiplenin.";
+  const heroBody =
+    bodyLines.join(" ") ||
+    `${institutionLabel} için profilinizi sahiplenin; bilgilerinizi siz güncelleyin, doğru ailelere doğru bilgiyle ulaşın.`;
   const logoUrl = input.logoUrl?.trim() || resolveMailLogoUrl("https://eduatlas.com.tr");
 
-  const introText = bodyLines.join(" ");
-  const benefitsHtml = BENEFITS.map(
-    (line) =>
-      `<li style="margin:0 0 ${mailTheme.space[8]}px;font-family:${mailTheme.font.family};font-size:${mailTheme.font.size.md}px;line-height:1.5;color:${mailTheme.color.text};">${escapeHtml(line)}</li>`,
-  ).join("");
-
   const bodyHtml = [
-    renderMailTitle(title),
-    renderMailSubtitle(subtitle),
-    renderMailSection(renderMailInfoBox(introText)),
-    renderMailSection(
-      `<p style="margin:0 0 ${mailTheme.space[8]}px;font-family:${mailTheme.font.family};font-size:${mailTheme.font.size.sm}px;font-weight:600;color:${mailTheme.color.text};">Avantajlar</p><ul style="margin:0;padding-left:18px;">${benefitsHtml}</ul>`,
-    ),
-    renderMailPrimaryCta(CLAIM_INVITATION_CTA_LABEL, ctaHref),
+    renderMailHero({
+      eyebrow: "Kurumlar için",
+      title: "EduAtlas'ta Kurum Profilinizi Sahiplenin",
+      body: heroBody,
+      ctaLabel: CLAIM_INVITATION_CTA_LABEL,
+      ctaHref,
+    }),
+    renderMailStatsRow(STATS),
+    renderMailFeatureList({
+      eyebrow: "Neden sahiplenmelisiniz?",
+      heading: "Görünürlük sizin elinizde",
+      items: FEATURES,
+    }),
+    renderMailStepsBox({
+      eyebrow: "Nasıl çalışır?",
+      steps: STEPS,
+    }),
+    `<tr>
+<td align="center" style="padding:4px ${mailTheme.layout.contentPadX}px ${mailTheme.space[40]}px ${mailTheme.layout.contentPadX}px;">
+${renderMailSecondaryCta(CLAIM_INVITATION_SECONDARY_CTA_LABEL, ctaHref)}
+<p style="margin:14px 0 0 0;font-family:${mailTheme.font.family};font-size:${mailTheme.font.size.sm}px;color:${mailTheme.color.textBody};">Sorularınız için: <a href="mailto:info@eduatlas.com.tr" style="color:${mailTheme.color.brandRed};">info@eduatlas.com.tr</a></p>
+</td>
+</tr>`,
   ].join("");
 
   const text = [
     subject,
     "",
-    title,
-    subtitle,
+    "EduAtlas'ta Kurum Profilinizi Sahiplenin",
+    heroBody,
     "",
-    ...bodyLines,
+    "Neden sahiplenmelisiniz?",
+    ...FEATURES.map((f) => `- ${f.title}: ${f.body}`),
     "",
-    "Avantajlar:",
-    ...BENEFITS.map((b) => `- ${b}`),
+    "Nasıl çalışır?",
+    ...STEPS.map((s, i) => `${i + 1}. ${s.label}`),
     "",
-    `${CLAIM_INVITATION_CTA_LABEL}: ${ctaHref}`,
+    `${CLAIM_INVITATION_SECONDARY_CTA_LABEL}: ${ctaHref}`,
   ].join("\n");
 
   const document = renderMailDocument({
@@ -94,7 +134,6 @@ export function renderClaimInvitationMail(
     preview: preheader,
     bodyHtml,
     text,
-    badge: "Kurum daveti",
     logoUrl,
   });
 

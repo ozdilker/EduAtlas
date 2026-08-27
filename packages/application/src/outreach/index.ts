@@ -6,6 +6,7 @@ export type { CampaignSegmentRepository } from "./campaign-segment-repository";
 export type { CampaignTemplateRepository } from "./campaign-template-repository";
 export {
   CLAIM_INVITATION_CTA_LABEL,
+  CLAIM_INVITATION_SECONDARY_CTA_LABEL,
   renderClaimInvitationMail,
   type RenderClaimInvitationMailInput,
 } from "./claim-invitation-mail";

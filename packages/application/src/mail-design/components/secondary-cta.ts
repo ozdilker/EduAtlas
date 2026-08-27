@@ -1,24 +1,33 @@
 import { escapeAttribute, escapeHtml } from "../escape";
 import { mailTheme } from "../theme";
 
+export type MailSecondaryCtaOptions = Readonly<{
+  readonly align?: "left" | "center";
+  readonly marginTopPx?: number;
+}>;
+
 /**
- * Secondary CTA — white fill, outline.
+ * Secondary CTA — teal fill (Growth Center template secondary action).
  */
-export function renderMailSecondaryCta(label: string, href: string): string {
+export function renderMailSecondaryCta(
+  label: string,
+  href: string,
+  options: MailSecondaryCtaOptions = {},
+): string {
   const t = mailTheme;
   const text = escapeHtml(label.trim());
   const url = escapeAttribute(href.trim());
   if (!text || !url) {
     return "";
   }
-  const padY = Math.max(0, Math.ceil((t.cta.minHeightPx - t.font.size.md) / 2));
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:${t.space[16]}px 0 0;">
-  <tr>
-    <td align="left" style="border-radius:${t.radius.md}px;background:${t.color.white};border:1px solid ${t.color.brandRed};">
-      <a href="${url}" style="display:inline-block;min-height:${t.cta.minHeightPx}px;padding:${padY}px ${t.space[24]}px;font-family:${t.font.family};font-size:${t.font.size.md}px;font-weight:700;line-height:1.2;color:${t.color.brandRed};text-decoration:none;border-radius:${t.radius.md}px;">
-        ${text}
-      </a>
-    </td>
-  </tr>
-</table>`;
+  const align = options.align ?? "center";
+  const marginTop = options.marginTopPx ?? 0;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:${marginTop}px auto 0;">
+<tbody><tr>
+<td align="${align}" bgcolor="${t.color.brandTeal}" style="border-radius:${t.radius.md}px;">
+<a href="${url}" target="_blank" style="display:block;padding:15px 34px;font-family:${t.font.family};font-size:${t.font.size.lg}px;font-weight:bold;color:${t.color.textInverse};text-decoration:none;">
+${text}
+</a>
+</td>
+</tr></tbody></table>`;
 }

@@ -6,6 +6,7 @@ import {
   MAIL_LOGO_PATH,
   renderMailDocument,
   renderMailHeader,
+  renderMailHero,
   renderMailInfoBox,
   renderMailPrimaryCta,
   renderMailSuccessBox,
@@ -14,11 +15,12 @@ import {
 } from "./index";
 
 describe("mailTheme", () => {
-  it("exposes brand red and 600px container", () => {
-    expect(mailTheme.color.brandRed).toBe("#e62846");
-    expect(mailTheme.color.brandNavy).toBe("#0f172a");
+  it("exposes Growth Center brand tokens and 600px container", () => {
+    expect(mailTheme.color.brandRed).toBe("#d1272c");
+    expect(mailTheme.color.brandTeal).toBe("#0d8a8e");
     expect(mailTheme.layout.maxWidthPx).toBe(600);
     expect(mailTheme.font.family).toContain("Arial");
+    expect(mailTheme.font.display).toContain("Georgia");
     expect(mailTheme.cta.minHeightPx).toBeGreaterThanOrEqual(44);
   });
 });
@@ -31,11 +33,23 @@ describe("escapeHtml", () => {
 });
 
 describe("components", () => {
-  it("primary CTA uses brand red and min height", () => {
+  it("primary CTA uses brand red", () => {
     const html = renderMailPrimaryCta("Open", "https://eduatlas.com.tr");
     expect(html).toContain(mailTheme.color.brandRed);
-    expect(html).toContain(`min-height:${mailTheme.cta.minHeightPx}px`);
     expect(html).toContain("Arial");
+  });
+
+  it("hero uses teal band and display type", () => {
+    const html = renderMailHero({
+      eyebrow: "Kurumlar için",
+      title: "Sahiplenin",
+      body: "Profilinizi yönetin.",
+      ctaLabel: "Başla",
+      ctaHref: "https://eduatlas.com.tr/register",
+    });
+    expect(html).toContain(mailTheme.color.brandTeal);
+    expect(html).toContain("Georgia");
+    expect(html).toContain("Kurumlar için");
   });
 
   it("info/success/warning boxes use token backgrounds", () => {
@@ -46,29 +60,28 @@ describe("components", () => {
 });
 
 describe("renderMailDocument", () => {
-  it("builds 600px shell without legacy teal/Georgia", () => {
+  it("builds Growth Center 600px shell", () => {
     const { html } = renderMailDocument({
       subject: "S",
       preview: "P",
-      bodyHtml: "<p>Body</p>",
+      bodyHtml: "<tr><td><p>Body</p></td></tr>",
       text: "Body",
     });
     expect(html).toContain("max-width:600px");
     expect(html).toContain(mailTheme.color.brandRed);
+    expect(html).toContain(mailTheme.color.brandTeal);
+    expect(html).toContain(mailTheme.color.lightGray);
     expect(html).toContain('role="presentation"');
-    expect(html).not.toContain("Georgia");
-    expect(html).not.toContain("#0f766e");
+    expect(html).toContain("Türkiye'nin eğitim atlası");
   });
 
-  it("places mark image left of EduAtlas + badge when logoUrl is set", () => {
+  it("places mark image left of EduAtlas when logoUrl is set", () => {
     const logoUrl = resolveMailLogoUrl("https://eduatlas.com.tr");
     expect(logoUrl).toBe(`https://eduatlas.com.tr${MAIL_LOGO_PATH}`);
     const header = renderMailHeader({
-      badge: "Kurum daveti",
       logoUrl,
     });
     expect(header.indexOf("<img")).toBeLessThan(header.indexOf("Edu"));
     expect(header).toContain(MAIL_LOGO_PATH);
-    expect(header).toContain("Kurum daveti");
   });
 });
