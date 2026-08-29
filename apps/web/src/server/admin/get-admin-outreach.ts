@@ -327,20 +327,13 @@ export async function getAdminOutreachPageData(searchParams: {
     }));
 
     const preparedRecipientCount = countPreparedRecipients(recipientRows);
+    const isExternalImport = selected.recipientSource === "external_import";
 
-    try {
-      const billingProtectionDeps = await getBillingProtectionDeps();
-      const segPreview = await previewSegmentInstitutions(
-        { segmentId: selected.segmentId, limit: 25 },
-        {
-          segmentRepository: stores.segmentRepository,
-          institutionRepository,
-          billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
-        },
-      );
-      segmentPreview = [...segPreview.items];
+    if (isExternalImport) {
+      // External campaigns: summary from campaign recipients only — no segment / catalog scan.
+      segmentPreview = [];
       summary = {
-        segmentMatchCount: segPreview.matchCount,
+        segmentMatchCount: recipients.length,
         preparedRecipientCount,
         warmupBatchSize: warmupLimit,
         warmupStage: warmupSettings.stage,
@@ -350,18 +343,42 @@ export async function getAdminOutreachPageData(searchParams: {
         ratePerMinute: deliveryConfig.ratePerMinute,
         qualityScore,
       };
-    } catch {
-      summary = {
-        segmentMatchCount: 0,
-        preparedRecipientCount,
-        warmupBatchSize: warmupLimit,
-        warmupStage: warmupSettings.stage,
-        warmupLimit,
-        remaining,
-        etaMinutes,
-        ratePerMinute: deliveryConfig.ratePerMinute,
-        qualityScore,
-      };
+    } else {
+      try {
+        const billingProtectionDeps = await getBillingProtectionDeps();
+        const segPreview = await previewSegmentInstitutions(
+          { segmentId: selected.segmentId, limit: 25 },
+          {
+            segmentRepository: stores.segmentRepository,
+            institutionRepository,
+            billingProtectionRepository: billingProtectionDeps.billingProtectionRepository,
+          },
+        );
+        segmentPreview = [...segPreview.items];
+        summary = {
+          segmentMatchCount: segPreview.matchCount,
+          preparedRecipientCount,
+          warmupBatchSize: warmupLimit,
+          warmupStage: warmupSettings.stage,
+          warmupLimit,
+          remaining,
+          etaMinutes,
+          ratePerMinute: deliveryConfig.ratePerMinute,
+          qualityScore,
+        };
+      } catch {
+        summary = {
+          segmentMatchCount: 0,
+          preparedRecipientCount,
+          warmupBatchSize: warmupLimit,
+          warmupStage: warmupSettings.stage,
+          warmupLimit,
+          remaining,
+          etaMinutes,
+          ratePerMinute: deliveryConfig.ratePerMinute,
+          qualityScore,
+        };
+      }
     }
 
     const logRows = await service.listCampaignLogs(selected.id);

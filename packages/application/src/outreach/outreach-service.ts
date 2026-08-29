@@ -296,6 +296,7 @@ export class OutreachService {
 
   /**
    * Excel/CSV import — persists Pending CampaignRecipients only (no DeliveryJobs).
+   * Does not run OUTREACH_PREPARE billing gate or institution catalog scans.
    */
   async importExternalRecipients(input: {
     campaignId: string;
@@ -303,14 +304,12 @@ export class OutreachService {
     content: Uint8Array;
     now: string;
   }): Promise<ImportExternalRecipientsResult> {
-    if (!this.deps.institutionRepository) {
-      throw new OutreachValidationError("Institution repository is not configured.");
-    }
     const result = await importExternalRecipientsAction(input, {
       campaignRepository: this.deps.campaignRepository,
       recipientRepository: this.deps.recipientRepository,
-      institutionRepository: this.deps.institutionRepository,
-      billingProtectionRepository: this.deps.billingProtectionRepository,
+      // No catalog match on the hot path — file rows only (cost-safe under EMERGENCY).
+      institutionRepository: null,
+      resolveCatalogMatches: false,
     });
     await this.log(
       input.campaignId.trim(),

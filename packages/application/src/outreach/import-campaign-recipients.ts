@@ -317,15 +317,29 @@ async function attachInstitutionMatches(
 /**
  * Persists Excel/CSV recipients as Pending CampaignRecipients (no DeliveryJobs).
  * Idempotent for draft re-import before Prepare: replaces prior Pending rows.
+ *
+ * Cost safety: does NOT call assertOperationAllowed("OUTREACH_PREPARE") — that gate
+ * protects segment preview / catalog prepare scans. External import only reads the
+ * upload bytes and writes campaign-scoped recipient rows (no institution catalog scan).
  */
 export async function importExternalRecipients(
   input: ImportExternalRecipientsInput,
   deps: {
     readonly campaignRepository: CampaignRepository;
     readonly recipientRepository: CampaignRecipientRepository;
+    /**
+     * Optional. When omitted/null, rows stay unmatched (ext: ids) — preferred under
+     * cost protection. Catalog list matching is never required for import persistence.
+     */
     readonly institutionRepository?: InstitutionRepository | null;
+    /** Unused for import (kept for call-site compatibility). Do not gate import on this. */
     readonly billingProtectionRepository?: BillingProtectionRepository | null;
     readonly nextRecipientId?: () => string;
+    /**
+     * When true (default false), attempt catalog match via institutionRepository.list.
+     * Must stay false on the Growth Center import path to avoid catalog reads.
+     */
+    readonly resolveCatalogMatches?: boolean;
   },
 ): Promise<ImportExternalRecipientsResult> {
   const campaign = await deps.campaignRepository.getById(input.campaignId.trim());
@@ -336,15 +350,16 @@ export async function importExternalRecipients(
     throw new OutreachValidationError("Only draft campaigns can import recipients.");
   }
 
-  await assertOperationAllowed("OUTREACH_PREPARE", {
-    billingProtectionRepository: deps.billingProtectionRepository,
-  });
+  // Intentionally no OUTREACH_PREPARE / billing assert — import is file-scoped only.
 
   const parsed = parseOutreachRecipientImport({
     fileName: input.fileName,
     content: input.content,
   });
-  const parse = await attachInstitutionMatches(parsed, deps.institutionRepository);
+  const parse =
+    deps.resolveCatalogMatches === true
+      ? await attachInstitutionMatches(parsed, deps.institutionRepository)
+      : parsed;
 
   if (parse.accepted.length === 0) {
     throw new OutreachValidationError("İçe aktarılacak geçerli alıcı yok.");
@@ -524,8 +539,8 @@ export async function prepareCampaignFromImport(
   const imported = await importExternalRecipients(input, {
     campaignRepository: deps.campaignRepository,
     recipientRepository: deps.recipientRepository,
-    institutionRepository: deps.institutionRepository,
-    billingProtectionRepository: deps.billingProtectionRepository,
+    institutionRepository: null,
+    resolveCatalogMatches: false,
     nextRecipientId: deps.nextRecipientId,
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   CampaignChannel,
   CampaignRecipientStatus,
@@ -271,7 +271,7 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
     expect(() => assertPersonalizationInstitutionName("Örnek Anaokulu")).toThrow(/demo/i);
   });
 
-  it("matches catalog institution by email and keeps unmatched as ext:", async () => {
+  it("matches catalog institution by email when resolveCatalogMatches is opted in", async () => {
     const matched = createPublishedInstitution({
       id: "inst_kadro",
       slug: "kadro-kurs",
@@ -296,6 +296,7 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
         campaignRepository: stores.campaignRepository,
         recipientRepository: stores.recipientRepository,
         institutionRepository: stubInstitutionRepository([matched]),
+        resolveCatalogMatches: true,
       },
     );
     expect(result.matchedCount).toBe(1);
@@ -307,6 +308,39 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
     expect(kadro?.institutionId).toBe("inst_kadro");
     expect(abc?.institutionMatch).toBe("unmatched");
     expect(isExternalInstitutionId(abc?.institutionId ?? "")).toBe(true);
+  });
+
+  it("default import path does not scan institution catalog", async () => {
+    const stores = createInMemoryOutreachStores();
+    await seedDraftCampaign(stores);
+    const list = vi.fn(async () =>
+      Object.freeze({
+        items: [],
+        page: 1,
+        pageSize: 50,
+        totalItems: 0,
+        totalPages: 0,
+      }),
+    );
+    const csv = new TextEncoder().encode(
+      "institutionName,email\nKadro Kurs,info@kadrokurs.com\n",
+    );
+    await importExternalRecipients(
+      { campaignId: "camp_imp", fileName: "liste.csv", content: csv, now: NOW },
+      {
+        campaignRepository: stores.campaignRepository,
+        recipientRepository: stores.recipientRepository,
+        institutionRepository: {
+          getById: async () => null,
+          getBySlug: async () => null,
+          save: async (i) => i,
+          update: async (i) => i,
+          delete: async () => undefined,
+          list,
+        },
+      },
+    );
+    expect(list).not.toHaveBeenCalled();
   });
 
   it("one-shot prepareCampaignFromImport still creates jobs (compat)", async () => {
