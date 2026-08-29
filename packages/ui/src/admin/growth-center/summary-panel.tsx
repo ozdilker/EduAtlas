@@ -63,9 +63,27 @@ export function GrowthSummaryPanel({
             <strong>{domainStatus}</strong>
           </li>
           <li>
-            <span>Toplam eşleşen kurum</span>
-            <strong>{summary.segmentMatchCount}</strong>
+            <span>
+              {summary.importedRecipientCount !== undefined
+                ? "İçe aktarılan alıcı"
+                : "Toplam eşleşen kurum"}
+            </span>
+            <strong>
+              {summary.importedRecipientCount ?? summary.segmentMatchCount}
+            </strong>
           </li>
+          {summary.institutionMatchedCount !== undefined ? (
+            <li>
+              <span>Kurumla eşleşen</span>
+              <strong>{summary.institutionMatchedCount}</strong>
+            </li>
+          ) : null}
+          {summary.institutionMatchPendingCount !== undefined ? (
+            <li>
+              <span>Eşleşmesi bekleyen</span>
+              <strong>{summary.institutionMatchPendingCount}</strong>
+            </li>
+          ) : null}
           <li>
             <span>Hazırlanan recipient</span>
             <strong>{summary.preparedRecipientCount}</strong>

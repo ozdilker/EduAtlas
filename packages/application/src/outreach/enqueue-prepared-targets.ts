@@ -12,6 +12,7 @@ import {
 import type { OutreachDeliveryConfig } from "../delivery/delivery-config";
 import type { DeliveryJobRepository } from "../delivery/delivery-job-repository";
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
+import { CLAIM_INVITATION_TEMPLATE_ID } from "./outreach-seeds";
 import type { PrepareCampaignResult } from "./prepare-campaign";
 
 export type PreparedTarget = Readonly<{
@@ -171,8 +172,16 @@ export async function promotePendingRecipientsToJobs(
     if (recipient.status !== CampaignRecipientStatus.Pending) {
       continue;
     }
-    // Unmatched (ext:) rows are allowed: personalization uses displayName and CTA
-    // stays the shared login URL — never invent a catalog claim link for them.
+    if (
+      input.campaign.templateId === CLAIM_INVITATION_TEMPLATE_ID &&
+      (recipient.institutionMatch === "unmatched" ||
+        recipient.institutionMatch === "ambiguous")
+    ) {
+      // Claim campaigns: never promote unmatched/ambiguous (wrong claim link risk).
+      skippedDuplicates += 1;
+      continue;
+    }
+    // Segment / matched / generic unmatched (non-claim) may become jobs.
 
     const institutionId = recipient.institutionId.trim();
     const idempotencyKey = buildDeliveryIdempotencyKey({

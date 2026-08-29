@@ -1,3 +1,4 @@
+import { foldTurkishText } from "@eduatlas/domain";
 import type { FirestoreInstitutionDocument } from "./firestore-institution-document";
 import type {
   AdminListCursor,
@@ -247,6 +248,42 @@ export class InMemoryInstitutionDocumentStore implements InstitutionDocumentStor
 
   async delete(id: string): Promise<void> {
     this.documents.delete(id);
+  }
+
+  async findByContactEmail(email: string, limit: number): Promise<InstitutionDocumentRecord[]> {
+    const needle = email.trim().toLowerCase();
+    const capped = Math.max(0, Math.min(Math.floor(limit), 20));
+    if (!needle || capped === 0) return [];
+    const hits: InstitutionDocumentRecord[] = [];
+    for (const [id, data] of this.documents.entries()) {
+      if ((data.contactEmail ?? "").trim().toLowerCase() !== needle) continue;
+      hits.push({ id, data: structuredClone(data) });
+      if (hits.length >= capped) break;
+    }
+    return hits;
+  }
+
+  async findByExactName(input: {
+    name: string;
+    cityId?: string;
+    districtId?: string;
+    limit: number;
+  }): Promise<InstitutionDocumentRecord[]> {
+    const nameNeedle = foldTurkishText(input.name.trim());
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    const cityId = input.cityId?.trim();
+    const districtId = input.districtId?.trim();
+    if (!nameNeedle || capped === 0) return [];
+    const hits: InstitutionDocumentRecord[] = [];
+    for (const [id, data] of this.documents.entries()) {
+      const folded = (data.nameFolded ?? foldTurkishText(data.name)).trim();
+      if (folded !== nameNeedle) continue;
+      if (cityId && data.cityId !== cityId) continue;
+      if (districtId && data.districtId !== districtId) continue;
+      hits.push({ id, data: structuredClone(data) });
+      if (hits.length >= capped) break;
+    }
+    return hits;
   }
 
   async exists(id: string): Promise<boolean> {

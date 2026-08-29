@@ -46,6 +46,12 @@ import {
   type ImportExternalRecipientsResult,
   type OutreachImportParseResult,
 } from "./import-campaign-recipients";
+import {
+  addManualCampaignRecipient,
+  assignRecipientInstitution,
+  matchCampaignRecipients,
+  type MatchCampaignRecipientsResult,
+} from "./match-outreach-recipients";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
 import { resolveCampaignBodyLines } from "./resolve-campaign-body-lines";
 import {
@@ -148,7 +154,7 @@ export class OutreachService {
     segmentId: string;
     subjectOverride: string;
     preheader: string;
-    recipientSource?: "segment" | "external_import";
+    recipientSource?: "segment" | "external_import" | "manual";
     now: string;
   }): Promise<Campaign> {
     const campaign = await this.requireCampaign(input.campaignId);
@@ -218,14 +224,36 @@ export class OutreachService {
     if (recipients.length === 0) {
       throw new OutreachValidationError("Approve requires a prepared recipient list.");
     }
-    if (campaign.recipientSource === "external_import") {
+    if (
+      campaign.recipientSource === "external_import" ||
+      campaign.recipientSource === "manual"
+    ) {
       const prepared = recipients.filter(
         (r) => r.status !== CampaignRecipientStatus.Pending,
       );
       if (prepared.length === 0) {
         throw new OutreachValidationError(
-          "Approve requires Import Prepare (Import alone is not enough).",
+          "Approve requires Prepare (alıcı eklemek yeterli değil).",
         );
+      }
+      if (campaign.templateId === CLAIM_INVITATION_TEMPLATE_ID) {
+        const blocked = recipients.filter(
+          (r) =>
+            r.institutionMatch === "unmatched" || r.institutionMatch === "ambiguous",
+        );
+        if (blocked.length > 0) {
+          throw new OutreachValidationError(
+            `Claim kampanyası: ${blocked.length} alıcı eşleşmemiş/ambiguous. Run öncesi hepsini matched yapın.`,
+          );
+        }
+        const unmatchedPrepared = prepared.filter(
+          (r) => r.institutionMatch !== "matched",
+        );
+        if (unmatchedPrepared.length > 0) {
+          throw new OutreachValidationError(
+            "Claim kampanyası: hazırlanan alıcıların tamamı matched olmalı.",
+          );
+        }
       }
     }
 
@@ -297,26 +325,154 @@ export class OutreachService {
   /**
    * Excel/CSV import — persists Pending CampaignRecipients only (no DeliveryJobs).
    * Does not run OUTREACH_PREPARE billing gate or institution catalog scans.
+   * After persist, runs bounded equality matching (contactEmail / exact name).
    */
   async importExternalRecipients(input: {
     campaignId: string;
     fileName: string;
     content: Uint8Array;
     now: string;
-  }): Promise<ImportExternalRecipientsResult> {
+  }): Promise<ImportExternalRecipientsResult & { match?: MatchCampaignRecipientsResult }> {
     const result = await importExternalRecipientsAction(input, {
       campaignRepository: this.deps.campaignRepository,
       recipientRepository: this.deps.recipientRepository,
-      // No catalog match on the hot path — file rows only (cost-safe under EMERGENCY).
       institutionRepository: null,
       resolveCatalogMatches: false,
     });
+
+    let match: MatchCampaignRecipientsResult | undefined;
+    if (this.deps.institutionRepository) {
+      const campaign = await this.requireCampaign(input.campaignId);
+      const segment = await this.deps.segmentRepository.getById(campaign.segmentId);
+      match = await matchCampaignRecipients(
+        {
+          campaignId: input.campaignId,
+          now: input.now,
+          scope: {
+            ...(segment?.filters.cityId ? { cityId: segment.filters.cityId } : {}),
+            ...(segment?.filters.districtId ? { districtId: segment.filters.districtId } : {}),
+          },
+        },
+        {
+          recipientRepository: this.deps.recipientRepository,
+          institutionRepository: this.deps.institutionRepository,
+        },
+      );
+    }
+
     await this.log(
       input.campaignId.trim(),
-      `Imported ${result.recipientCount} recipient(s) (matched ${result.matchedCount}, unmatched ${result.unmatchedCount}); file=${input.fileName}.`,
+      `Imported ${result.recipientCount} recipient(s); match matched=${match?.matchedCount ?? 0} ambiguous=${match?.ambiguousCount ?? 0} unmatched=${match?.unmatchedCount ?? result.unmatchedCount}; file=${input.fileName}.`,
+      input.now,
+    );
+    return Object.freeze({
+      ...result,
+      matchedCount: match?.matchedCount ?? result.matchedCount,
+      unmatchedCount: match?.unmatchedCount ?? result.unmatchedCount,
+      ...(match ? { match } : {}),
+    });
+  }
+
+  async matchCampaignRecipients(input: {
+    campaignId: string;
+    now: string;
+  }): Promise<MatchCampaignRecipientsResult> {
+    if (!this.deps.institutionRepository) {
+      throw new OutreachValidationError("Institution repository is not configured.");
+    }
+    const campaign = await this.requireCampaign(input.campaignId);
+    const segment = await this.deps.segmentRepository.getById(campaign.segmentId);
+    const result = await matchCampaignRecipients(
+      {
+        campaignId: input.campaignId,
+        now: input.now,
+        scope: {
+          ...(segment?.filters.cityId ? { cityId: segment.filters.cityId } : {}),
+          ...(segment?.filters.districtId ? { districtId: segment.filters.districtId } : {}),
+        },
+      },
+      {
+        recipientRepository: this.deps.recipientRepository,
+        institutionRepository: this.deps.institutionRepository,
+      },
+    );
+    await this.log(
+      input.campaignId.trim(),
+      `Recipient match: matched=${result.matchedCount} ambiguous=${result.ambiguousCount} unmatched=${result.unmatchedCount} (docsRead=${result.documentsRead}).`,
       input.now,
     );
     return result;
+  }
+
+  async addManualRecipient(input: {
+    campaignId: string;
+    email: string;
+    displayName?: string;
+    institutionId?: string;
+    now: string;
+  }) {
+    const campaign = await this.requireCampaign(input.campaignId);
+    if (campaign.status !== CampaignStatus.Draft) {
+      throw new OutreachValidationError("Only draft campaigns can add recipients.");
+    }
+    if (
+      campaign.recipientSource !== "manual" &&
+      campaign.recipientSource !== "external_import"
+    ) {
+      // Allow adding manual rows when source is manual; also tolerate external drafts.
+      if (campaign.recipientSource && campaign.recipientSource !== "segment") {
+        throw new OutreachValidationError("Bu kampanya tekil alıcı eklemeyi desteklemiyor.");
+      }
+    }
+    const saved = await addManualCampaignRecipient(
+      {
+        campaignId: input.campaignId,
+        email: input.email,
+        displayName: input.displayName,
+        institutionId: input.institutionId,
+        now: input.now,
+      },
+      {
+        recipientRepository: this.deps.recipientRepository,
+        institutionRepository: this.deps.institutionRepository,
+      },
+    );
+    if (campaign.recipientSource !== "manual" && campaign.recipientSource !== "external_import") {
+      await this.deps.campaignRepository.update(
+        createCampaign(
+          toCreateInput(campaign, {
+            recipientSource: "manual",
+          }),
+        ),
+      );
+    }
+    await this.log(
+      input.campaignId.trim(),
+      `Manual recipient added: ${saved.email} (${saved.institutionMatch ?? "n/a"}).`,
+      input.now,
+    );
+    return saved;
+  }
+
+  async assignRecipientInstitution(input: {
+    campaignId: string;
+    recipientId: string;
+    institutionId: string;
+    now: string;
+  }) {
+    if (!this.deps.institutionRepository) {
+      throw new OutreachValidationError("Institution repository is not configured.");
+    }
+    const updated = await assignRecipientInstitution(input, {
+      recipientRepository: this.deps.recipientRepository,
+      institutionRepository: this.deps.institutionRepository,
+    });
+    await this.log(
+      input.campaignId.trim(),
+      `Recipient ${input.recipientId} matched to institution ${input.institutionId}.`,
+      input.now,
+    );
+    return updated;
   }
 
   /**

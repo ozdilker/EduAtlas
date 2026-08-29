@@ -4,6 +4,7 @@ import {
   CampaignRecipientStatus,
   CampaignStatus,
   createCampaign,
+  createCampaignRecipient,
   createCampaignSegment,
   createCampaignTemplate,
   createPublishedInstitution,
@@ -72,6 +73,31 @@ function stubInstitutionRepository(
         totalItems: items.length,
         totalPages: 1,
       });
+    },
+    findByContactEmail: async (email, options) => {
+      const needle = email.trim().toLowerCase();
+      const limit = options?.limit ?? 5;
+      return Object.freeze(
+        institutions
+          .filter((i) => (i.contact.email ?? "").toLowerCase() === needle)
+          .slice(0, limit),
+      );
+    },
+    findByExactName: async (name, options) => {
+      const needle = name.trim().toLocaleLowerCase("tr-TR");
+      const limit = options?.limit ?? 10;
+      return Object.freeze(
+        institutions
+          .filter((i) => {
+            if (i.name.trim().toLocaleLowerCase("tr-TR") !== needle) return false;
+            if (options?.cityId && i.location.cityId !== options.cityId) return false;
+            if (options?.districtId && i.location.districtId !== options.districtId) {
+              return false;
+            }
+            return true;
+          })
+          .slice(0, limit),
+      );
     },
   };
 }
@@ -175,7 +201,66 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
     expect(recipients[0]?.displayName).toBe("Kadro Kurs");
   });
 
-  it("Prepare creates DeliveryJobs from persisted recipients", async () => {
+  it("Prepare creates DeliveryJobs from persisted matched recipients", async () => {
+    const stores = createInMemoryOutreachStores();
+    const jobs = createInMemoryDeliveryJobRepository();
+    await seedDraftCampaign(stores);
+    const matched = createPublishedInstitution({
+      id: "inst_kadro",
+      slug: "kadro-kurs",
+      name: "Kadro Kurs",
+      primaryType: InstitutionType.Kindergarten,
+      verification: InstitutionVerification.Unclaimed,
+      location: { cityId: "istanbul", districtId: "bakirkoy", address: "Bakırköy" },
+      contact: { email: "info@kadrokurs.com" },
+      shortDescription: "Kurs merkezi",
+      createdAt: NOW,
+      updatedAt: NOW,
+      publishedAt: NOW,
+    });
+    const csv = new TextEncoder().encode(
+      "institutionName,email\nKadro Kurs,info@kadrokurs.com\n",
+    );
+    await importExternalRecipients(
+      { campaignId: "camp_imp", fileName: "liste.csv", content: csv, now: NOW },
+      {
+        campaignRepository: stores.campaignRepository,
+        recipientRepository: stores.recipientRepository,
+        institutionRepository: stubInstitutionRepository([matched]),
+      },
+    );
+    const pending = await stores.recipientRepository.listByCampaignId("camp_imp");
+    await stores.recipientRepository.update(
+      createCampaignRecipient({
+        ...pending[0]!,
+        institutionId: "inst_kadro",
+        institutionMatch: "matched",
+        updatedAt: NOW,
+      }),
+    );
+
+    const result = await prepareImportedCampaign(
+      { campaignId: "camp_imp", now: NOW },
+      {
+        campaignRepository: stores.campaignRepository,
+        segmentRepository: stores.segmentRepository,
+        recipientRepository: stores.recipientRepository,
+        deliveryJobRepository: jobs,
+        institutionRepository: stubInstitutionRepository([matched]),
+        config,
+        targetLimit: 20,
+      },
+    );
+
+    expect(result.recipientCount).toBe(1);
+    const recipients = await stores.recipientRepository.listByCampaignId("camp_imp");
+    expect(recipients[0]?.status).toBe(CampaignRecipientStatus.Queued);
+    expect(await jobs.listByCampaignId("camp_imp")).toHaveLength(1);
+    const campaign = await stores.campaignRepository.getById("camp_imp");
+    expect(campaign?.execution?.preparedAt).toBe(NOW);
+  });
+
+  it("claim Prepare rejects when all recipients are unmatched", async () => {
     const stores = createInMemoryOutreachStores();
     const jobs = createInMemoryDeliveryJobRepository();
     await seedDraftCampaign(stores);
@@ -191,25 +276,21 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
       },
     );
 
-    const result = await prepareImportedCampaign(
-      { campaignId: "camp_imp", now: NOW },
-      {
-        campaignRepository: stores.campaignRepository,
-        segmentRepository: stores.segmentRepository,
-        recipientRepository: stores.recipientRepository,
-        deliveryJobRepository: jobs,
-        institutionRepository: stubInstitutionRepository(),
-        config,
-        targetLimit: 20,
-      },
-    );
-
-    expect(result.recipientCount).toBe(1);
-    const recipients = await stores.recipientRepository.listByCampaignId("camp_imp");
-    expect(recipients[0]?.status).toBe(CampaignRecipientStatus.Queued);
-    expect(await jobs.listByCampaignId("camp_imp")).toHaveLength(1);
-    const campaign = await stores.campaignRepository.getById("camp_imp");
-    expect(campaign?.execution?.preparedAt).toBe(NOW);
+    await expect(
+      prepareImportedCampaign(
+        { campaignId: "camp_imp", now: NOW },
+        {
+          campaignRepository: stores.campaignRepository,
+          segmentRepository: stores.segmentRepository,
+          recipientRepository: stores.recipientRepository,
+          deliveryJobRepository: jobs,
+          institutionRepository: stubInstitutionRepository(),
+          config,
+          targetLimit: 20,
+        },
+      ),
+    ).rejects.toThrow(/eşleşmiş|matched/i);
+    expect(await jobs.listByCampaignId("camp_imp")).toHaveLength(0);
   });
 
   it("mail preview and test mail use real institutionName, never Örnek Anaokulu", async () => {
@@ -347,6 +428,34 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
     const stores = createInMemoryOutreachStores();
     const jobs = createInMemoryDeliveryJobRepository();
     await seedDraftCampaign(stores);
+    const institutions = [
+      createPublishedInstitution({
+        id: "inst_1",
+        slug: "okul-bir",
+        name: "Okul Bir",
+        primaryType: InstitutionType.Kindergarten,
+        verification: InstitutionVerification.Unclaimed,
+        location: { cityId: "istanbul", districtId: "bakirkoy", address: "A" },
+        contact: { email: "bir@example.com" },
+        shortDescription: "x",
+        createdAt: NOW,
+        updatedAt: NOW,
+        publishedAt: NOW,
+      }),
+      createPublishedInstitution({
+        id: "inst_2",
+        slug: "okul-iki",
+        name: "Okul Iki",
+        primaryType: InstitutionType.Kindergarten,
+        verification: InstitutionVerification.Unclaimed,
+        location: { cityId: "istanbul", districtId: "bakirkoy", address: "B" },
+        contact: { email: "iki@example.com" },
+        shortDescription: "x",
+        createdAt: NOW,
+        updatedAt: NOW,
+        publishedAt: NOW,
+      }),
+    ];
     const csv = new TextEncoder().encode(
       "institutionName,email\nOkul Bir,bir@example.com\nOkul Iki,iki@example.com\n",
     );
@@ -358,7 +467,7 @@ describe("GROWTH-005 external recipient persistence & personalization", () => {
         segmentRepository: stores.segmentRepository,
         recipientRepository: stores.recipientRepository,
         deliveryJobRepository: jobs,
-        institutionRepository: stubInstitutionRepository(),
+        institutionRepository: stubInstitutionRepository(institutions),
         config,
         targetLimit: 20,
         nextRecipientId: () => `crec_${++seq}`,

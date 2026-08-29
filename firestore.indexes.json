@@ -1,6 +1,23 @@
 {
   "indexes": [
     {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nameFolded", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nameFolded", "order": "ASCENDING" },
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "districtId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "leads",
       "queryScope": "COLLECTION",
       "fields": [

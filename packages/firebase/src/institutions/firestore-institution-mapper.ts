@@ -158,7 +158,7 @@ export class FirestoreInstitutionMapper {
       document.contactPhone = institution.contact.phone;
     }
     if (institution.contact.email) {
-      document.contactEmail = institution.contact.email;
+      document.contactEmail = institution.contact.email.trim().toLowerCase();
     }
     if (institution.contact.whatsappNumber) {
       document.whatsappNumber = institution.contact.whatsappNumber;

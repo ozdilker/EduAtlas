@@ -109,6 +109,24 @@ describe("createCampaignRecipient", () => {
     });
     expect(r.institutionMatch).toBe("matched");
   });
+
+  it("stores ambiguous match with candidate ids", () => {
+    const r = createCampaignRecipient({
+      id: "rec_4",
+      campaignId: "camp_1",
+      institutionId: "ext:abc",
+      displayName: "ABC Kurs",
+      institutionMatch: "ambiguous",
+      matchCandidateIds: ["inst_a", "inst_b"],
+      source: "external_import",
+      email: "info@abc.com",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    });
+    expect(r.institutionMatch).toBe("ambiguous");
+    expect(r.matchCandidateIds).toEqual(["inst_a", "inst_b"]);
+    expect(r.source).toBe("external_import");
+  });
 });
 
 describe("createCampaign recipientSource", () => {

@@ -32,7 +32,7 @@ export type AdminOutreachCampaignRow = Readonly<{
   status: string;
   templateId: string;
   segmentId: string;
-  recipientSource: "segment" | "external_import";
+  recipientSource: "segment" | "external_import" | "manual";
   subjectOverride: string;
   preheader: string;
   description: string;
@@ -47,7 +47,8 @@ export type AdminOutreachRecipientRow = Readonly<{
   displayName?: string;
   email: string;
   status: string;
-  institutionMatch?: "matched" | "unmatched";
+  institutionMatch?: "matched" | "unmatched" | "ambiguous";
+  matchCandidateIds?: readonly string[];
 }>;
 
 export type AdminOutreachOption = Readonly<{
@@ -74,6 +75,12 @@ export type AdminOutreachLogRow = Readonly<{
 
 export type AdminOutreachSummary = Readonly<{
   segmentMatchCount: number;
+  /** External/manual: imported recipient rows. */
+  importedRecipientCount?: number;
+  /** Catalog-matched recipients. */
+  institutionMatchedCount?: number;
+  /** Waiting for match (unmatched + ambiguous). */
+  institutionMatchPendingCount?: number;
   preparedRecipientCount: number;
   warmupBatchSize: number;
   warmupStage: number;
@@ -208,7 +215,12 @@ export async function getAdminOutreachPageData(searchParams: {
       status: c.status,
       templateId: c.templateId,
       segmentId: c.segmentId,
-      recipientSource: c.recipientSource === "external_import" ? "external_import" : "segment",
+      recipientSource:
+        c.recipientSource === "external_import"
+          ? "external_import"
+          : c.recipientSource === "manual"
+            ? "manual"
+            : "segment",
       subjectOverride: c.subjectOverride?.trim() || templateSubjectById.get(c.templateId) || "",
       preheader: c.preheader?.trim() || templatePreviewById.get(c.templateId) || "",
       description: c.description ?? "",
@@ -281,6 +293,7 @@ export async function getAdminOutreachPageData(searchParams: {
       email: r.email,
       status: r.status,
       ...(r.institutionMatch ? { institutionMatch: r.institutionMatch } : {}),
+      ...(r.matchCandidateIds ? { matchCandidateIds: r.matchCandidateIds } : {}),
     }));
     previewInstitutionName = resolvePreviewInstitutionName(recipients);
 
@@ -327,13 +340,25 @@ export async function getAdminOutreachPageData(searchParams: {
     }));
 
     const preparedRecipientCount = countPreparedRecipients(recipientRows);
-    const isExternalImport = selected.recipientSource === "external_import";
+    const isExternalOrManual =
+      selected.recipientSource === "external_import" ||
+      selected.recipientSource === "manual";
 
-    if (isExternalImport) {
-      // External campaigns: summary from campaign recipients only — no segment / catalog scan.
+    if (isExternalOrManual) {
+      const matchedCount = recipientRows.filter((r) => r.institutionMatch === "matched").length;
+      const pendingMatch = recipientRows.filter(
+        (r) =>
+          r.institutionMatch !== "matched" &&
+          (r.institutionMatch === "unmatched" ||
+            r.institutionMatch === "ambiguous" ||
+            !r.institutionMatch),
+      ).length;
       segmentPreview = [];
       summary = {
-        segmentMatchCount: recipients.length,
+        segmentMatchCount: matchedCount,
+        importedRecipientCount: recipientRows.length,
+        institutionMatchedCount: matchedCount,
+        institutionMatchPendingCount: pendingMatch,
         preparedRecipientCount,
         warmupBatchSize: warmupLimit,
         warmupStage: warmupSettings.stage,

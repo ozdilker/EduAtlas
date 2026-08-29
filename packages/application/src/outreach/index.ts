@@ -77,6 +77,21 @@ export {
 } from "./delivery-eta";
 export { prepareCampaign, type PrepareCampaignResult } from "./prepare-campaign";
 export {
+  OUTREACH_MATCH_EMAIL_LIMIT,
+  OUTREACH_MATCH_MAX_DOCS_PER_RECIPIENT,
+  OUTREACH_MATCH_NAME_LIMIT,
+  addManualCampaignRecipient,
+  assignRecipientInstitution,
+  isClaimSafeInstitutionMatch,
+  matchCampaignRecipients,
+  normalizeOutreachInstitutionName,
+  resolveBoundedOutreachInstitutionMatch,
+  summarizeRecipientMatches,
+  type MatchCampaignRecipientsResult,
+  type OutreachInstitutionMatchResult,
+  type OutreachMatchScope,
+} from "./match-outreach-recipients";
+export {
   OUTREACH_IMPORT_MAX_BYTES,
   OUTREACH_IMPORT_MAX_ROWS,
   importExternalRecipients,

@@ -95,6 +95,28 @@ export interface InstitutionRepository {
   ): Promise<{ count: number; sum: number }>;
 
   /**
+   * Optional: exact contact-email equality lookup (Firestore equality + limit).
+   * Must not download the catalog. Used by outreach recipient matching.
+   */
+  findByContactEmail?(
+    email: string,
+    options?: { readonly limit?: number },
+  ): Promise<readonly Institution[]>;
+
+  /**
+   * Optional: exact name equality lookup (+ optional city/district scope).
+   * Must use equality filters + hard limit — never listAll / unscoped free-text.
+   */
+  findByExactName?(
+    name: string,
+    options?: {
+      readonly cityId?: string;
+      readonly districtId?: string;
+      readonly limit?: number;
+    },
+  ): Promise<readonly Institution[]>;
+
+  /**
    * Persists a new institution.
    * @throws {DuplicateInstitutionError} when id or slug already exists
    */

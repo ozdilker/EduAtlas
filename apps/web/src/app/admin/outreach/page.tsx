@@ -6,12 +6,15 @@ import {
 } from "@eduatlas/application";
 import { AdminOutreachPage } from "@eduatlas/ui";
 import {
+  addManualOutreachRecipientAction,
   approveOutreachCampaignAction,
+  assignOutreachRecipientInstitutionAction,
   cancelOutreachCampaignAction,
   deleteOutreachDraftCampaignAction,
   elevateOutreachWarmupStageAction,
   expandOutreachWarmupAction,
   lowerOutreachWarmupStageAction,
+  matchOutreachRecipientsAction,
   pauseOutreachCampaignAction,
   prepareOutreachCampaignAction,
   prepareOutreachImportAction,
@@ -89,6 +92,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         email: r.email,
         status: r.status,
         ...(r.institutionMatch ? { institutionMatch: r.institutionMatch } : {}),
+        ...(r.matchCandidateIds ? { matchCandidateIds: r.matchCandidateIds } : {}),
       }))}
       segmentPreview={data.segmentPreview}
       summary={data.summary}
@@ -106,6 +110,9 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       testSendAction={sendOutreachTestEmailAction}
       prepareAction={prepareOutreachCampaignAction}
       prepareImportAction={prepareOutreachImportAction}
+      matchRecipientsAction={matchOutreachRecipientsAction}
+      addManualRecipientAction={addManualOutreachRecipientAction}
+      assignRecipientInstitutionAction={assignOutreachRecipientInstitutionAction}
       approveAction={approveOutreachCampaignAction}
       runAction={runOutreachCampaignAction}
       pauseAction={pauseOutreachCampaignAction}

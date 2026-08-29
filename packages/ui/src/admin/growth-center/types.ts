@@ -18,7 +18,7 @@ export type GrowthFormValues = Readonly<{
   description: string;
   templateId: string;
   segmentId: string;
-  recipientSource: "segment" | "external_import";
+  recipientSource: "segment" | "external_import" | "manual";
   subjectOverride: string;
   preheader: string;
 }>;
@@ -39,7 +39,8 @@ export type GrowthRecipientView = Readonly<{
   displayName?: string;
   email: string;
   status: string;
-  institutionMatch?: "matched" | "unmatched";
+  institutionMatch?: "matched" | "unmatched" | "ambiguous";
+  matchCandidateIds?: readonly string[];
 }>;
 
 export type GrowthSegmentPreviewRow = Readonly<{
@@ -63,6 +64,9 @@ export type GrowthQualityScore = Readonly<{
 
 export type GrowthSummaryView = Readonly<{
   segmentMatchCount: number;
+  importedRecipientCount?: number;
+  institutionMatchedCount?: number;
+  institutionMatchPendingCount?: number;
   preparedRecipientCount: number;
   warmupBatchSize: number;
   warmupStage: number;
@@ -164,6 +168,9 @@ export type GrowthCenterPageProps = {
   prepareAction?: (formData: FormData) => Promise<void>;
   prepareImportAction?: (formData: FormData) => Promise<void>;
   importRecipientsAction?: (formData: FormData) => Promise<void>;
+  matchRecipientsAction?: (formData: FormData) => Promise<void>;
+  addManualRecipientAction?: (formData: FormData) => Promise<void>;
+  assignRecipientInstitutionAction?: (formData: FormData) => Promise<void>;
   approveAction?: (formData: FormData) => Promise<void>;
   runAction?: (formData: FormData) => Promise<void>;
   pauseAction?: (formData: FormData) => Promise<void>;

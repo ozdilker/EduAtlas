@@ -5,19 +5,24 @@ import {
 } from "./campaign-recipient-status";
 
 /** Whether the recipient maps to a catalog Institution (claim-safe). */
-export type CampaignRecipientInstitutionMatch = "matched" | "unmatched";
+export type CampaignRecipientInstitutionMatch = "matched" | "unmatched" | "ambiguous";
 
 export type CampaignRecipient = Readonly<{
   readonly id: string;
   readonly campaignId: string;
   readonly institutionId: string;
-  /** Optional display name for mail tokens (external import). */
+  /** Optional display name for mail tokens (external import / manual). */
   readonly displayName?: string;
   /**
-   * Catalog match for external import. Matched → real institutionId;
-   * unmatched → synthetic ext: id (blocked from Prepare/send).
+   * Catalog match for external/manual recipients.
+   * matched → real institutionId (claim-safe);
+   * unmatched / ambiguous → synthetic ext: id (claim blocked).
    */
   readonly institutionMatch?: CampaignRecipientInstitutionMatch;
+  /** Candidate institution ids when institutionMatch is ambiguous (admin picker). */
+  readonly matchCandidateIds?: readonly string[];
+  /** How this row was added (campaign-level source is also stored on Campaign). */
+  readonly source?: "segment" | "external_import" | "manual";
   readonly email: string;
   readonly status: CampaignRecipientStatusType;
   readonly sentAt?: string;
@@ -35,6 +40,8 @@ export type CreateCampaignRecipientInput = {
   institutionId: string;
   displayName?: string;
   institutionMatch?: CampaignRecipientInstitutionMatch;
+  matchCandidateIds?: readonly string[];
+  source?: "segment" | "external_import" | "manual";
   email: string;
   status?: CampaignRecipientStatusType | string;
   sentAt?: string;
@@ -60,10 +67,25 @@ export function createCampaignRecipient(input: CreateCampaignRecipientInput): Ca
   if (
     institutionMatch !== undefined &&
     institutionMatch !== "matched" &&
-    institutionMatch !== "unmatched"
+    institutionMatch !== "unmatched" &&
+    institutionMatch !== "ambiguous"
   ) {
-    throw new Error("CampaignRecipient.institutionMatch must be matched or unmatched.");
+    throw new Error(
+      "CampaignRecipient.institutionMatch must be matched, unmatched, or ambiguous.",
+    );
   }
+  const source = input.source;
+  if (
+    source !== undefined &&
+    source !== "segment" &&
+    source !== "external_import" &&
+    source !== "manual"
+  ) {
+    throw new Error("CampaignRecipient.source must be segment, external_import, or manual.");
+  }
+  const matchCandidateIds = input.matchCandidateIds
+    ?.map((id) => id.trim())
+    .filter(Boolean);
   const status =
     typeof input.status === "string"
       ? parseCampaignRecipientStatus(input.status)
@@ -92,6 +114,10 @@ export function createCampaignRecipient(input: CreateCampaignRecipientInput): Ca
     institutionId,
     ...(displayName ? { displayName } : {}),
     ...(institutionMatch ? { institutionMatch } : {}),
+    ...(matchCandidateIds && matchCandidateIds.length > 0
+      ? { matchCandidateIds: Object.freeze([...matchCandidateIds]) }
+      : {}),
+    ...(source ? { source } : {}),
     email,
     status,
     ...(input.sentAt ? { sentAt: input.sentAt } : {}),

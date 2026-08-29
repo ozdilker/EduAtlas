@@ -241,6 +241,39 @@ export class FirestoreInstitutionRepository
     return this.store.sumAdminQualityScore(toAdminStoreFilters(filters));
   }
 
+  async findByContactEmail(
+    email: string,
+    options?: { readonly limit?: number },
+  ): Promise<readonly Institution[]> {
+    const limit = Math.max(1, Math.min(20, options?.limit ?? 5));
+    if (!this.store.findByContactEmail) return Object.freeze([]);
+    const records = await this.store.findByContactEmail(email, limit);
+    return Object.freeze(
+      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
+    );
+  }
+
+  async findByExactName(
+    name: string,
+    options?: {
+      readonly cityId?: string;
+      readonly districtId?: string;
+      readonly limit?: number;
+    },
+  ): Promise<readonly Institution[]> {
+    const limit = Math.max(1, Math.min(20, options?.limit ?? 10));
+    if (!this.store.findByExactName) return Object.freeze([]);
+    const records = await this.store.findByExactName({
+      name: name.trim(),
+      ...(options?.cityId ? { cityId: options.cityId } : {}),
+      ...(options?.districtId ? { districtId: options.districtId } : {}),
+      limit,
+    });
+    return Object.freeze(
+      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
+    );
+  }
+
   /**
    * Published institutions in a city with a Firestore-level limit (related cards).
    * Does not use unbounded listByCityId.

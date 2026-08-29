@@ -56,7 +56,11 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
   const segmentId = formString(formData, "segmentId") || ISTANBUL_UNCLAIMED_SEGMENT_ID;
   const recipientSourceRaw = formString(formData, "recipientSource");
   const recipientSource =
-    recipientSourceRaw === "external_import" ? "external_import" : "segment";
+    recipientSourceRaw === "external_import"
+      ? "external_import"
+      : recipientSourceRaw === "manual"
+        ? "manual"
+        : "segment";
   const subjectOverride =
     formString(formData, "subjectOverride") || CLAIM_INVITATION_DEFAULT_SUBJECT;
   const preheader =
@@ -208,7 +212,7 @@ export async function importOutreachRecipientsAction(formData: FormData): Promis
     });
     outreachRedirect({
       id: campaignId,
-      notice: `Import: ${result.recipientCount} alıcı kaydedildi (eşleşen ${result.matchedCount}, eşleşmeyen ${result.unmatchedCount}). Prepare henüz çalışmadı.`,
+      notice: `Import: ${result.recipientCount} alıcı (matched ${result.matchedCount}, ambiguous ${result.match?.ambiguousCount ?? 0}, unmatched ${result.unmatchedCount}). Prepare henüz çalışmadı.`,
     });
   } catch (error) {
     if (isRedirectError(error)) throw error;
@@ -216,6 +220,86 @@ export async function importOutreachRecipientsAction(formData: FormData): Promis
       isOutreachValidationError(error) || error instanceof Error
         ? error.message
         : "Import başarısız.";
+    outreachRedirect({ id: campaignId, error: message });
+  }
+}
+
+export async function matchOutreachRecipientsAction(formData: FormData): Promise<void> {
+  const service = await getOutreachService();
+  await campaignAction(formData, async (campaignId, now) => {
+    const result = await service.matchCampaignRecipients({ campaignId, now });
+    return {
+      id: campaignId,
+      notice: `Eşleştirme: matched ${result.matchedCount}, ambiguous ${result.ambiguousCount}, unmatched ${result.unmatchedCount}.`,
+    };
+  });
+}
+
+export async function addManualOutreachRecipientAction(formData: FormData): Promise<void> {
+  await requireAdminSession();
+  const service = await getOutreachService();
+  const campaignId = formString(formData, "campaignId");
+  if (!campaignId) {
+    outreachRedirect({ error: "Kampanya seçilmedi." });
+  }
+  const email = formString(formData, "email");
+  const displayName = formString(formData, "displayName") || undefined;
+  const institutionId = formString(formData, "institutionId") || undefined;
+  const now = new Date().toISOString();
+  try {
+    await service.addManualRecipient({
+      campaignId,
+      email,
+      displayName,
+      institutionId,
+      now,
+    });
+    outreachRedirect({
+      id: campaignId,
+      notice: `Tekil alıcı eklendi: ${email}`,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Alıcı eklenemedi.";
+    outreachRedirect({ id: campaignId, error: message });
+  }
+}
+
+export async function assignOutreachRecipientInstitutionAction(
+  formData: FormData,
+): Promise<void> {
+  await requireAdminSession();
+  const service = await getOutreachService();
+  const campaignId = formString(formData, "campaignId");
+  const recipientId = formString(formData, "recipientId");
+  const institutionId = formString(formData, "institutionId");
+  if (!campaignId || !recipientId || !institutionId) {
+    outreachRedirect({
+      id: campaignId || undefined,
+      error: "Kampanya, alıcı ve kurum gerekli.",
+    });
+  }
+  const now = new Date().toISOString();
+  try {
+    await service.assignRecipientInstitution({
+      campaignId,
+      recipientId,
+      institutionId,
+      now,
+    });
+    outreachRedirect({
+      id: campaignId,
+      notice: "Alıcı kurumla eşleştirildi.",
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Eşleştirme başarısız.";
     outreachRedirect({ id: campaignId, error: message });
   }
 }

@@ -31,7 +31,7 @@ type DraftForm = {
   description: string;
   templateId: string;
   segmentId: string;
-  recipientSource: "segment" | "external_import";
+  recipientSource: "segment" | "external_import" | "manual";
   subjectOverride: string;
   preheader: string;
 };
@@ -112,6 +112,9 @@ export function GrowthCenterPage({
   testSendAction,
   prepareAction,
   prepareImportAction,
+  matchRecipientsAction,
+  addManualRecipientAction,
+  assignRecipientInstitutionAction,
   approveAction,
   runAction,
   pauseAction,
@@ -525,6 +528,20 @@ export function GrowthCenterPage({
                         />{" "}
                         Excel / CSV
                       </label>
+                      <label className="ea-admin-muted">
+                        <input
+                          type="radio"
+                          name="recipientSourceChoice"
+                          checked={draft.recipientSource === "manual"}
+                          onChange={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              recipientSource: "manual",
+                            }))
+                          }
+                        />{" "}
+                        Tekil alıcı
+                      </label>
                     </fieldset>
                     {draft.recipientSource === "segment" ? (
                       <div className="ea-admin-field">
@@ -549,6 +566,61 @@ export function GrowthCenterPage({
                           ))}
                         </select>
                       </div>
+                    ) : draft.recipientSource === "manual" ? (
+                      <>
+                        <input type="hidden" name="segmentId" value={draft.segmentId} />
+                        {isExisting && addManualRecipientAction ? (
+                          <div className="ea-admin-field">
+                            <p className="ea-admin-muted">
+                              Tekil alıcı ekler (Pending). DeliveryJob oluşmaz. Claim
+                              şablonunda kurum eşleşmesi zorunludur.
+                            </p>
+                            <form action={addManualRecipientAction}>
+                              <input type="hidden" name="campaignId" value={form.id} />
+                              <div className="ea-admin-field">
+                                <label htmlFor="outreach-manual-email">E-posta *</label>
+                                <input
+                                  id="outreach-manual-email"
+                                  className="ea-admin-select"
+                                  type="email"
+                                  name="email"
+                                  required
+                                  placeholder="info@example.com"
+                                />
+                              </div>
+                              <div className="ea-admin-field">
+                                <label htmlFor="outreach-manual-name">Kurum adı</label>
+                                <input
+                                  id="outreach-manual-name"
+                                  className="ea-admin-select"
+                                  type="text"
+                                  name="displayName"
+                                  placeholder="Kadro Kurs"
+                                />
+                              </div>
+                              <div className="ea-admin-field">
+                                <label htmlFor="outreach-manual-inst">
+                                  EduAtlas kurum ID (opsiyonel)
+                                </label>
+                                <input
+                                  id="outreach-manual-inst"
+                                  className="ea-admin-select"
+                                  type="text"
+                                  name="institutionId"
+                                  placeholder="inst_…"
+                                />
+                              </div>
+                              <Button type="submit" size="sm" variant="primary">
+                                Alıcıyı ekle
+                              </Button>
+                            </form>
+                          </div>
+                        ) : (
+                          <p className="ea-admin-muted">
+                            Önce kampanyayı kaydedin, sonra tekil alıcı ekleyin.
+                          </p>
+                        )}
+                      </>
                     ) : (
                       <>
                         <input type="hidden" name="segmentId" value={draft.segmentId} />
@@ -606,12 +678,21 @@ export function GrowthCenterPage({
 
             {step === 4 && isExisting ? (
               <div>
-                {draft.recipientSource === "external_import" ? (
+                {draft.recipientSource === "external_import" ||
+                draft.recipientSource === "manual" ? (
                   <>
                     <p className="ea-admin-muted">
-                      Kalıcı alıcı listesi (Firestore). Tab değişimi veya yenileme listeyi
-                      silmez. Import ≠ Prepare — DeliveryJob yok.
+                      Kalıcı alıcı listesi (Firestore). Import/ekleme ≠ Prepare — DeliveryJob
+                      yok. Claim için yalnızca Matched Ready.
                     </p>
+                    {matchRecipientsAction && draft.recipientSource === "external_import" ? (
+                      <form action={matchRecipientsAction}>
+                        <input type="hidden" name="campaignId" value={form.id} />
+                        <Button type="submit" size="sm">
+                          Kurum eşleştirmeyi yeniden çalıştır
+                        </Button>
+                      </form>
+                    ) : null}
                     {hasRecipients ? (
                       <>
                         <p className="ea-admin-muted" role="status">
@@ -625,29 +706,51 @@ export function GrowthCenterPage({
                             <thead>
                               <tr>
                                 <th>Kurum</th>
-                                <th>Mail</th>
-                                <th>Eşleşme</th>
+                                <th>E-posta</th>
+                                <th>EduAtlas Eşleşmesi</th>
                                 <th>Durum</th>
+                                <th />
                               </tr>
                             </thead>
                             <tbody>
                               {recipients.map((row) => (
                                 <tr key={row.id}>
-                                  <td>{row.displayName || row.institutionId}</td>
+                                  <td>{row.displayName || "—"}</td>
                                   <td>{row.email}</td>
                                   <td>
                                     {row.institutionMatch === "matched"
-                                      ? "Matched"
-                                      : row.institutionMatch === "unmatched"
-                                        ? "Institution match bulunamadı"
-                                        : "—"}
+                                      ? row.displayName || row.institutionId
+                                      : row.institutionMatch === "ambiguous"
+                                        ? `${row.matchCandidateIds?.length ?? 0} olası kurum`
+                                        : "Eşleşme bulunamadı"}
                                   </td>
                                   <td>
-                                    {row.institutionMatch === "unmatched"
-                                      ? "Claim: Blocked"
-                                      : row.status === "pending"
-                                        ? "Ready (import)"
-                                        : row.status}
+                                    {row.institutionMatch === "matched"
+                                      ? "Matched / Ready"
+                                      : row.institutionMatch === "ambiguous"
+                                        ? "Ambiguous / Blocked"
+                                        : "Blocked"}
+                                  </td>
+                                  <td>
+                                    {assignRecipientInstitutionAction &&
+                                    row.status === "pending" &&
+                                    row.institutionMatch !== "matched" ? (
+                                      <form action={assignRecipientInstitutionAction}>
+                                        <input type="hidden" name="campaignId" value={form.id} />
+                                        <input type="hidden" name="recipientId" value={row.id} />
+                                        <input
+                                          className="ea-admin-select"
+                                          type="text"
+                                          name="institutionId"
+                                          placeholder="inst_id"
+                                          required
+                                          aria-label={`Eşleştir ${row.email}`}
+                                        />
+                                        <Button type="submit" size="sm">
+                                          Eşleştir
+                                        </Button>
+                                      </form>
+                                    ) : null}
                                   </td>
                                 </tr>
                               ))}
@@ -657,7 +760,7 @@ export function GrowthCenterPage({
                       </>
                     ) : (
                       <p className="ea-admin-muted">
-                        Kayıtlı alıcı yok. Adım 3’te Excel/CSV yükleyin.
+                        Kayıtlı alıcı yok. Adım 3’te Excel/CSV veya tekil alıcı ekleyin.
                       </p>
                     )}
                   </>
@@ -783,12 +886,13 @@ export function GrowthCenterPage({
 
             {step === 7 && isExisting ? (
               <div className="ea-admin-outreach__delivery">
-                {draft.recipientSource === "external_import" ? (
+                {draft.recipientSource === "external_import" ||
+                draft.recipientSource === "manual" ? (
                   <>
                     <p className="ea-admin-muted">
-                      Import Prepare: kayıtlı Pending alıcılardan DeliveryJob üretir. Domain
+                      Prepare: kayıtlı Pending (matched) alıcılardan DeliveryJob üretir. Domain
                       status <strong>draft</strong> kalır. Limit: stage {warmup?.stage ?? "—"} →{" "}
-                      {stageLimit}.
+                      {stageLimit}. Claim için unmatched/ambiguous hazırlanmaz.
                     </p>
                     {prepareImportAction &&
                     status === "draft" &&
@@ -797,7 +901,7 @@ export function GrowthCenterPage({
                       <form action={prepareImportAction}>
                         <input type="hidden" name="campaignId" value={form.id} />
                         <Button type="submit" size="sm" variant="primary">
-                          Import Prepare
+                          Prepare
                         </Button>
                       </form>
                     ) : null}
@@ -819,7 +923,10 @@ export function GrowthCenterPage({
                     ) : null}
                   </>
                 )}
-                {expandWarmupAction && canExpand && draft.recipientSource !== "external_import" ? (
+                {expandWarmupAction &&
+                canExpand &&
+                draft.recipientSource !== "external_import" &&
+                draft.recipientSource !== "manual" ? (
                   <form action={expandWarmupAction}>
                     <input type="hidden" name="campaignId" value={form.id} />
                     <Button type="submit" size="sm" variant="primary">

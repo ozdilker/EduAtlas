@@ -18,7 +18,7 @@ import {
   type CampaignStatus as CampaignStatusType,
 } from "./campaign-status";
 
-export type CampaignRecipientSource = "segment" | "external_import";
+export type CampaignRecipientSource = "segment" | "external_import" | "manual";
 
 export type CampaignImportMeta = Readonly<{
   readonly fileName: string;

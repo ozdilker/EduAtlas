@@ -21,6 +21,8 @@ import {
   promotePendingRecipientsToJobs,
 } from "./enqueue-prepared-targets";
 import { OutreachValidationError } from "./errors";
+import { matchCampaignRecipients } from "./match-outreach-recipients";
+import { CLAIM_INVITATION_TEMPLATE_ID } from "./outreach-seeds";
 import type { PrepareCampaignDependencies, PrepareCampaignResult } from "./prepare-campaign";
 
 /** Max upload size for outreach recipient files (5 MiB). */
@@ -394,6 +396,7 @@ export async function importExternalRecipients(
       institutionId: row.institutionId,
       displayName: row.institutionName,
       institutionMatch: row.institutionMatch,
+      source: "external_import",
       email: row.email,
       status: CampaignRecipientStatus.Pending,
       createdAt: input.now,
@@ -460,9 +463,12 @@ export async function prepareImportedCampaign(
   if (campaign.status !== CampaignStatus.Draft) {
     throw new OutreachValidationError("Only draft campaigns can be prepared.");
   }
-  if (campaign.recipientSource !== "external_import") {
+  if (
+    campaign.recipientSource !== "external_import" &&
+    campaign.recipientSource !== "manual"
+  ) {
     throw new OutreachValidationError(
-      "Bu kampanya Excel/CSV alıcı kaynağı kullanmıyor. Segment Prepare kullanın.",
+      "Bu kampanya Excel/CSV veya tekil alıcı kaynağı kullanmıyor. Segment Prepare kullanın.",
     );
   }
 
@@ -474,7 +480,23 @@ export async function prepareImportedCampaign(
   const recipients = await deps.recipientRepository.listByCampaignId(campaignId);
   if (recipients.length === 0) {
     throw new OutreachValidationError(
-      "Önce Excel/CSV import edin (Alıcı Kaynağı adımı).",
+      "Önce alıcı ekleyin (Excel import veya tekil alıcı).",
+    );
+  }
+
+  const isClaimCampaign = campaign.templateId === CLAIM_INVITATION_TEMPLATE_ID;
+  const preparablePending = recipients.filter((r) => {
+    if (r.status !== CampaignRecipientStatus.Pending) return false;
+    if (!isClaimCampaign) return true;
+    return (
+      r.institutionMatch !== "unmatched" && r.institutionMatch !== "ambiguous"
+    );
+  });
+  if (preparablePending.length === 0) {
+    throw new OutreachValidationError(
+      isClaimCampaign
+        ? "Prepare için eşleşmiş (matched) alıcı yok. Ambiguous/unmatched kayıtlar claim gönderimine kapalıdır."
+        : "Prepare için Pending alıcı yok.",
     );
   }
 
@@ -507,7 +529,7 @@ export async function prepareImportedCampaign(
     channel: campaign.channel,
     templateId: campaign.templateId,
     segmentId: campaign.segmentId,
-    recipientSource: "external_import",
+    recipientSource: campaign.recipientSource ?? "external_import",
     importMeta: campaign.importMeta,
     subjectOverride: campaign.subjectOverride,
     preheader: campaign.preheader,
@@ -529,8 +551,8 @@ export async function prepareImportedCampaign(
 }
 
 /**
- * Legacy one-shot: persist import then prepare (jobs). Prefer importExternalRecipients
- * + prepareImportedCampaign for the Growth Center wizard.
+ * Legacy one-shot: persist import, bounded match when possible, then prepare.
+ * Prefer importExternalRecipients + prepareImportedCampaign for the Growth Center wizard.
  */
 export async function prepareCampaignFromImport(
   input: PrepareCampaignFromImportInput,
@@ -543,6 +565,19 @@ export async function prepareCampaignFromImport(
     resolveCatalogMatches: false,
     nextRecipientId: deps.nextRecipientId,
   });
+
+  if (
+    deps.institutionRepository?.findByContactEmail ||
+    deps.institutionRepository?.findByExactName
+  ) {
+    await matchCampaignRecipients(
+      { campaignId: input.campaignId, now: input.now },
+      {
+        recipientRepository: deps.recipientRepository,
+        institutionRepository: deps.institutionRepository,
+      },
+    );
+  }
 
   const result = await prepareImportedCampaign(
     { campaignId: input.campaignId, now: input.now },

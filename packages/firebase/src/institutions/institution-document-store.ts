@@ -111,6 +111,23 @@ export interface InstitutionDocumentStore {
    * Sum of stored qualityScore + count for average KPIs (no document download).
    */
   sumAdminQualityScore?(filters?: AdminListFilters): Promise<{ count: number; sum: number }>;
+  /**
+   * Equality lookup on contactEmail (normalized lowercase) + hard limit.
+   * Single-field equality — no catalog download.
+   */
+  findByContactEmail?(
+    email: string,
+    limit: number,
+  ): Promise<InstitutionDocumentRecord[]>;
+  /**
+   * Equality lookup on name (+ optional cityId/districtId) + hard limit.
+   */
+  findByExactName?(input: {
+    name: string;
+    cityId?: string;
+    districtId?: string;
+    limit: number;
+  }): Promise<InstitutionDocumentRecord[]>;
   create(id: string, data: FirestoreInstitutionDocument): Promise<void>;
   /**
    * Creates many docs in as few round-trips as possible (Firestore WriteBatch).

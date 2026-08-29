@@ -1,4 +1,5 @@
 import { AggregateField, FieldPath, type Firestore, type Query } from "firebase-admin/firestore";
+import { foldTurkishText } from "@eduatlas/domain";
 import { countFirestoreRead, countFirestoreWrite } from "../monitoring/firestore-counter";
 import {
   type FirestoreInstitutionDocument,
@@ -366,6 +367,43 @@ export class FirestoreInstitutionDocumentStore implements InstitutionDocumentSto
     const count = Number(snapshot.data().count ?? 0);
     const sum = Number(snapshot.data().scoreSum ?? 0);
     return { count, sum };
+  }
+
+  async findByContactEmail(email: string, limit: number): Promise<InstitutionDocumentRecord[]> {
+    const normalized = email.trim().toLowerCase();
+    const capped = Math.max(0, Math.min(Math.floor(limit), 20));
+    if (!normalized || !normalized.includes("@") || capped === 0) return [];
+    countFirestoreRead();
+    const snapshot = await this.collection()
+      .where("contactEmail", "==", normalized)
+      .limit(capped)
+      .get();
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+  }
+
+  async findByExactName(input: {
+    name: string;
+    cityId?: string;
+    districtId?: string;
+    limit: number;
+  }): Promise<InstitutionDocumentRecord[]> {
+    const nameFolded = foldTurkishText(input.name.trim());
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    if (!nameFolded || capped === 0) return [];
+    countFirestoreRead();
+    let query: Query = this.collection().where("nameFolded", "==", nameFolded);
+    const cityId = input.cityId?.trim();
+    const districtId = input.districtId?.trim();
+    if (cityId) query = query.where("cityId", "==", cityId);
+    if (districtId) query = query.where("districtId", "==", districtId);
+    const snapshot = await query.limit(capped).get();
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
   }
 
   private buildAdminFilteredQuery(filters?: AdminListFilters): Query {

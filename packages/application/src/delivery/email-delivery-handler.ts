@@ -50,6 +50,22 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
         });
       }
 
+      if (template.id === CLAIM_INVITATION_TEMPLATE_ID) {
+        const match = input.recipient.institutionMatch;
+        const institutionId = input.job.institutionId.trim();
+        if (
+          match === "unmatched" ||
+          match === "ambiguous" ||
+          institutionId.startsWith("ext:")
+        ) {
+          return Object.freeze({
+            outcome: "transient_failure" as const,
+            errorMessage:
+              "Claim delivery blocked: recipient institution is unmatched or ambiguous.",
+          });
+        }
+      }
+
       const institutionName =
         input.recipient.displayName?.trim() ||
         (await this.options.resolveInstitutionName(input.job.institutionId));
