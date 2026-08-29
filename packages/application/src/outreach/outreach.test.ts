@@ -190,7 +190,7 @@ describe("OutreachService", () => {
     const after = await service.countRecipientsByStatus("camp_1");
     expect(after.claimed).toBe(1);
 
-    const preview = await service.previewTemplate("tpl_1");
+    const preview = await service.previewTemplate("tpl_1", "Kadro Kurs");
     expect(preview.html).toContain("max-width:600px");
 
     const logs = await stores.logRepository.listByCampaignId("camp_1");

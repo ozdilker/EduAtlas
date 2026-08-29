@@ -47,6 +47,7 @@ export {
 export {
   createCampaignRecipient,
   type CampaignRecipient,
+  type CampaignRecipientInstitutionMatch,
   type CreateCampaignRecipientInput,
 } from "./campaign-recipient";
 export {

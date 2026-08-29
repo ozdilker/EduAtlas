@@ -24,7 +24,7 @@ import type { DeliveryJobRepository } from "../delivery/delivery-job-repository"
 import type { InstitutionRepository } from "../institutions/institution-repository";
 import type { EmailService } from "../notifications/email-service";
 import type { RenderedEmail } from "../notifications/email-templates";
-import { applyMailTokens } from "./apply-mail-tokens";
+import { applyMailTokens, assertPersonalizationInstitutionName } from "./apply-mail-tokens";
 import type { CampaignLogRepository } from "./campaign-log-repository";
 import { type CampaignProgress, getCampaignProgress } from "./campaign-progress";
 import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
@@ -40,7 +40,10 @@ import {
   prepareCampaign as prepareCampaignAction,
 } from "./prepare-campaign";
 import {
+  importExternalRecipients as importExternalRecipientsAction,
   prepareCampaignFromImport as prepareCampaignFromImportAction,
+  prepareImportedCampaign as prepareImportedCampaignAction,
+  type ImportExternalRecipientsResult,
   type OutreachImportParseResult,
 } from "./import-campaign-recipients";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
@@ -215,6 +218,16 @@ export class OutreachService {
     if (recipients.length === 0) {
       throw new OutreachValidationError("Approve requires a prepared recipient list.");
     }
+    if (campaign.recipientSource === "external_import") {
+      const prepared = recipients.filter(
+        (r) => r.status !== CampaignRecipientStatus.Pending,
+      );
+      if (prepared.length === 0) {
+        throw new OutreachValidationError(
+          "Approve requires Import Prepare (Import alone is not enough).",
+        );
+      }
+    }
 
     const updated = createCampaign(
       toCreateInput(campaign, {
@@ -282,7 +295,34 @@ export class OutreachService {
   }
 
   /**
+   * Excel/CSV import — persists Pending CampaignRecipients only (no DeliveryJobs).
+   */
+  async importExternalRecipients(input: {
+    campaignId: string;
+    fileName: string;
+    content: Uint8Array;
+    now: string;
+  }): Promise<ImportExternalRecipientsResult> {
+    if (!this.deps.institutionRepository) {
+      throw new OutreachValidationError("Institution repository is not configured.");
+    }
+    const result = await importExternalRecipientsAction(input, {
+      campaignRepository: this.deps.campaignRepository,
+      recipientRepository: this.deps.recipientRepository,
+      institutionRepository: this.deps.institutionRepository,
+      billingProtectionRepository: this.deps.billingProtectionRepository,
+    });
+    await this.log(
+      input.campaignId.trim(),
+      `Imported ${result.recipientCount} recipient(s) (matched ${result.matchedCount}, unmatched ${result.unmatchedCount}); file=${input.fileName}.`,
+      input.now,
+    );
+    return result;
+  }
+
+  /**
    * Excel/CSV import prepare — validates file, enqueues recipients/jobs, leaves draft.
+   * Prefer importExternalRecipients + prepareImportedCampaign for the wizard.
    */
   async prepareCampaignFromImport(input: {
     campaignId: string;
@@ -319,6 +359,41 @@ export class OutreachService {
       input.campaignId.trim(),
       `Import prepared ${result.recipientCount} recipient(s) (total ${result.totalRecipients}/${result.targetLimit}); file=${input.fileName}; accepted=${result.parse.accepted.length}; rejected=${result.parse.rejected.length}; dupEmails=${result.parse.duplicateEmailCount}.`,
       input.now,
+    );
+    return result;
+  }
+
+  /**
+   * Promotes persisted external-import Pending recipients to Queued + DeliveryJobs.
+   */
+  async prepareImportedCampaign(
+    campaignId: string,
+    now: string,
+  ): Promise<PrepareCampaignResult> {
+    if (!this.deps.deliveryJobRepository || !this.deps.institutionRepository) {
+      throw new OutreachValidationError("Delivery repositories are not configured.");
+    }
+    const config = this.deps.deliveryConfig ?? loadOutreachDeliveryConfig();
+    const targetLimit = this.deps.warmupSettingsRepository
+      ? currentWarmupLimit(await this.getWarmupSettings())
+      : config.warmupBatchSize;
+    const result = await prepareImportedCampaignAction(
+      { campaignId, now },
+      {
+        campaignRepository: this.deps.campaignRepository,
+        segmentRepository: this.deps.segmentRepository,
+        recipientRepository: this.deps.recipientRepository,
+        deliveryJobRepository: this.deps.deliveryJobRepository,
+        institutionRepository: this.deps.institutionRepository,
+        config,
+        targetLimit,
+        billingProtectionRepository: this.deps.billingProtectionRepository,
+      },
+    );
+    await this.log(
+      campaignId.trim(),
+      `Import prepare (persisted): ${result.recipientCount} recipient(s) (total ${result.totalRecipients}/${result.targetLimit}).`,
+      now,
     );
     return result;
   }
@@ -575,16 +650,17 @@ export class OutreachService {
     return count;
   }
 
-  async previewTemplate(templateId: string): Promise<RenderedEmail> {
+  async previewTemplate(templateId: string, institutionName: string): Promise<RenderedEmail> {
     const template = await this.deps.templateRepository.getById(templateId);
     if (!template) {
       throw new OutreachNotFoundError(`Template not found: ${templateId}`);
     }
+    const name = assertPersonalizationInstitutionName(institutionName);
     if (template.id === CLAIM_INVITATION_TEMPLATE_ID) {
       return renderClaimInvitationMail({
         subject: template.subject,
         preheader: template.preview,
-        institutionName: "Örnek Kurum",
+        institutionName: name,
         ctaHref: "https://eduatlas.com.tr/login",
         bodyLines: template.bodyLines,
         ...(this.deps.mailLogoUrl ? { logoUrl: this.deps.mailLogoUrl } : {}),
@@ -825,6 +901,7 @@ export class OutreachService {
     institutionName: string;
     ctaHref: string;
   }): Promise<RenderedEmail> {
+    const institutionName = assertPersonalizationInstitutionName(input.institutionName);
     const template = await this.deps.templateRepository.getById(input.templateId.trim());
     if (!template) {
       throw new OutreachValidationError("Campaign template is missing.");
@@ -848,16 +925,14 @@ export class OutreachService {
       return renderClaimInvitationMail({
         subject,
         preheader,
-        institutionName: input.institutionName,
+        institutionName,
         ctaHref: input.ctaHref,
         bodyLines,
         ...(this.deps.mailLogoUrl ? { logoUrl: this.deps.mailLogoUrl } : {}),
       });
     }
 
-    const personalized = {
-      institutionName: input.institutionName,
-    };
+    const personalized = { institutionName };
     return renderCampaignTemplatePreview({
       ...template,
       subject: applyMailTokens(subject, personalized),

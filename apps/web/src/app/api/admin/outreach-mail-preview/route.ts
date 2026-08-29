@@ -36,12 +36,23 @@ export async function POST(request: Request) {
     const subject = String(body.subject ?? "").trim();
     const preheader = String(body.preheader ?? "").trim();
     const description = String(body.description ?? "");
-    const institutionName =
-      String(body.institutionName ?? "").trim() || "Örnek Anaokulu";
+    const institutionName = String(body.institutionName ?? "").trim();
 
     if (!templateId) {
       return NextResponse.json(
         { ok: false, message: "Şablon seçilmedi." },
+        { status: 400 },
+      );
+    }
+    if (!institutionName) {
+      return NextResponse.json(
+        { ok: false, message: "Preview için alıcı bulunamadı." },
+        { status: 400 },
+      );
+    }
+    if (/^(örnek anaokulu|örnek kurum)$/i.test(institutionName)) {
+      return NextResponse.json(
+        { ok: false, message: "Demo kurum adı kullanılamaz. Gerçek alıcı seçin." },
         { status: 400 },
       );
     }

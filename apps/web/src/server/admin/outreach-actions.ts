@@ -117,11 +117,16 @@ export async function sendOutreachTestEmailAction(formData: FormData): Promise<v
 
   const campaignId = formString(formData, "campaignId");
   const to = formString(formData, "to");
-  const institutionName =
-    formString(formData, "institutionName") || "Örnek Anaokulu";
+  const institutionName = formString(formData, "institutionName");
 
   if (!campaignId) {
     outreachRedirect({ error: "Önce bir kampanya kaydedin." });
+  }
+  if (!institutionName) {
+    outreachRedirect({
+      id: campaignId,
+      error: "Test için personalization alıcısı seçin (Preview recipient).",
+    });
   }
 
   try {
@@ -181,7 +186,7 @@ export async function prepareOutreachCampaignAction(formData: FormData): Promise
   });
 }
 
-export async function prepareOutreachImportAction(formData: FormData): Promise<void> {
+export async function importOutreachRecipientsAction(formData: FormData): Promise<void> {
   await requireAdminSession();
   const service = await getOutreachService();
   const campaignId = formString(formData, "campaignId");
@@ -195,7 +200,7 @@ export async function prepareOutreachImportAction(formData: FormData): Promise<v
   const now = new Date().toISOString();
   try {
     const content = new Uint8Array(await file.arrayBuffer());
-    const result = await service.prepareCampaignFromImport({
+    const result = await service.importExternalRecipients({
       campaignId,
       fileName: file.name,
       content,
@@ -203,7 +208,49 @@ export async function prepareOutreachImportAction(formData: FormData): Promise<v
     });
     outreachRedirect({
       id: campaignId,
-      notice: `Import prepare: ${result.recipientCount} alıcı (kabul ${result.parse.accepted.length}, red ${result.parse.rejected.length}, tekrar ${result.parse.duplicateEmailCount}).`,
+      notice: `Import: ${result.recipientCount} alıcı kaydedildi (eşleşen ${result.matchedCount}, eşleşmeyen ${result.unmatchedCount}). Prepare henüz çalışmadı.`,
+    });
+  } catch (error) {
+    if (isRedirectError(error)) throw error;
+    const message =
+      isOutreachValidationError(error) || error instanceof Error
+        ? error.message
+        : "Import başarısız.";
+    outreachRedirect({ id: campaignId, error: message });
+  }
+}
+
+export async function prepareOutreachImportAction(formData: FormData): Promise<void> {
+  await requireAdminSession();
+  const service = await getOutreachService();
+  const campaignId = formString(formData, "campaignId");
+  if (!campaignId) {
+    outreachRedirect({ error: "Kampanya seçilmedi." });
+  }
+  const now = new Date().toISOString();
+  const file = formData.get("file");
+
+  try {
+    // Prefer prepare from persisted recipients (wizard Import step).
+    // File upload remains supported for one-shot legacy prepare.
+    if (file instanceof File && file.size > 0) {
+      const content = new Uint8Array(await file.arrayBuffer());
+      const result = await service.prepareCampaignFromImport({
+        campaignId,
+        fileName: file.name,
+        content,
+        now,
+      });
+      outreachRedirect({
+        id: campaignId,
+        notice: `Import prepare: ${result.recipientCount} alıcı (kabul ${result.parse.accepted.length}, red ${result.parse.rejected.length}, tekrar ${result.parse.duplicateEmailCount}).`,
+      });
+    }
+
+    const result = await service.prepareImportedCampaign(campaignId, now);
+    outreachRedirect({
+      id: campaignId,
+      notice: `Import prepare: ${result.recipientCount} alıcı kuyruğa alındı (toplam ${result.totalRecipients}/${result.targetLimit}).`,
     });
   } catch (error) {
     if (isRedirectError(error)) throw error;

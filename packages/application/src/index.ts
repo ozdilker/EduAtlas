@@ -465,6 +465,7 @@ export {
 } from "./notifications";
 export {
   applyMailTokens,
+  assertPersonalizationInstitutionName,
   resolveCampaignBodyLines,
   buildCampaignPostSummary,
   buildRecipientChecklist,
@@ -534,6 +535,8 @@ export {
   parseWarmupStage,
   prepareCampaign,
   prepareCampaignFromImport,
+  prepareImportedCampaign,
+  importExternalRecipients,
   previewSegmentInstitutions,
   type OutreachImportParseResult,
   type RenderClaimInvitationMailInput,

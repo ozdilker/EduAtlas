@@ -4,12 +4,20 @@ import {
   type CampaignRecipientStatus as CampaignRecipientStatusType,
 } from "./campaign-recipient-status";
 
+/** Whether the recipient maps to a catalog Institution (claim-safe). */
+export type CampaignRecipientInstitutionMatch = "matched" | "unmatched";
+
 export type CampaignRecipient = Readonly<{
   readonly id: string;
   readonly campaignId: string;
   readonly institutionId: string;
   /** Optional display name for mail tokens (external import). */
   readonly displayName?: string;
+  /**
+   * Catalog match for external import. Matched → real institutionId;
+   * unmatched → synthetic ext: id (blocked from Prepare/send).
+   */
+  readonly institutionMatch?: CampaignRecipientInstitutionMatch;
   readonly email: string;
   readonly status: CampaignRecipientStatusType;
   readonly sentAt?: string;
@@ -26,6 +34,7 @@ export type CreateCampaignRecipientInput = {
   campaignId: string;
   institutionId: string;
   displayName?: string;
+  institutionMatch?: CampaignRecipientInstitutionMatch;
   email: string;
   status?: CampaignRecipientStatusType | string;
   sentAt?: string;
@@ -47,6 +56,14 @@ export function createCampaignRecipient(input: CreateCampaignRecipientInput): Ca
   const displayName = input.displayName?.trim();
   const email = input.email.trim().toLowerCase();
   const lastError = input.lastError?.trim();
+  const institutionMatch = input.institutionMatch;
+  if (
+    institutionMatch !== undefined &&
+    institutionMatch !== "matched" &&
+    institutionMatch !== "unmatched"
+  ) {
+    throw new Error("CampaignRecipient.institutionMatch must be matched or unmatched.");
+  }
   const status =
     typeof input.status === "string"
       ? parseCampaignRecipientStatus(input.status)
@@ -74,6 +91,7 @@ export function createCampaignRecipient(input: CreateCampaignRecipientInput): Ca
     campaignId,
     institutionId,
     ...(displayName ? { displayName } : {}),
+    ...(institutionMatch ? { institutionMatch } : {}),
     email,
     status,
     ...(input.sentAt ? { sentAt: input.sentAt } : {}),

@@ -508,6 +508,7 @@ export {
   type CampaignImportMeta,
   type CampaignLog,
   type CampaignRecipient,
+  type CampaignRecipientInstitutionMatch,
   type CampaignRecipientSource,
   type CampaignSegment,
   type CampaignSegmentFilters,

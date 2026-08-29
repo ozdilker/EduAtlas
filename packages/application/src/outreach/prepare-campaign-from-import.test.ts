@@ -99,7 +99,7 @@ describe("prepareCampaignFromImport", () => {
         config,
         targetLimit: 20,
         nextRecipientId: () => `crec_${++seq}`,
-        nextJobId: () => `djob_${seq}`,
+        nextJobId: () => `djob_${++seq}`,
       },
     );
 

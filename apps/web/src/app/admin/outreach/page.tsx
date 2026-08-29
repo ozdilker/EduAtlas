@@ -78,10 +78,18 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       form={form}
       previewHtml={data.previewHtml}
       previewSubject={data.previewSubject}
-      sampleInstitutionName={data.sampleInstitutionName}
+      previewInstitutionName={data.previewInstitutionName}
+      importMeta={data.importMeta}
       defaultTestEmail={user?.email ?? ""}
       progress={data.progress}
-      recipients={data.recipients}
+      recipients={data.recipients.map((r) => ({
+        id: r.id,
+        institutionId: r.institutionId,
+        ...(r.displayName ? { displayName: r.displayName } : {}),
+        email: r.email,
+        status: r.status,
+        ...(r.institutionMatch ? { institutionMatch: r.institutionMatch } : {}),
+      }))}
       segmentPreview={data.segmentPreview}
       summary={data.summary}
       warmup={data.warmup}

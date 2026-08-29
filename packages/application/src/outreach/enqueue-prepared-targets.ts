@@ -1,6 +1,7 @@
 import {
   buildDeliveryIdempotencyKey,
   type Campaign,
+  type CampaignRecipient,
   CampaignChannel,
   CampaignRecipientStatus,
   campaignIdAsString,
@@ -129,6 +130,92 @@ export async function enqueuePreparedTargets(
     recipientCount,
     skippedDuplicates,
     totalRecipients: input.existingRecipientCount + recipientCount,
+    targetLimit: input.targetLimit,
+  });
+}
+
+export type PromotePendingRecipientsInput = Readonly<{
+  readonly campaign: Campaign;
+  readonly now: string;
+  readonly recipients: readonly CampaignRecipient[];
+  readonly targetLimit: number;
+}>;
+
+/**
+ * Promotes existing Pending (matched) CampaignRecipients to Queued + Pending DeliveryJobs.
+ * Used after external import persistence — does not create new recipient rows.
+ */
+export async function promotePendingRecipientsToJobs(
+  input: PromotePendingRecipientsInput,
+  deps: EnqueuePreparedTargetsDependencies,
+): Promise<PrepareCampaignResult> {
+  const campaignId = campaignIdAsString(input.campaign.id);
+  const alreadyPrepared = input.recipients.filter(
+    (r) => r.status !== CampaignRecipientStatus.Pending,
+  ).length;
+  const slots = Math.max(0, input.targetLimit - alreadyPrepared);
+  if (slots === 0) {
+    return Object.freeze({
+      recipientCount: 0,
+      skippedDuplicates: 0,
+      totalRecipients: input.recipients.length,
+      targetLimit: input.targetLimit,
+    });
+  }
+
+  let recipientCount = 0;
+  let skippedDuplicates = 0;
+
+  for (const recipient of input.recipients) {
+    if (recipientCount >= slots) break;
+    if (recipient.status !== CampaignRecipientStatus.Pending) {
+      continue;
+    }
+    // Unmatched (ext:) rows are allowed: personalization uses displayName and CTA
+    // stays the shared login URL — never invent a catalog claim link for them.
+
+    const institutionId = recipient.institutionId.trim();
+    const idempotencyKey = buildDeliveryIdempotencyKey({
+      campaignId,
+      institutionId,
+      channel: input.campaign.channel,
+    });
+    const existingJob = await deps.deliveryJobRepository.getByIdempotencyKey(idempotencyKey);
+    if (existingJob) {
+      skippedDuplicates += 1;
+      continue;
+    }
+
+    const job = createDeliveryJob({
+      id: deps.nextJobId?.() ?? defaultId("djob"),
+      channel: input.campaign.channel ?? CampaignChannel.Email,
+      campaignId,
+      recipientId: recipient.id,
+      institutionId,
+      status: DeliveryJobStatus.Pending,
+      idempotencyKey,
+      attemptCount: 0,
+      maxAttempts: deps.config.maxAttempts,
+      availableAt: input.now,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+    await deps.deliveryJobRepository.save(job);
+
+    await deps.recipientRepository.update(
+      createCampaignRecipient({
+        ...recipient,
+        status: CampaignRecipientStatus.Queued,
+        updatedAt: input.now,
+      }),
+    );
+    recipientCount += 1;
+  }
+
+  return Object.freeze({
+    recipientCount,
+    skippedDuplicates,
+    totalRecipients: alreadyPrepared + recipientCount,
     targetLimit: input.targetLimit,
   });
 }

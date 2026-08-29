@@ -4,12 +4,14 @@ import {
 } from "@eduatlas/application";
 import { NextResponse } from "next/server";
 import { assertAdminPortalAccess } from "@/server/auth/guards";
+import { getOutreachService } from "@/server/outreach/store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Validates Growth Center Excel/CSV recipient import without writing recipients/jobs.
+ * Validates Excel/CSV and persists Pending CampaignRecipients (no DeliveryJobs).
+ * Requires campaignId — source of truth is Firestore, not browser state.
  */
 export async function POST(request: Request) {
   try {
@@ -23,7 +25,14 @@ export async function POST(request: Request) {
 
   try {
     const formData = await request.formData();
+    const campaignId = String(formData.get("campaignId") ?? "").trim();
     const file = formData.get("file");
+    if (!campaignId) {
+      return NextResponse.json(
+        { ok: false, message: "Önce kampanyayı kaydedin, sonra Excel/CSV yükleyin." },
+        { status: 400 },
+      );
+    }
     if (!(file instanceof File) || file.size <= 0) {
       return NextResponse.json(
         { ok: false, message: "Lütfen bir .csv veya .xlsx dosyası seçin." },
@@ -32,20 +41,33 @@ export async function POST(request: Request) {
     }
 
     const content = new Uint8Array(await file.arrayBuffer());
-    const parse = parseOutreachRecipientImport({
+    // Fast validate before persistence (clearer errors for empty/invalid files).
+    parseOutreachRecipientImport({
       fileName: file.name,
       content,
     });
 
+    const service = await getOutreachService();
+    const result = await service.importExternalRecipients({
+      campaignId,
+      fileName: file.name,
+      content,
+      now: new Date().toISOString(),
+    });
+
     return NextResponse.json({
       ok: true,
-      fileName: parse.fileName,
-      rowCount: parse.rowCount,
-      acceptedCount: parse.accepted.length,
-      rejectedCount: parse.rejected.length,
-      duplicateEmailCount: parse.duplicateEmailCount,
-      accepted: parse.accepted.slice(0, 50),
-      rejected: parse.rejected.slice(0, 50),
+      persisted: true,
+      fileName: result.parse.fileName,
+      rowCount: result.parse.rowCount,
+      acceptedCount: result.parse.accepted.length,
+      rejectedCount: result.parse.rejected.length,
+      duplicateEmailCount: result.parse.duplicateEmailCount,
+      matchedCount: result.matchedCount,
+      unmatchedCount: result.unmatchedCount,
+      recipientCount: result.recipientCount,
+      accepted: result.parse.accepted.slice(0, 50),
+      rejected: result.parse.rejected.slice(0, 50),
     });
   } catch (error) {
     console.error("[eduatlas] POST /api/admin/outreach-import-preview failed:", error);

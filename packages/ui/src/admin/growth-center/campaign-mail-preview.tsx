@@ -17,7 +17,8 @@ export type CampaignMailPreviewProps = {
 };
 
 function personalize(text: string, institutionName: string): string {
-  const name = institutionName.trim() || "Kurumunuz";
+  const name = institutionName.trim();
+  if (!name) return text;
   return text.replaceAll("{{institutionName}}", name);
 }
 

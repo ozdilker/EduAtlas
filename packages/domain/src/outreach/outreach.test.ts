@@ -95,6 +95,20 @@ describe("createCampaignRecipient", () => {
     });
     expect(r.displayName).toBe("Örnek Okul");
   });
+
+  it("stores institutionMatch for external import", () => {
+    const r = createCampaignRecipient({
+      id: "rec_3",
+      campaignId: "camp_1",
+      institutionId: "inst_real",
+      displayName: "Kadro Kurs",
+      institutionMatch: "matched",
+      email: "info@kadrokurs.com",
+      createdAt: "2026-08-02T00:00:00.000Z",
+      updatedAt: "2026-08-02T00:00:00.000Z",
+    });
+    expect(r.institutionMatch).toBe("matched");
+  });
 });
 
 describe("createCampaign recipientSource", () => {

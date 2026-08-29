@@ -47,6 +47,7 @@ export type AdminOutreachRecipientRow = Readonly<{
   displayName?: string;
   email: string;
   status: string;
+  institutionMatch?: "matched" | "unmatched";
 }>;
 
 export type AdminOutreachOption = Readonly<{
@@ -111,7 +112,14 @@ export type AdminOutreachPageData = Readonly<{
   selected: AdminOutreachCampaignRow | null;
   previewHtml: string;
   previewSubject: string;
-  sampleInstitutionName: string;
+  previewInstitutionName: string | null;
+  importMeta: {
+    fileName: string;
+    acceptedCount: number;
+    rejectedCount: number;
+    duplicateEmailCount: number;
+    importedAt: string;
+  } | null;
   defaultCtaHref: string;
   progress: AdminOutreachProgress | null;
   recipients: readonly AdminOutreachRecipientRow[];
@@ -129,7 +137,19 @@ export type AdminOutreachPageData = Readonly<{
   error?: string;
 }>;
 
-const SAMPLE_INSTITUTION_NAME = "Örnek Anaokulu";
+function resolvePreviewInstitutionName(
+  recipients: readonly { displayName?: string; email: string; status: string }[],
+): string | null {
+  const withName = recipients.find((r) => r.displayName?.trim());
+  if (withName?.displayName?.trim()) return withName.displayName.trim();
+  return null;
+}
+
+function countPreparedRecipients(
+  recipients: readonly { status: string }[],
+): number {
+  return recipients.filter((r) => r.status !== "pending").length;
+}
 
 function firstParam(value: string | string[] | undefined): string | undefined {
   if (Array.isArray(value)) return value[0];
@@ -173,7 +193,7 @@ export async function getAdminOutreachPageData(searchParams: {
     campaigns.map(async (c) => {
       const id = campaignIdAsString(c.id);
       const rows = await stores.recipientRepository.listByCampaignId(id);
-      return [id, rows.length] as const;
+      return [id, countPreparedRecipients(rows)] as const;
     }),
   );
   const recipientCountById = new Map(recipientCounts);
@@ -203,6 +223,8 @@ export async function getAdminOutreachPageData(searchParams: {
 
   let previewHtml = "";
   let previewSubject = "";
+  let previewInstitutionName: string | null = null;
+  let importMeta: AdminOutreachPageData["importMeta"] = null;
   let progress: AdminOutreachProgress | null = null;
   let recipients: AdminOutreachRecipientRow[] = [];
   let segmentPreview: SegmentInstitutionPreview[] = [];
@@ -227,6 +249,15 @@ export async function getAdminOutreachPageData(searchParams: {
     preSendComplete = isPreSendChecklistComplete(preSendChecklist);
     postSummary = selectedDomain?.postSummary ?? null;
     learnings = selectedDomain?.learnings ?? null;
+    if (selectedDomain?.importMeta) {
+      importMeta = {
+        fileName: selectedDomain.importMeta.fileName,
+        acceptedCount: selectedDomain.importMeta.acceptedCount,
+        rejectedCount: selectedDomain.importMeta.rejectedCount,
+        duplicateEmailCount: selectedDomain.importMeta.duplicateEmailCount,
+        importedAt: selectedDomain.importMeta.importedAt,
+      };
+    }
     const template = templateById.get(selected.templateId);
     const subject = selected.subjectOverride;
     const preheader = selected.preheader;
@@ -242,15 +273,31 @@ export async function getAdminOutreachPageData(searchParams: {
       hasTemplate: Boolean(template),
     });
 
-    try {
-      const preview = await service.previewCampaignMail({
-        campaignId: selected.id,
-        institutionName: SAMPLE_INSTITUTION_NAME,
-        ctaHref,
-      });
-      previewHtml = preview.html;
-      previewSubject = preview.subject;
-    } catch {
+    const recipientRows = await stores.recipientRepository.listByCampaignId(selected.id);
+    recipients = recipientRows.map((r) => ({
+      id: r.id,
+      institutionId: r.institutionId,
+      ...(r.displayName ? { displayName: r.displayName } : {}),
+      email: r.email,
+      status: r.status,
+      ...(r.institutionMatch ? { institutionMatch: r.institutionMatch } : {}),
+    }));
+    previewInstitutionName = resolvePreviewInstitutionName(recipients);
+
+    if (previewInstitutionName) {
+      try {
+        const preview = await service.previewCampaignMail({
+          campaignId: selected.id,
+          institutionName: previewInstitutionName,
+          ctaHref,
+        });
+        previewHtml = preview.html;
+        previewSubject = preview.subject;
+      } catch {
+        previewHtml = "";
+        previewSubject = "";
+      }
+    } else {
       previewHtml = "";
       previewSubject = "";
     }
@@ -268,14 +315,6 @@ export async function getAdminOutreachPageData(searchParams: {
     const remaining = remainingDeliveryJobs(progressRaw);
     const etaMinutes = estimateDeliveryEtaMinutes(remaining, deliveryConfig.ratePerMinute);
 
-    const recipientRows = await stores.recipientRepository.listByCampaignId(selected.id);
-    recipients = recipientRows.map((r) => ({
-      id: r.id,
-      institutionId: r.institutionId,
-      ...(r.displayName ? { displayName: r.displayName } : {}),
-      email: r.email,
-      status: r.status,
-    }));
     const check = buildRecipientChecklist({
       recipients: recipientRows,
       warmupLimit,
@@ -286,6 +325,8 @@ export async function getAdminOutreachPageData(searchParams: {
       ok: item.ok,
       ...(item.detail ? { detail: item.detail } : {}),
     }));
+
+    const preparedRecipientCount = countPreparedRecipients(recipientRows);
 
     try {
       const billingProtectionDeps = await getBillingProtectionDeps();
@@ -300,7 +341,7 @@ export async function getAdminOutreachPageData(searchParams: {
       segmentPreview = [...segPreview.items];
       summary = {
         segmentMatchCount: segPreview.matchCount,
-        preparedRecipientCount: selected.recipientCount,
+        preparedRecipientCount,
         warmupBatchSize: warmupLimit,
         warmupStage: warmupSettings.stage,
         warmupLimit,
@@ -312,7 +353,7 @@ export async function getAdminOutreachPageData(searchParams: {
     } catch {
       summary = {
         segmentMatchCount: 0,
-        preparedRecipientCount: selected.recipientCount,
+        preparedRecipientCount,
         warmupBatchSize: warmupLimit,
         warmupStage: warmupSettings.stage,
         warmupLimit,
@@ -339,7 +380,8 @@ export async function getAdminOutreachPageData(searchParams: {
     selected,
     previewHtml,
     previewSubject,
-    sampleInstitutionName: SAMPLE_INSTITUTION_NAME,
+    previewInstitutionName,
+    importMeta,
     defaultCtaHref: ctaHref,
     progress,
     recipients: Object.freeze(recipients),

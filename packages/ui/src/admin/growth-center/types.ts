@@ -39,6 +39,7 @@ export type GrowthRecipientView = Readonly<{
   displayName?: string;
   email: string;
   status: string;
+  institutionMatch?: "matched" | "unmatched";
 }>;
 
 export type GrowthSegmentPreviewRow = Readonly<{
@@ -132,7 +133,17 @@ export type GrowthCenterPageProps = {
   form: GrowthFormValues;
   previewHtml: string;
   previewSubject: string;
-  sampleInstitutionName: string;
+  /** @deprecated Demo fixture label — never use for render/send. Prefer previewInstitutionName. */
+  sampleInstitutionName?: string;
+  /** Real recipient displayName for mail preview/test personalization. */
+  previewInstitutionName?: string | null;
+  importMeta?: {
+    fileName: string;
+    acceptedCount: number;
+    rejectedCount: number;
+    duplicateEmailCount: number;
+    importedAt: string;
+  } | null;
   defaultTestEmail?: string;
   progress?: GrowthProgressView | null;
   recipients?: readonly GrowthRecipientView[];
@@ -152,6 +163,7 @@ export type GrowthCenterPageProps = {
   testSendAction: (formData: FormData) => Promise<void>;
   prepareAction?: (formData: FormData) => Promise<void>;
   prepareImportAction?: (formData: FormData) => Promise<void>;
+  importRecipientsAction?: (formData: FormData) => Promise<void>;
   approveAction?: (formData: FormData) => Promise<void>;
   runAction?: (formData: FormData) => Promise<void>;
   pauseAction?: (formData: FormData) => Promise<void>;

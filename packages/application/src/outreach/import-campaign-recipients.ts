@@ -1,17 +1,25 @@
 import {
   buildExternalInstitutionId,
+  CampaignRecipientStatus,
   CampaignStatus,
   campaignIdAsString,
   createCampaign,
+  createCampaignRecipient,
   importSourceFormatFromFileName,
   ImportSourceFormat,
+  institutionIdAsString,
+  type CampaignRecipientInstitutionMatch,
 } from "@eduatlas/domain";
 import { assertOperationAllowed, type BillingProtectionRepository } from "../billing-protection";
 import { parseCsvTable } from "../institution-import/parsers/csv-table-parser";
 import { decodeImportTextBytes } from "../institution-import/parsers/decode-import-text";
 import { parseExcelTable } from "../institution-import/parsers/excel-table-parser";
+import type { InstitutionRepository } from "../institutions/institution-repository";
+import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 import type { CampaignRepository } from "./campaign-repository";
-import { enqueuePreparedTargets, type PreparedTarget } from "./enqueue-prepared-targets";
+import {
+  promotePendingRecipientsToJobs,
+} from "./enqueue-prepared-targets";
 import { OutreachValidationError } from "./errors";
 import type { PrepareCampaignDependencies, PrepareCampaignResult } from "./prepare-campaign";
 
@@ -50,6 +58,7 @@ export type OutreachImportAcceptedRow = Readonly<{
   readonly institutionName: string;
   readonly email: string;
   readonly institutionId: string;
+  readonly institutionMatch: CampaignRecipientInstitutionMatch;
 }>;
 
 export type OutreachImportParseResult = Readonly<{
@@ -65,6 +74,20 @@ export type PrepareCampaignFromImportInput = Readonly<{
   readonly fileName: string;
   readonly content: Uint8Array;
   readonly now: string;
+}>;
+
+export type ImportExternalRecipientsInput = Readonly<{
+  readonly campaignId: string;
+  readonly fileName: string;
+  readonly content: Uint8Array;
+  readonly now: string;
+}>;
+
+export type ImportExternalRecipientsResult = Readonly<{
+  readonly parse: OutreachImportParseResult;
+  readonly recipientCount: number;
+  readonly matchedCount: number;
+  readonly unmatchedCount: number;
 }>;
 
 export type PrepareCampaignFromImportDependencies = PrepareCampaignDependencies &
@@ -102,8 +125,69 @@ function isValidEmail(email: string): boolean {
   return Boolean(local && domain && domain.includes("."));
 }
 
+function normalizeInstitutionName(name: string): string {
+  return name.trim().toLocaleLowerCase("tr-TR").replace(/\s+/g, " ");
+}
+
+/**
+ * Best-effort catalog match: exact contact email, else unique exact name.
+ * Never invents institution ids from the name string alone.
+ */
+export async function resolveOutreachInstitutionMatch(
+  row: { institutionName: string; email: string },
+  institutionRepository: InstitutionRepository | null | undefined,
+): Promise<{
+  institutionId: string;
+  institutionMatch: CampaignRecipientInstitutionMatch;
+}> {
+  const externalId = buildExternalInstitutionId(row.email);
+  if (!institutionRepository) {
+    return Object.freeze({
+      institutionId: externalId,
+      institutionMatch: "unmatched" as const,
+    });
+  }
+
+  const emailNeedle = row.email.trim().toLowerCase();
+  const nameNeedle = normalizeInstitutionName(row.institutionName);
+
+  const byEmail = await institutionRepository.list({
+    filters: { query: emailNeedle },
+    pageSize: 50,
+  });
+  const emailHit = byEmail.items.find(
+    (inst) => inst.contact.email?.trim().toLowerCase() === emailNeedle,
+  );
+  if (emailHit) {
+    return Object.freeze({
+      institutionId: institutionIdAsString(emailHit.id),
+      institutionMatch: "matched" as const,
+    });
+  }
+
+  const byName = await institutionRepository.list({
+    filters: { query: row.institutionName },
+    pageSize: 50,
+  });
+  const nameHits = byName.items.filter(
+    (inst) => normalizeInstitutionName(inst.name) === nameNeedle,
+  );
+  if (nameHits.length === 1 && nameHits[0]) {
+    return Object.freeze({
+      institutionId: institutionIdAsString(nameHits[0].id),
+      institutionMatch: "matched" as const,
+    });
+  }
+
+  return Object.freeze({
+    institutionId: externalId,
+    institutionMatch: "unmatched" as const,
+  });
+}
+
 /**
  * Parses and validates an outreach recipient CSV/XLSX (institutionName + email).
+ * Does not resolve catalog matches — callers attach match metadata after parse.
  */
 export function parseOutreachRecipientImport(input: {
   fileName: string;
@@ -191,15 +275,17 @@ export function parseOutreachRecipientImport(input: {
         institutionName,
         email,
         institutionId: buildExternalInstitutionId(email),
+        institutionMatch: "unmatched" as const,
       }),
     );
   });
 
   return Object.freeze({
     fileName,
-    rowCount: dataRows.filter((row) =>
-      sanitizeOutreachImportCell(String(row[nameIdx] ?? "")) ||
-      sanitizeOutreachImportCell(String(row[emailIdx] ?? "")),
+    rowCount: dataRows.filter(
+      (row) =>
+        sanitizeOutreachImportCell(String(row[nameIdx] ?? "")) ||
+        sanitizeOutreachImportCell(String(row[emailIdx] ?? "")),
     ).length,
     accepted: Object.freeze(accepted),
     rejected: Object.freeze(rejected),
@@ -207,14 +293,41 @@ export function parseOutreachRecipientImport(input: {
   });
 }
 
+async function attachInstitutionMatches(
+  parse: OutreachImportParseResult,
+  institutionRepository: InstitutionRepository | null | undefined,
+): Promise<OutreachImportParseResult> {
+  const accepted: OutreachImportAcceptedRow[] = [];
+  for (const row of parse.accepted) {
+    const match = await resolveOutreachInstitutionMatch(row, institutionRepository);
+    accepted.push(
+      Object.freeze({
+        ...row,
+        institutionId: match.institutionId,
+        institutionMatch: match.institutionMatch,
+      }),
+    );
+  }
+  return Object.freeze({
+    ...parse,
+    accepted: Object.freeze(accepted),
+  });
+}
+
 /**
- * Validates import file and enqueues recipients/jobs for a draft campaign.
- * Does not start sending. Sets recipientSource + importMeta; leaves status draft.
+ * Persists Excel/CSV recipients as Pending CampaignRecipients (no DeliveryJobs).
+ * Idempotent for draft re-import before Prepare: replaces prior Pending rows.
  */
-export async function prepareCampaignFromImport(
-  input: PrepareCampaignFromImportInput,
-  deps: PrepareCampaignFromImportDependencies,
-): Promise<PrepareCampaignResult & { parse: OutreachImportParseResult }> {
+export async function importExternalRecipients(
+  input: ImportExternalRecipientsInput,
+  deps: {
+    readonly campaignRepository: CampaignRepository;
+    readonly recipientRepository: CampaignRecipientRepository;
+    readonly institutionRepository?: InstitutionRepository | null;
+    readonly billingProtectionRepository?: BillingProtectionRepository | null;
+    readonly nextRecipientId?: () => string;
+  },
+): Promise<ImportExternalRecipientsResult> {
   const campaign = await deps.campaignRepository.getById(input.campaignId.trim());
   if (!campaign) {
     throw new OutreachValidationError(`Campaign not found: ${input.campaignId}`);
@@ -227,34 +340,52 @@ export async function prepareCampaignFromImport(
     billingProtectionRepository: deps.billingProtectionRepository,
   });
 
-  const parse = parseOutreachRecipientImport({
+  const parsed = parseOutreachRecipientImport({
     fileName: input.fileName,
     content: input.content,
   });
+  const parse = await attachInstitutionMatches(parsed, deps.institutionRepository);
 
-  const targetLimit = Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize);
+  if (parse.accepted.length === 0) {
+    throw new OutreachValidationError("İçe aktarılacak geçerli alıcı yok.");
+  }
+
   const campaignId = campaignIdAsString(campaign.id);
-  const existingRecipients = await deps.recipientRepository.listByCampaignId(campaignId);
+  const existing = await deps.recipientRepository.listByCampaignId(campaignId);
+  const prepared = existing.filter((r) => r.status !== CampaignRecipientStatus.Pending);
+  if (prepared.length > 0) {
+    throw new OutreachValidationError(
+      "Bu kampanyada Prepare edilmiş alıcılar var. Yeniden import için yeni taslak kullanın.",
+    );
+  }
 
-  const targets: PreparedTarget[] = parse.accepted.map((row) =>
-    Object.freeze({
+  if (existing.length > 0) {
+    await deps.recipientRepository.deleteByCampaignId(campaignId);
+  }
+
+  let seq = 0;
+  const nextId = () =>
+    deps.nextRecipientId?.() ?? `crec_imp_${Date.now().toString(36)}_${++seq}`;
+  let matchedCount = 0;
+  let unmatchedCount = 0;
+
+  for (const row of parse.accepted) {
+    if (row.institutionMatch === "matched") matchedCount += 1;
+    else unmatchedCount += 1;
+
+    const recipient = createCampaignRecipient({
+      id: nextId(),
+      campaignId,
       institutionId: row.institutionId,
-      email: row.email,
       displayName: row.institutionName,
-    }),
-  );
-
-  const result = await enqueuePreparedTargets(
-    {
-      campaign,
-      now: input.now,
-      targets,
-      targetLimit,
-      existingRecipientInstitutionIds: new Set(existingRecipients.map((r) => r.institutionId)),
-      existingRecipientCount: existingRecipients.length,
-    },
-    deps,
-  );
+      institutionMatch: row.institutionMatch,
+      email: row.email,
+      status: CampaignRecipientStatus.Pending,
+      createdAt: input.now,
+      updatedAt: input.now,
+    });
+    await deps.recipientRepository.save(recipient);
+  }
 
   const updated = createCampaign({
     id: campaignId,
@@ -280,6 +411,96 @@ export async function prepareCampaignFromImport(
     startedAt: campaign.startedAt,
     completedAt: campaign.completedAt,
     preSendChecklist: campaign.preSendChecklist,
+    execution: campaign.execution
+      ? {
+          ...campaign.execution,
+          preparedAt: undefined,
+        }
+      : undefined,
+    postSummary: campaign.postSummary,
+    learnings: campaign.learnings,
+  });
+  await deps.campaignRepository.update(updated);
+
+  return Object.freeze({
+    parse,
+    recipientCount: parse.accepted.length,
+    matchedCount,
+    unmatchedCount,
+  });
+}
+
+/**
+ * Prepare for external_import: promotes persisted Pending (matched) recipients to
+ * Queued + DeliveryJobs. Does not parse a file. Leaves status draft.
+ */
+export async function prepareImportedCampaign(
+  input: { campaignId: string; now: string },
+  deps: PrepareCampaignFromImportDependencies,
+): Promise<PrepareCampaignResult> {
+  const campaign = await deps.campaignRepository.getById(input.campaignId.trim());
+  if (!campaign) {
+    throw new OutreachValidationError(`Campaign not found: ${input.campaignId}`);
+  }
+  if (campaign.status !== CampaignStatus.Draft) {
+    throw new OutreachValidationError("Only draft campaigns can be prepared.");
+  }
+  if (campaign.recipientSource !== "external_import") {
+    throw new OutreachValidationError(
+      "Bu kampanya Excel/CSV alıcı kaynağı kullanmıyor. Segment Prepare kullanın.",
+    );
+  }
+
+  await assertOperationAllowed("OUTREACH_PREPARE", {
+    billingProtectionRepository: deps.billingProtectionRepository,
+  });
+
+  const campaignId = campaignIdAsString(campaign.id);
+  const recipients = await deps.recipientRepository.listByCampaignId(campaignId);
+  if (recipients.length === 0) {
+    throw new OutreachValidationError(
+      "Önce Excel/CSV import edin (Alıcı Kaynağı adımı).",
+    );
+  }
+
+  const pending = recipients.filter((r) => r.status === CampaignRecipientStatus.Pending);
+  if (pending.length === 0) {
+    return Object.freeze({
+      recipientCount: 0,
+      skippedDuplicates: 0,
+      totalRecipients: recipients.length,
+      targetLimit: Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize),
+    });
+  }
+
+  const targetLimit = Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize);
+  const result = await promotePendingRecipientsToJobs(
+    {
+      campaign,
+      now: input.now,
+      recipients,
+      targetLimit,
+    },
+    deps,
+  );
+
+  const updated = createCampaign({
+    id: campaignId,
+    name: campaign.name,
+    description: campaign.description,
+    status: campaign.status,
+    channel: campaign.channel,
+    templateId: campaign.templateId,
+    segmentId: campaign.segmentId,
+    recipientSource: "external_import",
+    importMeta: campaign.importMeta,
+    subjectOverride: campaign.subjectOverride,
+    preheader: campaign.preheader,
+    createdAt: campaign.createdAt,
+    createdBy: campaign.createdBy,
+    startedAt: campaign.startedAt,
+    completedAt: campaign.completedAt,
+    preSendChecklist: campaign.preSendChecklist,
     execution: {
       ...(campaign.execution ?? {}),
       preparedAt: input.now,
@@ -289,5 +510,29 @@ export async function prepareCampaignFromImport(
   });
   await deps.campaignRepository.update(updated);
 
-  return Object.freeze({ ...result, parse });
+  return result;
+}
+
+/**
+ * Legacy one-shot: persist import then prepare (jobs). Prefer importExternalRecipients
+ * + prepareImportedCampaign for the Growth Center wizard.
+ */
+export async function prepareCampaignFromImport(
+  input: PrepareCampaignFromImportInput,
+  deps: PrepareCampaignFromImportDependencies,
+): Promise<PrepareCampaignResult & { parse: OutreachImportParseResult }> {
+  const imported = await importExternalRecipients(input, {
+    campaignRepository: deps.campaignRepository,
+    recipientRepository: deps.recipientRepository,
+    institutionRepository: deps.institutionRepository,
+    billingProtectionRepository: deps.billingProtectionRepository,
+    nextRecipientId: deps.nextRecipientId,
+  });
+
+  const result = await prepareImportedCampaign(
+    { campaignId: input.campaignId, now: input.now },
+    deps,
+  );
+
+  return Object.freeze({ ...result, parse: imported.parse });
 }

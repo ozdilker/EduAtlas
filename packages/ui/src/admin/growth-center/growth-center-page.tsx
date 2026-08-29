@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/button";
 import { AdminShell } from "../admin-shell";
@@ -83,7 +84,8 @@ export function GrowthCenterPage({
   form,
   previewHtml,
   previewSubject,
-  sampleInstitutionName,
+  previewInstitutionName = null,
+  importMeta = null,
   defaultTestEmail = "",
   progress = null,
   recipients = [],
@@ -123,12 +125,15 @@ export function GrowthCenterPage({
   checklistAction,
   learningsAction,
 }: GrowthCenterPageProps) {
+  const router = useRouter();
   const isExisting = Boolean(form.id);
   const status = campaigns.find((c) => c.id === form.id)?.status ?? "draft";
   const hasRecipients = recipients.length > 0;
+  const hasPreparedRecipients = recipients.some((r) => r.status !== "pending");
+  const hasPendingImport = recipients.some((r) => r.status === "pending");
   const stageLimit = warmup?.limit ?? summary?.warmupLimit ?? 20;
   const canExpand =
-    status === "draft" && hasRecipients && recipients.length < stageLimit;
+    status === "draft" && hasPreparedRecipients && recipients.filter((r) => r.status !== "pending").length < stageLimit;
   const canEditChecklist =
     status === "draft" || status === "ready" || status === "paused";
   const canEditLearnings =
@@ -137,7 +142,7 @@ export function GrowthCenterPage({
 
   const [filter, setFilter] = useState<string>("all");
   const [step, setStep] = useState(() =>
-    inferInitialWizardStep({ isExisting, status, hasRecipients }),
+    inferInitialWizardStep({ isExisting, status, hasRecipients: hasPreparedRecipients }),
   );
   const [draft, setDraft] = useState<DraftForm>(() => toDraft(form));
   const [testEmail, setTestEmail] = useState(defaultTestEmail);
@@ -147,6 +152,8 @@ export function GrowthCenterPage({
   const [importPreview, setImportPreview] = useState<ImportPreviewState | null>(null);
   const [importPreviewError, setImportPreviewError] = useState<string | null>(null);
   const [importPreviewBusy, setImportPreviewBusy] = useState(false);
+  const [selectedPreviewRecipientId, setSelectedPreviewRecipientId] = useState<string>("");
+
   const formSyncKey = [
     form.id,
     form.name,
@@ -159,6 +166,8 @@ export function GrowthCenterPage({
     defaultTestEmail,
     checklistSyncKey(preSendChecklist),
     learnings?.notes ?? "",
+    recipients.map((r) => r.id).join(","),
+    previewInstitutionName ?? "",
   ].join("\0");
 
   useEffect(() => {
@@ -166,10 +175,26 @@ export function GrowthCenterPage({
     setTestEmail(defaultTestEmail);
     setChecklistDraft(preSendChecklist);
     setLearningNotes(learnings?.notes ?? "");
-    setImportPreview(null);
     setImportPreviewError(null);
-    // Server snapshot only — keep local edits while switching wizard steps.
+    // Keep importPreview only as ephemeral upload feedback; recipients are source of truth.
   }, [formSyncKey]);
+
+  useEffect(() => {
+    if (!selectedPreviewRecipientId && recipients[0]?.id) {
+      setSelectedPreviewRecipientId(recipients[0].id);
+    }
+  }, [recipients, selectedPreviewRecipientId]);
+
+  const personalizationRecipient = useMemo(() => {
+    const selected =
+      recipients.find((r) => r.id === selectedPreviewRecipientId) ?? recipients[0];
+    return selected ?? null;
+  }, [recipients, selectedPreviewRecipientId]);
+
+  const mailInstitutionName =
+    personalizationRecipient?.displayName?.trim() ||
+    previewInstitutionName?.trim() ||
+    "";
 
   async function validateImportFile(file: File | null) {
     if (!file) {
@@ -177,11 +202,16 @@ export function GrowthCenterPage({
       setImportPreviewError(null);
       return;
     }
+    if (!form.id) {
+      setImportPreviewError("Önce kampanyayı kaydedin, sonra Excel/CSV yükleyin.");
+      return;
+    }
     setImportPreviewBusy(true);
     setImportPreviewError(null);
     try {
       const body = new FormData();
       body.set("file", file);
+      body.set("campaignId", form.id);
       const response = await fetch("/api/admin/outreach-import-preview", {
         method: "POST",
         body,
@@ -211,6 +241,7 @@ export function GrowthCenterPage({
         accepted: payload.accepted ?? [],
         rejected: payload.rejected ?? [],
       });
+      router.refresh();
     } catch {
       setImportPreview(null);
       setImportPreviewError("Dosya doğrulama isteği başarısız.");
@@ -535,22 +566,28 @@ export function GrowthCenterPage({
                           />
                           <p className="ea-admin-muted">
                             Zorunlu kolonlar: <code>institutionName</code>, <code>email</code>.
-                            Kaydet kaynağı seçer; Prepare adımında dosyayı yeniden yükleyip kuyruğa
-                            alırsınız.
+                            Dosya yüklenince alıcılar kampanyaya kalıcı kaydedilir (DeliveryJob
+                            oluşmaz). Prepare ayrı adımdır.
                           </p>
                           {importPreviewBusy ? (
-                            <p className="ea-admin-muted">Doğrulanıyor…</p>
+                            <p className="ea-admin-muted">İçe aktarılıyor…</p>
                           ) : null}
                           {importPreviewError ? (
                             <p className="ea-admin-visuals__status" role="alert">
                               {importPreviewError}
                             </p>
                           ) : null}
-                          {importPreview ? (
+                          {importMeta || importPreview || hasRecipients ? (
                             <p className="ea-admin-muted" role="status">
-                              {importPreview.fileName}: {importPreview.acceptedCount} kabul,{" "}
-                              {importPreview.rejectedCount} red,{" "}
-                              {importPreview.duplicateEmailCount} tekrar e-posta.
+                              {(importPreview ?? importMeta)?.fileName ?? "Import"}:{" "}
+                              {importPreview?.acceptedCount ??
+                                importMeta?.acceptedCount ??
+                                recipients.length}{" "}
+                              kabul
+                              {importPreview || importMeta
+                                ? `, ${importPreview?.rejectedCount ?? importMeta?.rejectedCount ?? 0} red, ${importPreview?.duplicateEmailCount ?? importMeta?.duplicateEmailCount ?? 0} tekrar`
+                                : ""}
+                              . Kayıtlı alıcı: {recipients.length}.
                             </p>
                           ) : null}
                         </div>
@@ -572,15 +609,16 @@ export function GrowthCenterPage({
                 {draft.recipientSource === "external_import" ? (
                   <>
                     <p className="ea-admin-muted">
-                      Excel/CSV önizleme (Prepare öncesi — job oluşturulmaz). Adım 3’te dosyayı
-                      doğrulayın.
+                      Kalıcı alıcı listesi (Firestore). Tab değişimi veya yenileme listeyi
+                      silmez. Import ≠ Prepare — DeliveryJob yok.
                     </p>
-                    {importPreview ? (
+                    {hasRecipients ? (
                       <>
                         <p className="ea-admin-muted" role="status">
-                          {importPreview.fileName}: {importPreview.acceptedCount} kabul /{" "}
-                          {importPreview.rejectedCount} red / {importPreview.duplicateEmailCount}{" "}
-                          tekrar.
+                          {recipients.length} alıcı
+                          {importMeta
+                            ? ` · ${importMeta.fileName} (${importMeta.acceptedCount} kabul)`
+                            : ""}
                         </p>
                         <div className="ea-admin-table-wrap">
                           <table className="ea-admin-table">
@@ -588,31 +626,38 @@ export function GrowthCenterPage({
                               <tr>
                                 <th>Kurum</th>
                                 <th>Mail</th>
+                                <th>Eşleşme</th>
+                                <th>Durum</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {importPreview.accepted.map((row) => (
-                                <tr key={`${row.rowNumber}-${row.email}`}>
-                                  <td>{row.institutionName}</td>
+                              {recipients.map((row) => (
+                                <tr key={row.id}>
+                                  <td>{row.displayName || row.institutionId}</td>
                                   <td>{row.email}</td>
+                                  <td>
+                                    {row.institutionMatch === "matched"
+                                      ? "Matched"
+                                      : row.institutionMatch === "unmatched"
+                                        ? "Institution match bulunamadı"
+                                        : "—"}
+                                  </td>
+                                  <td>
+                                    {row.institutionMatch === "unmatched"
+                                      ? "Claim: Blocked"
+                                      : row.status === "pending"
+                                        ? "Ready (import)"
+                                        : row.status}
+                                  </td>
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
-                        {importPreview.rejected.length > 0 ? (
-                          <p className="ea-admin-muted">
-                            Örnek hatalar:{" "}
-                            {importPreview.rejected
-                              .slice(0, 5)
-                              .map((r) => `satır ${r.rowNumber}: ${r.message}`)
-                              .join("; ")}
-                          </p>
-                        ) : null}
                       </>
                     ) : (
                       <p className="ea-admin-muted">
-                        Önizleme yok. Adım 3’te Excel/CSV seçip dosyayı doğrulayın.
+                        Kayıtlı alıcı yok. Adım 3’te Excel/CSV yükleyin.
                       </p>
                     )}
                   </>
@@ -656,18 +701,65 @@ export function GrowthCenterPage({
                   Canlı şablon önizlemesi sağ sütunda. Konu, preheader ve gövde metni
                   kaydetmeden de yansır; gönderimde aynı şablon kullanılır.
                 </p>
+                {hasRecipients ? (
+                  <div className="ea-admin-field">
+                    <label htmlFor="outreach-preview-recipient">Preview recipient</label>
+                    <select
+                      id="outreach-preview-recipient"
+                      className="ea-admin-select"
+                      value={personalizationRecipient?.id ?? ""}
+                      onChange={(event) => setSelectedPreviewRecipientId(event.target.value)}
+                    >
+                      {recipients.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.displayName || row.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p className="ea-admin-muted">Preview için alıcı bulunamadı.</p>
+                )}
               </div>
             ) : null}
 
             {step === 6 && isExisting ? (
               <form action={testSendAction} className="ea-admin-outreach__test">
                 <p className="ea-admin-muted">
-                  Test maili Campaign Queue / DeliveryJob kullanmaz.
+                  Test maili Campaign Queue / DeliveryJob kullanmaz. To adresi ile
+                  personalization alıcısı ayrıdır.
                 </p>
                 <input type="hidden" name="campaignId" value={form.id} />
-                <input type="hidden" name="institutionName" value={sampleInstitutionName} />
+                <input
+                  type="hidden"
+                  name="institutionName"
+                  value={mailInstitutionName}
+                />
+                {hasRecipients ? (
+                  <div className="ea-admin-field">
+                    <label htmlFor="outreach-test-preview-recipient">
+                      Personalization recipient
+                    </label>
+                    <select
+                      id="outreach-test-preview-recipient"
+                      className="ea-admin-select"
+                      value={personalizationRecipient?.id ?? ""}
+                      onChange={(event) => setSelectedPreviewRecipientId(event.target.value)}
+                    >
+                      {recipients.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.displayName || row.email}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <p className="ea-admin-muted" role="alert">
+                    Preview için alıcı bulunamadı — test gönderilemez.
+                  </p>
+                )}
                 <div className="ea-admin-field">
-                  <label htmlFor="outreach-test-to">Alıcı e-posta</label>
+                  <label htmlFor="outreach-test-to">Alıcı e-posta (To)</label>
                   <input
                     id="outreach-test-to"
                     className="ea-admin-select"
@@ -679,7 +771,11 @@ export function GrowthCenterPage({
                     placeholder="admin@eduatlas.com.tr"
                   />
                 </div>
-                <Button type="submit" size="sm">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!mailInstitutionName}
+                >
                   Test e-postası gönder
                 </Button>
               </form>
@@ -690,24 +786,16 @@ export function GrowthCenterPage({
                 {draft.recipientSource === "external_import" ? (
                   <>
                     <p className="ea-admin-muted">
-                      Import Prepare: dosyadaki alıcılar için CampaignRecipient + DeliveryJob
-                      oluşur. Domain status <strong>draft</strong> kalır. Limit: stage{" "}
-                      {warmup?.stage ?? "—"} → {stageLimit}.
+                      Import Prepare: kayıtlı Pending alıcılardan DeliveryJob üretir. Domain
+                      status <strong>draft</strong> kalır. Limit: stage {warmup?.stage ?? "—"} →{" "}
+                      {stageLimit}.
                     </p>
-                    {prepareImportAction && status === "draft" && !hasRecipients ? (
-                      <form action={prepareImportAction} encType="multipart/form-data">
+                    {prepareImportAction &&
+                    status === "draft" &&
+                    hasPendingImport &&
+                    !hasPreparedRecipients ? (
+                      <form action={prepareImportAction}>
                         <input type="hidden" name="campaignId" value={form.id} />
-                        <div className="ea-admin-field">
-                          <label htmlFor="outreach-prepare-import-file">Dosya</label>
-                          <input
-                            id="outreach-prepare-import-file"
-                            className="ea-admin-select"
-                            type="file"
-                            name="file"
-                            accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                            required
-                          />
-                        </div>
                         <Button type="submit" size="sm" variant="primary">
                           Import Prepare
                         </Button>
@@ -721,7 +809,7 @@ export function GrowthCenterPage({
                       Domain status <strong>draft</strong> kalır. Limit: stage{" "}
                       {warmup?.stage ?? "—"} → {stageLimit}.
                     </p>
-                    {prepareAction && status === "draft" && !hasRecipients ? (
+                    {prepareAction && status === "draft" && !hasPreparedRecipients ? (
                       <form action={prepareAction}>
                         <input type="hidden" name="campaignId" value={form.id} />
                         <Button type="submit" size="sm" variant="primary">
@@ -739,9 +827,16 @@ export function GrowthCenterPage({
                     </Button>
                   </form>
                 ) : null}
-                {hasRecipients ? (
+                {hasPreparedRecipients ? (
                   <p className="ea-admin-visuals__status" role="status">
-                    Hazırlandı (UI) — {recipients.length}/{stageLimit} recipient. Domain: draft.
+                    Hazırlandı (UI) —{" "}
+                    {recipients.filter((r) => r.status !== "pending").length}/{stageLimit}{" "}
+                    recipient. Domain: draft.
+                  </p>
+                ) : hasPendingImport ? (
+                  <p className="ea-admin-muted">
+                    {recipients.length} alıcı import edildi (pending). Prepare ile DeliveryJob
+                    oluşturun.
                   </p>
                 ) : (
                   <p className="ea-admin-muted">Prepare yalnızca draft ve recipient yokken.</p>
@@ -923,16 +1018,20 @@ export function GrowthCenterPage({
         <aside className="ea-growth-right" aria-label="Mail preview">
           <section className="ea-growth-panel" aria-label="Mail preview">
             <h2 className="ea-admin-section-title">Mail preview</h2>
-            <CampaignMailPreview
-              templateId={draft.templateId}
-              subject={draft.subjectOverride}
-              preheader={draft.preheader}
-              description={draft.description}
-              institutionName={sampleInstitutionName}
-              initialHtml={previewHtml}
-              initialSubject={previewSubject}
-              className="ea-admin-outreach__iframe--full"
-            />
+            {mailInstitutionName ? (
+              <CampaignMailPreview
+                templateId={draft.templateId}
+                subject={draft.subjectOverride}
+                preheader={draft.preheader}
+                description={draft.description}
+                institutionName={mailInstitutionName}
+                initialHtml={previewHtml}
+                initialSubject={previewSubject}
+                className="ea-admin-outreach__iframe--full"
+              />
+            ) : (
+              <p className="ea-admin-muted">Preview için alıcı bulunamadı.</p>
+            )}
           </section>
         </aside>
       </div>

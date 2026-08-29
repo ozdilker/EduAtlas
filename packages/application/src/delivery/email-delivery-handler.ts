@@ -53,6 +53,20 @@ export class EmailDeliveryHandler implements DeliveryChannelHandler {
       const institutionName =
         input.recipient.displayName?.trim() ||
         (await this.options.resolveInstitutionName(input.job.institutionId));
+      if (!institutionName.trim()) {
+        return Object.freeze({
+          outcome: "transient_failure" as const,
+          errorMessage: "Recipient institutionName missing for personalization.",
+        });
+      }
+      if (
+        /^(örnek anaokulu|örnek kurum)$/i.test(institutionName.trim())
+      ) {
+        return Object.freeze({
+          outcome: "transient_failure" as const,
+          errorMessage: "Demo institution name is not allowed for delivery.",
+        });
+      }
       const subject = input.campaign.subjectOverride?.trim() || template.subject;
       const preheader = input.campaign.preheader?.trim() || template.preview;
       const bodyLines = resolveCampaignBodyLines({

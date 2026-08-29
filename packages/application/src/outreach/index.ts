@@ -1,4 +1,4 @@
-export { applyMailTokens, type MailPersonalizationTokens } from "./apply-mail-tokens";
+export { applyMailTokens, assertPersonalizationInstitutionName, type MailPersonalizationTokens } from "./apply-mail-tokens";
 export { resolveCampaignBodyLines } from "./resolve-campaign-body-lines";
 export type { CampaignLogRepository } from "./campaign-log-repository";
 export type { CampaignRecipientRepository } from "./campaign-recipient-repository";
@@ -79,9 +79,14 @@ export { prepareCampaign, type PrepareCampaignResult } from "./prepare-campaign"
 export {
   OUTREACH_IMPORT_MAX_BYTES,
   OUTREACH_IMPORT_MAX_ROWS,
+  importExternalRecipients,
   parseOutreachRecipientImport,
   prepareCampaignFromImport,
+  prepareImportedCampaign,
+  resolveOutreachInstitutionMatch,
   sanitizeOutreachImportCell,
+  type ImportExternalRecipientsInput,
+  type ImportExternalRecipientsResult,
   type OutreachImportAcceptedRow,
   type OutreachImportParseResult,
   type OutreachImportRowError,
@@ -90,9 +95,11 @@ export {
 } from "./import-campaign-recipients";
 export {
   enqueuePreparedTargets,
+  promotePendingRecipientsToJobs,
   type EnqueuePreparedTargetsDependencies,
   type EnqueuePreparedTargetsInput,
   type PreparedTarget,
+  type PromotePendingRecipientsInput,
 } from "./enqueue-prepared-targets";
 export {
   countSegmentMatches,
