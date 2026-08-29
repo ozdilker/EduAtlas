@@ -17,6 +17,10 @@ import {
 } from "./campaign-kit-panels";
 import { GrowthSummaryPanel } from "./summary-panel";
 import {
+  ManualInstitutionPicker,
+  RecipientInstitutionMatchPanel,
+} from "./recipient-institution-match";
+import {
   campaignMatchesUiFilter,
   GROWTH_LIST_FILTERS,
   inferInitialWizardStep,
@@ -91,6 +95,7 @@ export function GrowthCenterPage({
   recipients = [],
   segmentPreview = [],
   summary = null,
+  matchSearchScope,
   warmup,
   preSendChecklist = {
     subjectOk: false,
@@ -135,6 +140,8 @@ export function GrowthCenterPage({
   const hasPreparedRecipients = recipients.some((r) => r.status !== "pending");
   const hasPendingImport = recipients.some((r) => r.status === "pending");
   const stageLimit = warmup?.limit ?? summary?.warmupLimit ?? 20;
+  const matchCityId = matchSearchScope?.cityId;
+  const matchDistrictId = matchSearchScope?.districtId;
   const canExpand =
     status === "draft" && hasPreparedRecipients && recipients.filter((r) => r.status !== "pending").length < stageLimit;
   const canEditChecklist =
@@ -598,18 +605,10 @@ export function GrowthCenterPage({
                                   placeholder="Kadro Kurs"
                                 />
                               </div>
-                              <div className="ea-admin-field">
-                                <label htmlFor="outreach-manual-inst">
-                                  EduAtlas kurum ID (opsiyonel)
-                                </label>
-                                <input
-                                  id="outreach-manual-inst"
-                                  className="ea-admin-select"
-                                  type="text"
-                                  name="institutionId"
-                                  placeholder="inst_…"
-                                />
-                              </div>
+                              <ManualInstitutionPicker
+                                cityId={matchCityId}
+                                districtId={matchDistrictId}
+                              />
                               <Button type="submit" size="sm" variant="primary">
                                 Alıcıyı ekle
                               </Button>
@@ -719,7 +718,9 @@ export function GrowthCenterPage({
                                   <td>{row.email}</td>
                                   <td>
                                     {row.institutionMatch === "matched"
-                                      ? row.displayName || row.institutionId
+                                      ? row.matchedLabel ||
+                                        row.displayName ||
+                                        "Eşleşti"
                                       : row.institutionMatch === "ambiguous"
                                         ? `${row.matchCandidateIds?.length ?? 0} olası kurum`
                                         : "Eşleşme bulunamadı"}
@@ -735,21 +736,15 @@ export function GrowthCenterPage({
                                     {assignRecipientInstitutionAction &&
                                     row.status === "pending" &&
                                     row.institutionMatch !== "matched" ? (
-                                      <form action={assignRecipientInstitutionAction}>
-                                        <input type="hidden" name="campaignId" value={form.id} />
-                                        <input type="hidden" name="recipientId" value={row.id} />
-                                        <input
-                                          className="ea-admin-select"
-                                          type="text"
-                                          name="institutionId"
-                                          placeholder="inst_id"
-                                          required
-                                          aria-label={`Eşleştir ${row.email}`}
-                                        />
-                                        <Button type="submit" size="sm">
-                                          Eşleştir
-                                        </Button>
-                                      </form>
+                                      <RecipientInstitutionMatchPanel
+                                        campaignId={form.id}
+                                        recipientId={row.id}
+                                        initialQuery={row.displayName || ""}
+                                        candidateIds={row.matchCandidateIds}
+                                        cityId={matchCityId}
+                                        districtId={matchDistrictId}
+                                        assignAction={assignRecipientInstitutionAction}
+                                      />
                                     ) : null}
                                   </td>
                                 </tr>

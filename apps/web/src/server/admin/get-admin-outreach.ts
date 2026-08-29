@@ -18,7 +18,10 @@ import {
   type CampaignPostSummary,
   type CampaignPreSendChecklist,
   campaignIdAsString,
+  createInstitutionId,
   emptyPreSendChecklist,
+  institutionIdAsString,
+  isExternalInstitutionId,
   isPreSendChecklistComplete,
 } from "@eduatlas/domain";
 import { getSeoSiteConfig } from "@/lib/seo-site";
@@ -45,6 +48,7 @@ export type AdminOutreachRecipientRow = Readonly<{
   id: string;
   institutionId: string;
   displayName?: string;
+  matchedLabel?: string;
   email: string;
   status: string;
   institutionMatch?: "matched" | "unmatched" | "ambiguous";
@@ -132,6 +136,7 @@ export type AdminOutreachPageData = Readonly<{
   recipients: readonly AdminOutreachRecipientRow[];
   segmentPreview: readonly SegmentInstitutionPreview[];
   summary: AdminOutreachSummary | null;
+  matchSearchScope: { cityId?: string; districtId?: string } | null;
   warmup: AdminOutreachWarmupView;
   preSendChecklist: CampaignPreSendChecklist;
   preSendComplete: boolean;
@@ -241,6 +246,7 @@ export async function getAdminOutreachPageData(searchParams: {
   let recipients: AdminOutreachRecipientRow[] = [];
   let segmentPreview: SegmentInstitutionPreview[] = [];
   let summary: AdminOutreachSummary | null = null;
+  let matchSearchScope: AdminOutreachPageData["matchSearchScope"] = null;
   let logs: AdminOutreachLogRow[] = [];
   let preSendChecklist = emptyPreSendChecklist();
   let preSendComplete = false;
@@ -286,10 +292,60 @@ export async function getAdminOutreachPageData(searchParams: {
     });
 
     const recipientRows = await stores.recipientRepository.listByCampaignId(selected.id);
+    const matchedIds = [
+      ...new Set(
+        recipientRows
+          .filter(
+            (r) =>
+              r.institutionMatch === "matched" &&
+              !isExternalInstitutionId(r.institutionId),
+          )
+          .map((r) => r.institutionId),
+      ),
+    ].slice(0, 40);
+    const matchedLabelById = new Map<string, string>();
+    await Promise.all(
+      matchedIds.map(async (id) => {
+        const inst = await institutionRepository.getById(createInstitutionId(id));
+        if (!inst) return;
+        const city = inst.location.cityId
+          .split(/[-_]/)
+          .filter(Boolean)
+          .map((p) => p.charAt(0).toLocaleUpperCase("tr-TR") + p.slice(1))
+          .join(" ");
+        const district = inst.location.districtId
+          .split(/[-_]/)
+          .filter(Boolean)
+          .map((p) => p.charAt(0).toLocaleUpperCase("tr-TR") + p.slice(1))
+          .join(" ");
+        const location =
+          city && district ? `${city} / ${district}` : city || district || "";
+        matchedLabelById.set(
+          institutionIdAsString(inst.id),
+          location ? `${inst.name} — ${location}` : inst.name,
+        );
+      }),
+    );
+
+    const selectedSegment = await stores.segmentRepository.getById(selected.segmentId);
+    if (selectedSegment?.filters.cityId || selectedSegment?.filters.districtId) {
+      matchSearchScope = {
+        ...(selectedSegment.filters.cityId
+          ? { cityId: selectedSegment.filters.cityId }
+          : {}),
+        ...(selectedSegment.filters.districtId
+          ? { districtId: selectedSegment.filters.districtId }
+          : {}),
+      };
+    }
+
     recipients = recipientRows.map((r) => ({
       id: r.id,
       institutionId: r.institutionId,
       ...(r.displayName ? { displayName: r.displayName } : {}),
+      ...(matchedLabelById.get(r.institutionId)
+        ? { matchedLabel: matchedLabelById.get(r.institutionId) }
+        : {}),
       email: r.email,
       status: r.status,
       ...(r.institutionMatch ? { institutionMatch: r.institutionMatch } : {}),
@@ -429,6 +485,7 @@ export async function getAdminOutreachPageData(searchParams: {
     recipients: Object.freeze(recipients),
     segmentPreview: Object.freeze(segmentPreview),
     summary,
+    matchSearchScope,
     warmup,
     preSendChecklist,
     preSendComplete,

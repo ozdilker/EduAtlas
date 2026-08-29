@@ -37,6 +37,8 @@ export type GrowthRecipientView = Readonly<{
   id: string;
   institutionId: string;
   displayName?: string;
+  /** Matched column label, e.g. "Kadro Kurs — İstanbul / Bakırköy". */
+  matchedLabel?: string;
   email: string;
   status: string;
   institutionMatch?: "matched" | "unmatched" | "ambiguous";
@@ -153,6 +155,11 @@ export type GrowthCenterPageProps = {
   recipients?: readonly GrowthRecipientView[];
   segmentPreview?: readonly GrowthSegmentPreviewRow[];
   summary?: GrowthSummaryView | null;
+  /** Optional city/district scope for institution search (from campaign segment). */
+  matchSearchScope?: {
+    cityId?: string;
+    districtId?: string;
+  };
   warmup?: GrowthWarmupView;
   preSendChecklist?: GrowthPreSendChecklist;
   preSendComplete?: boolean;

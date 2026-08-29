@@ -277,6 +277,39 @@ describe("GROWTH-007 institution matching", () => {
     expect(updated.institutionId).toBe("inst_kadro");
   });
 
+  it("rejects arbitrary/invalid institutionId on assign", async () => {
+    const stores = createInMemoryOutreachStores();
+    const repo = stubRepo([]);
+    await seedCampaign(stores, { source: "external_import" });
+    await stores.recipientRepository.save(
+      createCampaignRecipient({
+        id: "crec_1",
+        campaignId: "camp_g7",
+        institutionId: "ext:abc",
+        displayName: "Kadro Kurs",
+        institutionMatch: "unmatched",
+        source: "external_import",
+        email: "info@kadrokurs.com",
+        status: CampaignRecipientStatus.Pending,
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    await expect(
+      assignRecipientInstitution(
+        {
+          campaignId: "camp_g7",
+          recipientId: "crec_1",
+          institutionId: "inst_does_not_exist",
+          now: NOW,
+        },
+        { recipientRepository: stores.recipientRepository, institutionRepository: repo },
+      ),
+    ).rejects.toThrow(/not found/i);
+    const still = await stores.recipientRepository.getById("crec_1");
+    expect(still?.institutionMatch).toBe("unmatched");
+  });
+
   it("claim Prepare blocks unmatched; matched gets DeliveryJob with real id", async () => {
     const stores = createInMemoryOutreachStores();
     const jobs = createInMemoryDeliveryJobRepository();

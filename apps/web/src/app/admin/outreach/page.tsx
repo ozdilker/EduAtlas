@@ -89,6 +89,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         id: r.id,
         institutionId: r.institutionId,
         ...(r.displayName ? { displayName: r.displayName } : {}),
+        ...(r.matchedLabel ? { matchedLabel: r.matchedLabel } : {}),
         email: r.email,
         status: r.status,
         ...(r.institutionMatch ? { institutionMatch: r.institutionMatch } : {}),
@@ -96,6 +97,7 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       }))}
       segmentPreview={data.segmentPreview}
       summary={data.summary}
+      matchSearchScope={data.matchSearchScope ?? undefined}
       warmup={data.warmup}
       preSendChecklist={data.preSendChecklist}
       preSendComplete={data.preSendComplete}
