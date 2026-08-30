@@ -79,6 +79,10 @@ export class InMemoryCampaignRecipientRepository implements CampaignRecipientRep
     return Object.freeze([...this.items.values()].filter((r) => r.institutionId === id));
   }
 
+  async deleteById(id: string): Promise<void> {
+    this.items.delete(id.trim());
+  }
+
   async deleteByCampaignId(campaignId: string): Promise<number> {
     const id = campaignId.trim();
     let count = 0;

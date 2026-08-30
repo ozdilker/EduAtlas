@@ -1,5 +1,6 @@
 export {
   buildDeliveryIdempotencyKey,
+  buildRecipientDeliveryIdempotencyKey,
 } from "./delivery-idempotency";
 export {
   createDeliveryJob,

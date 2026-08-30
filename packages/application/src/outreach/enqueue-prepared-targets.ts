@@ -1,5 +1,6 @@
 import {
   buildDeliveryIdempotencyKey,
+  buildRecipientDeliveryIdempotencyKey,
   type Campaign,
   type CampaignRecipient,
   CampaignChannel,
@@ -45,9 +46,16 @@ function defaultId(prefix: string): string {
   return `${prefix}_${enqueueSeq}_${Date.now().toString(36)}`;
 }
 
+function usesRecipientScopedIdempotency(campaign: Campaign): boolean {
+  return (
+    campaign.recipientSource === "external_import" ||
+    campaign.recipientSource === "manual"
+  );
+}
+
 /**
  * Creates Queued recipients + Pending DeliveryJobs up to remaining warm-up slots.
- * Shared by segment prepare and external import prepare.
+ * Segment path: institution-scoped idempotency (unchanged).
  */
 export async function enqueuePreparedTargets(
   input: EnqueuePreparedTargetsInput,
@@ -144,13 +152,16 @@ export type PromotePendingRecipientsInput = Readonly<{
 
 /**
  * Promotes existing Pending (matched) CampaignRecipients to Queued + Pending DeliveryJobs.
- * Used after external import persistence — does not create new recipient rows.
+ *
+ * GROWTH-010 B1: external/manual idempotency is recipient-scoped so two recipients
+ * sharing an institutionId still each get a DeliveryJob.
  */
 export async function promotePendingRecipientsToJobs(
   input: PromotePendingRecipientsInput,
   deps: EnqueuePreparedTargetsDependencies,
 ): Promise<PrepareCampaignResult> {
   const campaignId = campaignIdAsString(input.campaign.id);
+  const recipientScoped = usesRecipientScopedIdempotency(input.campaign);
   const alreadyPrepared = input.recipients.filter(
     (r) => r.status !== CampaignRecipientStatus.Pending,
   ).length;
@@ -177,18 +188,22 @@ export async function promotePendingRecipientsToJobs(
       (recipient.institutionMatch === "unmatched" ||
         recipient.institutionMatch === "ambiguous")
     ) {
-      // Claim campaigns: never promote unmatched/ambiguous (wrong claim link risk).
       skippedDuplicates += 1;
       continue;
     }
-    // Segment / matched / generic unmatched (non-claim) may become jobs.
 
     const institutionId = recipient.institutionId.trim();
-    const idempotencyKey = buildDeliveryIdempotencyKey({
-      campaignId,
-      institutionId,
-      channel: input.campaign.channel,
-    });
+    const idempotencyKey = recipientScoped
+      ? buildRecipientDeliveryIdempotencyKey({
+          campaignId,
+          recipientId: recipient.id,
+          channel: input.campaign.channel,
+        })
+      : buildDeliveryIdempotencyKey({
+          campaignId,
+          institutionId,
+          channel: input.campaign.channel,
+        });
     const existingJob = await deps.deliveryJobRepository.getByIdempotencyKey(idempotencyKey);
     if (existingJob) {
       skippedDuplicates += 1;

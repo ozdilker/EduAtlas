@@ -458,12 +458,11 @@ describe("GROWTH-008 external/manual Prepare vs OUTREACH_PREPARE emergency", () 
     expect(await jobs.listByCampaignId(campaignId)).toHaveLength(5);
   });
 
-  it("8) cancel/pause: non-draft Prepare remains rejected", async () => {
+  it("8) cancelled/completed/running Prepare rejected; ready/paused allowed (GROWTH-010)", async () => {
     for (const status of [
-      CampaignStatus.Paused,
       CampaignStatus.Cancelled,
-      CampaignStatus.Ready,
       CampaignStatus.Running,
+      CampaignStatus.Completed,
     ] as const) {
       const stores = createInMemoryOutreachStores();
       const jobs = createInMemoryDeliveryJobRepository();
@@ -484,8 +483,30 @@ describe("GROWTH-008 external/manual Prepare vs OUTREACH_PREPARE emergency", () 
             billingProtectionRepository: emergencyRepo(),
           },
         ),
-      ).rejects.toThrow(/draft/i);
+      ).rejects.toThrow(/draft, ready, or paused/i);
       expect(await jobs.listByCampaignId(campaignId)).toHaveLength(0);
+    }
+
+    for (const status of [CampaignStatus.Ready, CampaignStatus.Paused] as const) {
+      const stores = createInMemoryOutreachStores();
+      const jobs = createInMemoryDeliveryJobRepository();
+      const campaignId = `camp_ok_${status}`;
+      await seedExternalCampaign(stores, { id: campaignId, status });
+      await seedMatchedRecipients(stores, campaignId, 1, { match: "matched" });
+      const result = await prepareImportedCampaign(
+        { campaignId, now: NOW },
+        {
+          campaignRepository: stores.campaignRepository,
+          segmentRepository: stores.segmentRepository,
+          recipientRepository: stores.recipientRepository,
+          deliveryJobRepository: jobs,
+          institutionRepository: catalogSpyRepo(),
+          config,
+          targetLimit: 20,
+          billingProtectionRepository: emergencyRepo(),
+        },
+      );
+      expect(result.recipientCount).toBe(1);
     }
   });
 

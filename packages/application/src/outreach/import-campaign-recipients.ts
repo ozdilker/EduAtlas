@@ -492,8 +492,14 @@ export async function prepareImportedCampaign(
   if (!campaign) {
     throw new OutreachValidationError(`Campaign not found: ${input.campaignId}`);
   }
-  if (campaign.status !== CampaignStatus.Draft) {
-    throw new OutreachValidationError("Only draft campaigns can be prepared.");
+  if (
+    campaign.status !== CampaignStatus.Draft &&
+    campaign.status !== CampaignStatus.Ready &&
+    campaign.status !== CampaignStatus.Paused
+  ) {
+    throw new OutreachValidationError(
+      "Only draft, ready, or paused campaigns can run external/manual Prepare.",
+    );
   }
 
   const campaignId = campaignIdAsString(campaign.id);

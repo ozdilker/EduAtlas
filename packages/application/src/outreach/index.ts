@@ -92,6 +92,15 @@ export {
   type OutreachMatchScope,
 } from "./match-outreach-recipients";
 export {
+  RECIPIENT_REMOVAL_REASON,
+  isClaimBlockedRecipient,
+  removeCampaignRecipient,
+  type RecipientRemovalReason,
+  type RemoveCampaignRecipientDependencies,
+  type RemoveCampaignRecipientInput,
+  type RemoveCampaignRecipientResult,
+} from "./remove-campaign-recipient";
+export {
   distinctiveOutreachSearchTokens,
   matchingOutreachSearchTokens,
   normalizeOutreachDistrictId,

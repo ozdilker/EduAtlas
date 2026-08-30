@@ -542,6 +542,7 @@ export {
 } from "./outreach";
 export {
   buildDeliveryIdempotencyKey,
+  buildRecipientDeliveryIdempotencyKey,
   createDeliveryJob,
   DeliveryJobStatus,
   isDeliveryJobStatus,

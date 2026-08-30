@@ -52,6 +52,11 @@ import {
   matchCampaignRecipients,
   type MatchCampaignRecipientsResult,
 } from "./match-outreach-recipients";
+import {
+  removeCampaignRecipient,
+  type RecipientRemovalReason,
+  type RemoveCampaignRecipientResult,
+} from "./remove-campaign-recipient";
 import { renderCampaignTemplatePreview } from "./render-campaign-template";
 import { resolveCampaignBodyLines } from "./resolve-campaign-body-lines";
 import {
@@ -461,6 +466,32 @@ export class OutreachService {
     return saved;
   }
 
+  /**
+   * GROWTH-009: remove a Pending recipient from the active send set (delete + audit log).
+   * Refuses queued/sent recipients and any recipient that already has a DeliveryJob.
+   */
+  async removeCampaignRecipient(input: {
+    campaignId: string;
+    recipientId: string;
+    reason: RecipientRemovalReason | string;
+    now: string;
+  }): Promise<RemoveCampaignRecipientResult> {
+    return removeCampaignRecipient(
+      {
+        campaignId: input.campaignId,
+        recipientId: input.recipientId,
+        reason: input.reason,
+        now: input.now,
+      },
+      {
+        campaignRepository: this.deps.campaignRepository,
+        recipientRepository: this.deps.recipientRepository,
+        logRepository: this.deps.logRepository,
+        deliveryJobRepository: this.deps.deliveryJobRepository,
+      },
+    );
+  }
+
   async assignRecipientInstitution(input: {
     campaignId: string;
     recipientId: string;
@@ -647,6 +678,24 @@ export class OutreachService {
       !isPreSendChecklistComplete(campaign.preSendChecklist)
     ) {
       throw new OutreachValidationError("Pre-send checklist must be completed before Run.");
+    }
+
+    if (
+      campaign.recipientSource === "external_import" ||
+      campaign.recipientSource === "manual"
+    ) {
+      const recipients = await this.deps.recipientRepository.listByCampaignId(
+        campaignIdAsString(campaign.id),
+      );
+      const matched = recipients.filter((r) => r.institutionMatch === "matched");
+      const queuedMatched = matched.filter(
+        (r) => r.status !== CampaignRecipientStatus.Pending,
+      );
+      if (queuedMatched.length < matched.length) {
+        throw new OutreachValidationError(
+          `Run kilitli: ${queuedMatched.length}/${matched.length} eşleşmiş alıcı hazırlandı. Önce eksik alıcıları Prepare ile tamamlayın.`,
+        );
+      }
     }
 
     const all = await this.deps.campaignRepository.list();

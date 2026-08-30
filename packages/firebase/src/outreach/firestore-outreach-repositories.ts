@@ -165,6 +165,10 @@ export class FirestoreCampaignRecipientRepository implements CampaignRecipientRe
     );
   }
 
+  async deleteById(id: string): Promise<void> {
+    await this.db.collection(OUTREACH_RECIPIENTS).doc(id.trim()).delete();
+  }
+
   async deleteByCampaignId(campaignId: string): Promise<number> {
     const snap = await this.db
       .collection(OUTREACH_RECIPIENTS)

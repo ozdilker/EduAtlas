@@ -7,7 +7,7 @@ import {
   ISTANBUL_UNCLAIMED_SEGMENT_ID,
   isOutreachValidationError,
 } from "@eduatlas/application";
-import { campaignIdAsString, normalizeRecipientMatchScope } from "@eduatlas/domain";
+import { campaignIdAsString, isPreSendChecklistComplete, normalizeRecipientMatchScope } from "@eduatlas/domain";
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -517,19 +517,26 @@ export async function deleteOutreachDraftCampaignAction(formData: FormData): Pro
 export async function updateOutreachPreSendChecklistAction(formData: FormData): Promise<void> {
   const service = await getOutreachService();
   await campaignAction(formData, async (campaignId, now) => {
-    await service.updatePreSendChecklist({
+    // Checkbox fields are absent when unchecked; FormData.has is the reliable signal.
+    const updated = await service.updatePreSendChecklist({
       campaignId,
       now,
       patch: {
-        subjectOk: formString(formData, "subjectOk") === "on",
-        ctaOk: formString(formData, "ctaOk") === "on",
-        testMailSent: formString(formData, "testMailSent") === "on",
-        recipientsReviewed: formString(formData, "recipientsReviewed") === "on",
-        warmupOk: formString(formData, "warmupOk") === "on",
-        sendApproved: formString(formData, "sendApproved") === "on",
+        subjectOk: formData.has("subjectOk"),
+        ctaOk: formData.has("ctaOk"),
+        testMailSent: formData.has("testMailSent"),
+        recipientsReviewed: formData.has("recipientsReviewed"),
+        warmupOk: formData.has("warmupOk"),
+        sendApproved: formData.has("sendApproved"),
       },
     });
-    return { id: campaignId, notice: "Pre-send checklist kaydedildi." };
+    const complete = isPreSendChecklistComplete(updated.preSendChecklist);
+    return {
+      id: campaignId,
+      notice: complete
+        ? "Pre-send checklist kaydedildi — tamam (Run için uygun)."
+        : "Pre-send checklist kaydedildi — hâlâ eksik madde var; Run kilitli.",
+    };
   });
 }
 

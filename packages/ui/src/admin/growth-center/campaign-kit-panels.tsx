@@ -78,6 +78,7 @@ export function GrowthPreSendChecklistForm({
               <input
                 type="checkbox"
                 name={key}
+                value="on"
                 checked={checklist[key]}
                 onChange={(event) =>
                   onChecklistChange({ ...checklist, [key]: event.target.checked })

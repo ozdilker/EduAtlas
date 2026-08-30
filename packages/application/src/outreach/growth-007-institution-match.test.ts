@@ -759,6 +759,7 @@ describe("GROWTH-007 FIX assign mutation persistence", () => {
       update: (row) => stores.recipientRepository.update(row),
       listByCampaignId: (id) => stores.recipientRepository.listByCampaignId(id),
       listByInstitutionId: (id) => stores.recipientRepository.listByInstitutionId(id),
+      deleteById: (id) => stores.recipientRepository.deleteById(id),
       deleteByCampaignId: (id) => stores.recipientRepository.deleteByCampaignId(id),
     };
     const updated = await assignRecipientInstitution(

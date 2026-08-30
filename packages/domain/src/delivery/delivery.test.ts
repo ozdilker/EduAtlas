@@ -15,6 +15,13 @@ describe("DeliveryJob", () => {
     });
     expect(key).toBe("camp_1:inst_1:email");
 
+    const recipientKey = buildDeliveryIdempotencyKey({
+      campaignId: "camp_1",
+      recipientId: "crec_1",
+      channel: CampaignChannel.Email,
+    });
+    expect(recipientKey).toBe("camp_1:crec_1:email");
+
     const job = createDeliveryJob({
       id: "job_1",
       campaignId: "camp_1",

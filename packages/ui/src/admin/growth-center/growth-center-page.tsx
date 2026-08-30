@@ -146,13 +146,35 @@ export function GrowthCenterPage({
   const hasPreparedRecipients = recipients.some((r) => r.status !== "pending");
   const hasPendingImport = recipients.some((r) => r.status === "pending");
   const stageLimit = warmup?.limit ?? summary?.warmupLimit ?? 20;
+  const matchedRecipientCount = recipients.filter(
+    (r) => r.institutionMatch === "matched",
+  ).length;
+  const preparedMatchedCount = recipients.filter(
+    (r) => r.institutionMatch === "matched" && r.status !== "pending",
+  ).length;
+  const missingMatchedPrepareCount = Math.max(
+    0,
+    matchedRecipientCount - preparedMatchedCount,
+  );
+  const recipientSource =
+    form.recipientSource === "external_import" || form.recipientSource === "manual"
+      ? form.recipientSource
+      : "segment";
+  const canContinueExternalPrepare =
+    (recipientSource === "external_import" || recipientSource === "manual") &&
+    (status === "draft" || status === "ready" || status === "paused") &&
+    missingMatchedPrepareCount > 0;
   const canExpand =
     status === "draft" && hasPreparedRecipients && recipients.filter((r) => r.status !== "pending").length < stageLimit;
   const canEditChecklist =
     status === "draft" || status === "ready" || status === "paused";
   const canEditLearnings =
     status === "completed" || status === "cancelled" || status === "failed";
-  const canStartRun = status === "ready" && preSendComplete;
+  const recipientsReadyForRun =
+    recipientSource === "segment" ||
+    matchedRecipientCount === 0 ||
+    preparedMatchedCount >= matchedRecipientCount;
+  const canStartRun = status === "ready" && preSendComplete && recipientsReadyForRun;
 
   const [filter, setFilter] = useState<string>("all");
   const [step, setStep] = useState(() =>
@@ -977,10 +999,18 @@ export function GrowthCenterPage({
                 draft.recipientSource === "manual" ? (
                   <>
                     <p className="ea-admin-muted">
-                      Prepare: kayıtlı Pending (matched) alıcılardan DeliveryJob üretir. Domain
-                      status <strong>draft</strong> kalır. Limit: stage {warmup?.stage ?? "—"} →{" "}
-                      {stageLimit}. Claim için unmatched/ambiguous hazırlanmaz.
+                      Prepare: kayıtlı Pending (matched) alıcılardan DeliveryJob üretir.
+                      Katalog taraması yok. Limit: stage {warmup?.stage ?? "—"} → {stageLimit}.
+                      Claim için unmatched/ambiguous hazırlanmaz.
                     </p>
+                    {matchedRecipientCount > 0 ? (
+                      <p className="ea-admin-visuals__status" role="status">
+                        {preparedMatchedCount}/{matchedRecipientCount} eşleşmiş alıcı hazırlandı
+                        {missingMatchedPrepareCount > 0
+                          ? ` — ${missingMatchedPrepareCount} alıcı için gönderim işi eksik.`
+                          : " — tamam."}
+                      </p>
+                    ) : null}
                     {prepareImportAction &&
                     status === "draft" &&
                     hasPendingImport &&
@@ -989,6 +1019,14 @@ export function GrowthCenterPage({
                         <input type="hidden" name="campaignId" value={form.id} />
                         <Button type="submit" size="sm" variant="primary">
                           Prepare
+                        </Button>
+                      </form>
+                    ) : null}
+                    {prepareImportAction && canContinueExternalPrepare ? (
+                      <form action={prepareImportAction}>
+                        <input type="hidden" name="campaignId" value={form.id} />
+                        <Button type="submit" size="sm" variant="primary">
+                          Eksik alıcıları hazırla ({missingMatchedPrepareCount})
                         </Button>
                       </form>
                     ) : null}
@@ -1021,20 +1059,20 @@ export function GrowthCenterPage({
                     </Button>
                   </form>
                 ) : null}
-                {hasPreparedRecipients ? (
+                {hasPreparedRecipients &&
+                draft.recipientSource !== "external_import" &&
+                draft.recipientSource !== "manual" ? (
                   <p className="ea-admin-visuals__status" role="status">
                     Hazırlandı (UI) —{" "}
                     {recipients.filter((r) => r.status !== "pending").length}/{stageLimit}{" "}
                     recipient. Domain: draft.
                   </p>
-                ) : hasPendingImport ? (
-                  <p className="ea-admin-muted">
-                    {recipients.length} alıcı import edildi (pending). Prepare ile DeliveryJob
-                    oluşturun.
-                  </p>
-                ) : (
+                ) : null}
+                {!hasPreparedRecipients &&
+                !hasPendingImport &&
+                draft.recipientSource === "segment" ? (
                   <p className="ea-admin-muted">Prepare yalnızca draft ve recipient yokken.</p>
-                )}
+                ) : null}
               </div>
             ) : null}
 
@@ -1110,6 +1148,12 @@ export function GrowthCenterPage({
                 {status === "ready" && !preSendComplete ? (
                   <p className="ea-admin-visuals__status" role="status">
                     Pre-send checklist eksik — Run kilitli.
+                  </p>
+                ) : null}
+                {status === "ready" && preSendComplete && !recipientsReadyForRun ? (
+                  <p className="ea-admin-visuals__status" role="status">
+                    Run kilitli: {preparedMatchedCount}/{matchedRecipientCount} eşleşmiş alıcı
+                    hazır. Step 7&apos;de eksik alıcıları hazırlayın.
                   </p>
                 ) : null}
                 <div className="ea-admin-outreach__delivery-actions">
