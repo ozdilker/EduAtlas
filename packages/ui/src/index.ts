@@ -627,6 +627,7 @@ export type {
   SearchSuggestionItem,
 } from "./search/search-content";
 export {
+  getGenericInstitutionSearchHint,
   getSearchFilterPlaceholders,
   getSearchStatusMessage,
   getStaticSearchSuggestions,

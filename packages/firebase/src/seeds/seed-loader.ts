@@ -1,10 +1,11 @@
 import type { InstitutionRepository } from "@eduatlas/application";
 import {
   createInstitution,
+  foldTurkishText,
   type Institution,
   InstitutionStatus,
   InstitutionType,
-  tokenizeSearchKeywords,
+  tokenizeInstitutionSearchKeywords,
 } from "@eduatlas/domain";
 import { FirestoreInstitutionMapper } from "../institutions/firestore-institution-mapper";
 import type { InstitutionDocumentStore } from "../institutions/institution-document-store";
@@ -138,6 +139,12 @@ export async function seedInstitutionDocumentStore(
  * Merges explicit seed keywords with tokens derived from the institution name.
  */
 export function resolveSeedSearchKeywords(seed: InstitutionSeedRecord): readonly string[] {
-  const derived = tokenizeSearchKeywords(`${seed.name} ${seed.city} ${seed.district}`);
-  return Object.freeze([...new Set([...seed.searchKeywords, ...derived])]);
+  const derived = tokenizeInstitutionSearchKeywords(seed.name);
+  const geo = new Set(
+    [seed.city, seed.district].map((value) => foldTurkishText(value)).filter(Boolean),
+  );
+  const extras = seed.searchKeywords
+    .flatMap((token) => [...tokenizeInstitutionSearchKeywords(token)])
+    .filter((token) => !geo.has(token));
+  return Object.freeze([...new Set([...derived, ...extras])]);
 }

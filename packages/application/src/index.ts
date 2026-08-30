@@ -326,6 +326,12 @@ export {
   isInstitutionSort,
   isUnscopedAdminFreeTextQuery,
   parseInstitutionSort,
+  PUBLIC_SEARCH_EXACT_CAP,
+  PUBLIC_SEARCH_KEYWORD_CAP,
+  PUBLIC_SEARCH_RETRY_MAX_READS,
+  PUBLIC_SEARCH_TYPICAL_MAX_READS,
+  scoreInstitutionNameSearch,
+  type InstitutionNameSearchSubject,
 } from "./institutions";
 export {
   isLeadNotFoundError,

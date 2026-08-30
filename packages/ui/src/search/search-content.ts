@@ -57,3 +57,7 @@ export function getSearchStatusMessage(status: SearchStatus): string | null {
       return null;
   }
 }
+
+export function getGenericInstitutionSearchHint(): string {
+  return "Daha spesifik bir kurum adı yazın veya ilçe / kurum türü filtresi kullanın.";
+}

@@ -18,14 +18,18 @@ import {
   DuplicateInstitutionError,
   InstitutionNotFoundError,
   InstitutionSort,
-} from "@eduatlas/application";
+  PUBLIC_SEARCH_EXACT_CAP,
+  PUBLIC_SEARCH_KEYWORD_CAP,
+} from "@eduatlas/application/institutions";
 import {
   createInstitution,
   type Institution,
   type InstitutionId,
   InstitutionStatus,
   InstitutionVerification,
+  distinctiveSearchTokens,
   institutionIdAsString,
+  pickInstitutionSearchProbeToken,
 } from "@eduatlas/domain";
 import type { Firestore } from "firebase-admin/firestore";
 import {
@@ -545,37 +549,79 @@ export class FirestoreInstitutionRepository
   /**
    * Keyword search over published institutions (Firestore fallback).
    * Empty-text / structured filters use a bounded published query (no listAll).
-   * Free-text with city/district/type loads published candidates for that scope only
-   * (no nationwide listAll). Unfiltered free-text still uses listAll().
+   * Free-text uses exact name + distinctive keyword probes — never listPublishedCandidates / listAll.
    */
   async search(query: InstitutionSearchQuery): Promise<InstitutionSearchResult> {
     if (!query.text.trim()) {
       return this.searchStructuredPublished(query);
     }
 
-    const records = await this.loadRecordsForSearch(query);
+    const records = await this.loadBoundedFreeTextRecords(query);
     return searchInstitutionsInStore(records, query);
   }
 
   /**
-   * Free-text candidate loader.
-   * With structured scope → published + filters in Firestore (no listAll).
-   * Without structured scope → legacy listAll() (unchanged; separate future task).
+   * Bounded free-text recall: exact name (≤10) + one keyword probe (≤40),
+   * with one city retry when a district probe returns 0.
    */
-  private async loadRecordsForSearch(
+  private async loadBoundedFreeTextRecords(
     query: InstitutionSearchQuery,
   ): Promise<Awaited<ReturnType<InstitutionDocumentStore["listAll"]>>> {
-    const browseFilters = toPublishedBrowseFilters(query);
-    if (hasPublishedBrowseScope(browseFilters)) {
-      if (!this.store.listPublishedCandidates) {
-        throw new Error(
-          "InstitutionDocumentStore.listPublishedCandidates required for scoped free-text search.",
-        );
+    const text = query.text.trim();
+    const cityId = query.filters.cityId?.trim() || undefined;
+    const districtId = query.filters.districtId?.trim() || undefined;
+    const distinctive = distinctiveSearchTokens(text, { cityId, districtId });
+    const byId = new Map<string, Awaited<ReturnType<InstitutionDocumentStore["listAll"]>>[number]>();
+
+    const add = (rows: Awaited<ReturnType<InstitutionDocumentStore["listAll"]>>) => {
+      for (const row of rows) {
+        byId.set(row.id, row);
       }
-      return this.store.listPublishedCandidates(browseFilters);
+    };
+
+    if (this.store.findByExactName) {
+      add(
+        await this.store.findByExactName({
+          name: text,
+          ...(cityId ? { cityId } : {}),
+          ...(districtId ? { districtId } : {}),
+          limit: PUBLIC_SEARCH_EXACT_CAP,
+        }),
+      );
     }
 
-    return this.store.listAll();
+    const probe = pickInstitutionSearchProbeToken(distinctive);
+    if (!probe || !this.store.findBySearchKeyword || (!cityId && !districtId)) {
+      return [...byId.values()];
+    }
+
+    if (districtId) {
+      const districtHits = await this.store.findBySearchKeyword({
+        keyword: probe,
+        districtId,
+        limit: PUBLIC_SEARCH_KEYWORD_CAP,
+      });
+      add(districtHits);
+      if (districtHits.length === 0 && cityId) {
+        add(
+          await this.store.findBySearchKeyword({
+            keyword: probe,
+            cityId,
+            limit: PUBLIC_SEARCH_KEYWORD_CAP,
+          }),
+        );
+      }
+    } else {
+      add(
+        await this.store.findBySearchKeyword({
+          keyword: probe,
+          cityId,
+          limit: PUBLIC_SEARCH_KEYWORD_CAP,
+        }),
+      );
+    }
+
+    return [...byId.values()];
   }
 }
 
@@ -589,14 +635,6 @@ function toPublishedBrowseFilters(query: InstitutionSearchQuery): {
     ...(query.filters.districtId ? { districtId: query.filters.districtId } : {}),
     ...(query.filters.primaryType ? { primaryTypeId: query.filters.primaryType } : {}),
   };
-}
-
-function hasPublishedBrowseScope(filters: {
-  cityId?: string;
-  districtId?: string;
-  primaryTypeId?: string;
-}): boolean {
-  return Boolean(filters.cityId || filters.districtId || filters.primaryTypeId);
 }
 
 function toAdminStoreFilters(filters?: InstitutionAdminListFilters): AdminListFilters {

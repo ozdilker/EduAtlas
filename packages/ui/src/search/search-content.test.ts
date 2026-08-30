@@ -6,6 +6,7 @@ import {
 } from "./search-classes";
 import {
   getSearchFilterPlaceholders,
+  getGenericInstitutionSearchHint,
   getSearchStatusMessage,
   getStaticSearchSuggestions,
 } from "./search-content";
@@ -29,6 +30,7 @@ describe("search content helpers", () => {
     expect(getSearchStatusMessage("loading")).toContain("yükleniyor");
     expect(getSearchStatusMessage("empty")).toContain("Sonuç");
     expect(getSearchStatusMessage("error")).toContain("kullanılamıyor");
+    expect(getGenericInstitutionSearchHint()).toContain("spesifik bir kurum adı");
   });
 });
 

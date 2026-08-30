@@ -69,6 +69,18 @@ describe("searchPublicInstitutions", () => {
     expect(view.result.page.totalItems).toBe(0);
   });
 
+  it("marks generic-only queries so the empty state can hint for a distinctive name", async () => {
+    const repository = (await createSeededInstitutionRepository()) as InstitutionSearchRepository;
+    const view = await searchPublicInstitutions({
+      text: "Özel Öğretim Kursu",
+      filters: { cityId: "city_istanbul" },
+      repository,
+    });
+
+    expect(view.genericQueryHint).toBe(true);
+    expect(view.institutions).toEqual([]);
+  });
+
   it("REGRESSION: unscoped free-text never calls repository.search (no listAll)", async () => {
     const repository = (await createSeededInstitutionRepository()) as InstitutionSearchRepository;
     const searchSpy = vi.spyOn(repository, "search");

@@ -7,6 +7,7 @@ import {
   InstitutionSort,
   parseInstitutionSort,
 } from "@eduatlas/application";
+import { distinctiveSearchTokens } from "@eduatlas/domain";
 import { createEmptyInstitutionRepository } from "@eduatlas/firebase/server";
 import type { InstitutionCardViewData } from "@eduatlas/ui";
 import { getInstitutionSearchRepository } from "./repository";
@@ -23,6 +24,8 @@ export type PublicInstitutionSearchView = {
    * Public search must not run nationwide listAll() — UI shows location gate.
    */
   readonly locationRequired: boolean;
+  /** True when q has no distinctive name token (generic-only). */
+  readonly genericQueryHint: boolean;
 };
 
 function isQuotaOrUnavailableError(error: unknown): boolean {
@@ -72,6 +75,7 @@ function buildLocationRequiredView(options: {
     institutions: [],
     nextCursor: null,
     locationRequired: true,
+    genericQueryHint: false,
   };
 }
 
@@ -154,6 +158,12 @@ export async function searchPublicInstitutions(options: {
   }
 
   const institutions = result.page.items.map(toInstitutionCardFromSearchDocument);
+  const genericQueryHint =
+    text.length > 0 &&
+    distinctiveSearchTokens(text, {
+      cityId,
+      districtId: filters.districtId,
+    }).length === 0;
 
   return {
     query: text,
@@ -161,5 +171,6 @@ export async function searchPublicInstitutions(options: {
     institutions,
     nextCursor: result.nextCursor ?? null,
     locationRequired: false,
+    genericQueryHint,
   };
 }

@@ -10,10 +10,11 @@ import {
   institutionIdAsString,
   isGoogleBusinessMatchMethod,
   isGoogleBusinessSyncStatus,
+  isInstitutionSearchStopword,
   isWeekday,
   parseInstitutionStatus,
   parseInstitutionType,
-  tokenizeSearchKeywords,
+  tokenizeInstitutionSearchKeywords,
   WEEKDAYS,
   type Weekday,
 } from "@eduatlas/domain";
@@ -108,16 +109,15 @@ export class FirestoreInstitutionMapper {
     const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
     const cityName = options.cityName?.trim() || geo.cityName;
     const districtName = options.districtName?.trim() || geo.districtName;
-    const derivedKeywords = tokenizeSearchKeywords(
-      `${institution.name} ${cityName} ${districtName} ${institution.location.address}`,
+    const derivedKeywords = tokenizeInstitutionSearchKeywords(institution.name);
+    const geoNames = new Set(
+      [cityName, districtName].map((value) => foldTurkishText(value)).filter(Boolean),
     );
-    const searchKeywords = [
-      ...new Set(
-        [...(options.searchKeywords ?? []), ...derivedKeywords]
-          .map((token) => token.trim())
-          .filter(Boolean),
-      ),
-    ];
+    const extraKeywords = [...(options.searchKeywords ?? [])]
+      .flatMap((token) => [...tokenizeInstitutionSearchKeywords(token)])
+      .filter((token) => !isInstitutionSearchStopword(token))
+      .filter((token) => !geoNames.has(token));
+    const searchKeywords = [...new Set([...extraKeywords, ...derivedKeywords])];
 
     const document: FirestoreInstitutionDocument = {
       name: institution.name,

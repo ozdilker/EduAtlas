@@ -14,6 +14,10 @@ import type {
   InstitutionDocumentStore,
   PublishedBrowseFilters,
 } from "./institution-document-store";
+import {
+  INSTITUTION_EXACT_NAME_STORE_CAP,
+  INSTITUTION_KEYWORD_STORE_CAP,
+} from "./institution-search-store-caps";
 
 /** Short in-process cache so search/list don't re-download the full catalog every call. */
 const LIST_ALL_CACHE_TTL_MS = 60_000;
@@ -391,7 +395,7 @@ export class FirestoreInstitutionDocumentStore implements InstitutionDocumentSto
     limit: number;
   }): Promise<InstitutionDocumentRecord[]> {
     const nameFolded = foldTurkishText(input.name.trim());
-    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), INSTITUTION_EXACT_NAME_STORE_CAP));
     if (!nameFolded || capped === 0) return [];
     countFirestoreRead();
     let query: Query = this.collection().where("nameFolded", "==", nameFolded);
@@ -413,7 +417,7 @@ export class FirestoreInstitutionDocumentStore implements InstitutionDocumentSto
     limit: number;
   }): Promise<InstitutionDocumentRecord[]> {
     const keyword = foldTurkishText(input.keyword.trim());
-    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), INSTITUTION_KEYWORD_STORE_CAP));
     if (!keyword || capped === 0) return [];
     countFirestoreRead();
     let query: Query = this.collection().where("searchKeywords", "array-contains", keyword);

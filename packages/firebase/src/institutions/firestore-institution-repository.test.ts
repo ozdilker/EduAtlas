@@ -104,6 +104,12 @@ describe("FirestoreInstitutionMapper", () => {
     expect(document.updatedByUserId).toBe("owner_demo");
     expect(document.nameFolded).toBeTruthy();
     expect(document.searchKeywords.length).toBeGreaterThan(0);
+    expect(document.searchKeywords).toEqual(["ornek", "anaokulu"]);
+    expect(document.searchKeywords).not.toContain("mah");
+    expect(document.searchKeywords).not.toContain("cad");
+    expect(document.searchKeywords).not.toContain("sk");
+    expect(document.searchKeywords).not.toContain("no");
+    expect(document.searchKeywords).not.toContain("caferaga");
 
     const restored = FirestoreInstitutionMapper.toDomain(
       institutionIdAsString(institution.id),
@@ -276,25 +282,29 @@ describe("FirestoreInstitutionRepository contract", () => {
     expect(second.page.items[0]?.id).not.toBe(first.page.items[0]?.id);
   });
 
-  it("unfiltered free-text search still uses listAll (unchanged path)", async () => {
+  it("unfiltered free-text search never uses listAll or city dump", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listAllSpy = vi.spyOn(store, "listAll");
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
     const browseSpy = vi.spyOn(store, "listPublishedBrowsePage");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
     const repo = new FirestoreInstitutionRepository({ store });
     await repo.save(buildInstitution());
 
     await repo.search(createInstitutionSearchQuery({ text: "anaokulu", page: 1, pageSize: 12 }));
 
-    expect(listAllSpy).toHaveBeenCalled();
+    expect(listAllSpy).not.toHaveBeenCalled();
     expect(candidatesSpy).not.toHaveBeenCalled();
     expect(browseSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).not.toHaveBeenCalled();
   });
 
-  it("free-text + city does not call listAll and loads published candidates", async () => {
+  it("free-text + city uses keyword/exact probes and does not dump published candidates", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listAllSpy = vi.spyOn(store, "listAll");
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
+    const exactSpy = vi.spyOn(store, "findByExactName");
     const repo = new FirestoreInstitutionRepository({ store });
 
     await repo.save(buildInstitution({ id: "a", slug: "a-anaokulu", name: "A Anaokulu" }));
@@ -335,16 +345,21 @@ describe("FirestoreInstitutionRepository contract", () => {
     );
 
     expect(listAllSpy).not.toHaveBeenCalled();
-    expect(candidatesSpy).toHaveBeenCalledWith({ cityId: "city_ist" });
+    expect(candidatesSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ keyword: "anaokulu", cityId: "city_ist", limit: 40 }),
+    );
+    expect(exactSpy).toHaveBeenCalled();
     expect(result.page.items.every((item) => item.cityId === "city_ist")).toBe(true);
     expect(result.page.items.some((item) => item.slug === "a-anaokulu")).toBe(true);
     expect(result.page.items.some((item) => item.slug === "c-anaokulu-izmir")).toBe(false);
   });
 
-  it("free-text + district does not call listAll", async () => {
+  it("free-text + district does not call listAll or city dump", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listAllSpy = vi.spyOn(store, "listAll");
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
     const repo = new FirestoreInstitutionRepository({ store });
     await repo.save(buildInstitution());
 
@@ -359,16 +374,21 @@ describe("FirestoreInstitutionRepository contract", () => {
     );
 
     expect(listAllSpy).not.toHaveBeenCalled();
-    expect(candidatesSpy).toHaveBeenCalledWith({
-      cityId: "city_ist",
-      districtId: "dist_kadikoy",
-    });
+    expect(candidatesSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyword: "anaokulu",
+        districtId: "dist_kadikoy",
+        limit: 40,
+      }),
+    );
   });
 
-  it("free-text + primaryType does not call listAll", async () => {
+  it("free-text + primaryType without city does not dump by type", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listAllSpy = vi.spyOn(store, "listAll");
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
     const repo = new FirestoreInstitutionRepository({ store });
     await repo.save(buildInstitution());
 
@@ -382,15 +402,15 @@ describe("FirestoreInstitutionRepository contract", () => {
     );
 
     expect(listAllSpy).not.toHaveBeenCalled();
-    expect(candidatesSpy).toHaveBeenCalledWith({
-      primaryTypeId: InstitutionType.Kindergarten,
-    });
+    expect(candidatesSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).not.toHaveBeenCalled();
   });
 
-  it("free-text + city + type applies both Firestore candidate filters", async () => {
+  it("free-text + city + type uses keyword probe not candidate dump", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listAllSpy = vi.spyOn(store, "listAll");
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
     const repo = new FirestoreInstitutionRepository({ store });
     await repo.save(buildInstitution());
 
@@ -405,16 +425,17 @@ describe("FirestoreInstitutionRepository contract", () => {
     );
 
     expect(listAllSpy).not.toHaveBeenCalled();
-    expect(candidatesSpy).toHaveBeenCalledWith({
-      cityId: "city_ist",
-      primaryTypeId: InstitutionType.Kindergarten,
-    });
+    expect(candidatesSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ keyword: "ornek", cityId: "city_ist", limit: 40 }),
+    );
   });
 
-  it("free-text + city + district + type applies all candidate filters", async () => {
+  it("free-text + city + district + type uses district keyword probe", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listAllSpy = vi.spyOn(store, "listAll");
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
     const repo = new FirestoreInstitutionRepository({ store });
     await repo.save(buildInstitution());
 
@@ -430,11 +451,14 @@ describe("FirestoreInstitutionRepository contract", () => {
     );
 
     expect(listAllSpy).not.toHaveBeenCalled();
-    expect(candidatesSpy).toHaveBeenCalledWith({
-      cityId: "city_ist",
-      districtId: "dist_kadikoy",
-      primaryTypeId: InstitutionType.Kindergarten,
-    });
+    expect(candidatesSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyword: "anaokulu",
+        districtId: "dist_kadikoy",
+        limit: 40,
+      }),
+    );
   });
 
   it("scoped free-text preserves text scoring and excludes unpublished from candidates", async () => {
@@ -476,14 +500,8 @@ describe("FirestoreInstitutionRepository contract", () => {
       }),
     );
 
-    const candidates = await candidatesSpy.mock.results[0]?.value;
-    expect(
-      candidates?.every(
-        (r: { data: { lifecycleStatus: string } }) => r.data.lifecycleStatus === "published",
-      ),
-    ).toBe(true);
+    expect(candidatesSpy).not.toHaveBeenCalled();
     expect(result.page.items.map((item) => item.slug)).not.toContain("draft-anaokulu");
-    // Relevance: exact/substring match + qualityScore boost → higher qualityScore ranks higher when text match similar
     expect(result.page.items[0]?.slug).toBe("better-anaokulu");
     expect(result.page.pageSize).toBe(12);
     expect(result.page.page).toBe(1);
@@ -512,9 +530,10 @@ describe("FirestoreInstitutionRepository contract", () => {
     expect(result.page.items[0]?.slug).toBe("sisli-anaokulu");
   });
 
-  it("scoped free-text candidate load has no arbitrary page-size limit", async () => {
+  it("scoped free-text keyword recall is capped and never dumps the city catalog", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const candidatesSpy = vi.spyOn(store, "listPublishedCandidates");
+    const keywordSpy = vi.spyOn(store, "findBySearchKeyword");
     const repo = new FirestoreInstitutionRepository({ store });
 
     for (let i = 0; i < 20; i += 1) {
@@ -537,10 +556,13 @@ describe("FirestoreInstitutionRepository contract", () => {
       }),
     );
 
-    const candidates = await candidatesSpy.mock.results[0]?.value;
-    expect(candidates).toHaveLength(20);
+    expect(candidatesSpy).not.toHaveBeenCalled();
+    expect(keywordSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ keyword: "anaokulu", cityId: "city_ist", limit: 40 }),
+    );
     expect(result.page.items).toHaveLength(12);
     expect(result.page.totalItems).toBe(20);
+    expect(result.page.totalItems).toBeLessThanOrEqual(50);
   });
 
   it("listPublishedBrowsePage uses limited published query and cursor, never listAll", async () => {
@@ -635,7 +657,12 @@ describe("FirestoreInstitutionRepository contract", () => {
     );
 
     const searchRepo: InstitutionSearchRepository = repo;
-    const result = await searchRepo.search(createInstitutionSearchQuery({ text: "anaokulu" }));
+    const result = await searchRepo.search(
+      createInstitutionSearchQuery({
+        text: "anaokulu",
+        filters: createInstitutionFilters({ cityId: "city_ist" }),
+      }),
+    );
     expect(result.page.items).toHaveLength(1);
     expect(result.page.items[0]?.slug).toBe("ornek-anaokulu");
     expect(result.page.items[0]?.searchKeywords.length).toBeGreaterThan(0);

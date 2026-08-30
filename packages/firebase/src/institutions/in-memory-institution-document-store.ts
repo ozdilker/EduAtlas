@@ -8,6 +8,10 @@ import type {
   InstitutionDocumentStore,
   PublishedBrowseFilters,
 } from "./institution-document-store";
+import {
+  INSTITUTION_EXACT_NAME_STORE_CAP,
+  INSTITUTION_KEYWORD_STORE_CAP,
+} from "./institution-search-store-caps";
 
 /**
  * In-memory InstitutionDocumentStore for contract tests (no Firebase emulator required).
@@ -270,7 +274,7 @@ export class InMemoryInstitutionDocumentStore implements InstitutionDocumentStor
     limit: number;
   }): Promise<InstitutionDocumentRecord[]> {
     const nameNeedle = foldTurkishText(input.name.trim());
-    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), INSTITUTION_EXACT_NAME_STORE_CAP));
     const cityId = input.cityId?.trim();
     const districtId = input.districtId?.trim();
     if (!nameNeedle || capped === 0) return [];
@@ -293,7 +297,7 @@ export class InMemoryInstitutionDocumentStore implements InstitutionDocumentStor
     limit: number;
   }): Promise<InstitutionDocumentRecord[]> {
     const keyword = foldTurkishText(input.keyword.trim());
-    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), INSTITUTION_KEYWORD_STORE_CAP));
     const cityId = input.cityId?.trim();
     const districtId = input.districtId?.trim();
     if (!keyword || capped === 0) return [];

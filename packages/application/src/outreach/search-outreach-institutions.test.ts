@@ -91,8 +91,8 @@ function stubRepo(institutions: readonly Institution[]): InstitutionRepository &
       return Object.freeze(
         institutions
           .filter((row) => {
-            const tokens = foldTurkishText(row.name).split(" ");
-            if (!tokens.includes(token) && !foldTurkishText(row.name).includes(token)) {
+            const tokens = foldTurkishText(row.name).split(" ").filter(Boolean);
+            if (!tokens.includes(token)) {
               return false;
             }
             if (options?.cityId && row.location.cityId !== options.cityId) return false;
@@ -149,6 +149,8 @@ describe("GROWTH-007 search debug helpers", () => {
       cityId: "istanbul",
       districtId: "istanbul-bakirkoy",
     })).toContain("aci");
+    expect([...distinctiveOutreachSearchTokens("Özel Öğretim Kursu")]).toEqual([]);
+    expect([...distinctiveOutreachSearchTokens("Kadro Kurs")]).toEqual(["kadro"]);
   });
 
   it("contactEmail exact match returns the real institutionId", async () => {
@@ -220,6 +222,67 @@ describe("GROWTH-007 search debug helpers", () => {
     repo.list = list;
     await searchOutreachInstitutions({ query: "Kadro", cityId: "istanbul" }, repo);
     expect(list).not.toHaveBeenCalled();
+  });
+
+  it("uses kadro as the distinctive probe and does not query kurs", async () => {
+    const repo = stubRepo(catalog);
+    const keyword = vi.fn(repo.findBySearchKeyword!);
+    repo.findBySearchKeyword = keyword;
+    const result = await searchOutreachInstitutions(
+      { query: "Kadro Kurs", cityId: "istanbul", districtId: "bakirkoy" },
+      repo,
+    );
+    expect(result.items.some((row) => row.id === "inst_genc_kadro_ozel_ogretim_kursu")).toBe(true);
+    expect(keyword.mock.calls.length).toBeGreaterThan(0);
+    expect(keyword.mock.calls.every((call) => call[0] === "kadro")).toBe(true);
+    expect(keyword.mock.calls.some((call) => call[0] === "kurs")).toBe(false);
+    expect(keyword.mock.calls.every((call) => call[1]?.districtId || call[1]?.cityId)).toBe(true);
+  });
+
+  it("returns empty for generic-only queries without keyword fallback", async () => {
+    const repo = stubRepo(catalog);
+    const keyword = vi.fn(repo.findBySearchKeyword!);
+    repo.findBySearchKeyword = keyword;
+    const result = await searchOutreachInstitutions(
+      { query: "Özel Öğretim Kursu", cityId: "istanbul", districtId: "bakirkoy" },
+      repo,
+    );
+    expect(result.items).toEqual([]);
+    expect(keyword).not.toHaveBeenCalled();
+    expect(repo.listCalls).toBe(0);
+  });
+
+  it("does not persist institutionId on search (Seç is the only writer)", async () => {
+    const repo = stubRepo(catalog);
+    const save = vi.fn(repo.save);
+    const update = vi.fn(repo.update);
+    repo.save = save;
+    repo.update = update;
+    await searchOutreachInstitutions(
+      { query: "Kadro Kurs", cityId: "istanbul", districtId: "bakirkoy" },
+      repo,
+    );
+    expect(save).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("does not match bilgi against bilimleri", async () => {
+    const repo = stubRepo([
+      inst({
+        id: "inst_incirli",
+        name: "İNCİRLİ FEN BİLİMLERİ LOCA",
+      }),
+      inst({
+        id: "inst_bilgi",
+        name: "ÖZEL BAKIRKÖY BİLGİ KURSU",
+      }),
+    ]);
+    const result = await searchOutreachInstitutions(
+      { query: "bilgi", cityId: "istanbul", districtId: "bakirkoy" },
+      repo,
+    );
+    expect(result.items.some((row) => row.id === "inst_bilgi")).toBe(true);
+    expect(result.items.some((row) => row.id === "inst_incirli")).toBe(false);
   });
 
   it("scores exact folded names higher than partial keyword hits", () => {

@@ -1,5 +1,6 @@
 import type { Institution } from "./institution";
 import { hasPublishableContact } from "./institution-contact";
+import { isFoldedInstitutionSearchStopword } from "./institution-search-stopwords";
 import { InstitutionStatus, isPubliclyVisibleStatus } from "./institution-status";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -50,7 +51,8 @@ export function foldTurkishText(input: string): string {
 }
 
 /**
- * Tokenizes a name into search keywords.
+ * Tokenizes an institution name into indexable search keywords.
+ * Name-only: length ≥ 3, not a stopword, not a pure numeric code.
  */
 export function tokenizeSearchKeywords(name: string): string[] {
   const folded = foldTurkishText(name);
@@ -59,7 +61,16 @@ export function tokenizeSearchKeywords(name: string): string[] {
     return [];
   }
 
-  return [...new Set(folded.split(" ").filter((token) => token.length > 0))];
+  return [
+    ...new Set(
+      folded
+        .split(" ")
+        .map((token) => token.trim())
+        .filter((token) => token.length >= 3)
+        .filter((token) => !/^\d+$/.test(token))
+        .filter((token) => !isFoldedInstitutionSearchStopword(token)),
+    ),
+  ];
 }
 
 /**

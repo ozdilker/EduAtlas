@@ -3,7 +3,7 @@ import type { InstitutionCardViewData } from "../institution/institution-card-co
 import { PublicNextSteps } from "../layout/public-next-steps";
 import { PublicStatusBlock } from "../layout/public-status";
 import { cn } from "../lib/cn";
-import { getSearchStatusMessage } from "../search/search-content";
+import { getGenericInstitutionSearchHint, getSearchStatusMessage } from "../search/search-content";
 import type { SearchFiltersViewModel } from "./build-search-href";
 import { SearchAiRecommendations } from "./search-ai-recommendations";
 import { SearchPendingTransition } from "./search-pending-transition";
@@ -34,6 +34,8 @@ export type SearchResultsPageProps = {
   isParent?: boolean;
   /** Free-text without city — show location gate; no result scan ran. */
   locationRequired?: boolean;
+  /** Generic-only query (no distinctive name token) — extra empty-state hint. */
+  genericQueryHint?: boolean;
   className?: string;
 };
 
@@ -51,6 +53,7 @@ export function SearchResultsPage({
   loading = false,
   isParent = false,
   locationRequired = false,
+  genericQueryHint = false,
   className,
 }: SearchResultsPageProps) {
   const trimmedQuery = query.trim();
@@ -102,8 +105,13 @@ export function SearchResultsPage({
                     title="Sonuç bulunamadı"
                     message={
                       trimmedQuery
-                        ? (getSearchStatusMessage("empty") ??
-                          "Aramanızla eşleşen kurum yok. Farklı bir anahtar kelime veya filtre deneyin.")
+                        ? [
+                            getSearchStatusMessage("empty") ??
+                              "Aramanızla eşleşen kurum yok. Farklı bir anahtar kelime veya filtre deneyin.",
+                            genericQueryHint ? getGenericInstitutionSearchHint() : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" ")
                         : "Henüz listelenecek yayınlanmış kurum yok. Şehir veya kategori keşfiyle başlayabilirsiniz."
                     }
                     primaryAction={{ id: "cities", label: "Şehirlere göz at", href: "/cities" }}

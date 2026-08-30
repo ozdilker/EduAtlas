@@ -96,6 +96,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         filters={filterOptions}
         isParent={isParent}
         locationRequired={view.locationRequired}
+        genericQueryHint={view.genericQueryHint}
       />
     </>
   );

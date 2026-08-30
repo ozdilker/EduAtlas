@@ -1,5 +1,9 @@
 import type { InstitutionSearchQuery, InstitutionSearchResult } from "@eduatlas/application";
-import { createInstitutionSearchResult, InstitutionSort } from "@eduatlas/application";
+import {
+  createInstitutionSearchResult,
+  InstitutionSort,
+  scoreInstitutionNameSearch,
+} from "@eduatlas/application/institutions";
 import {
   createPublishedSearchDocument,
   foldTurkishText,
@@ -7,8 +11,7 @@ import {
   type InstitutionSearchDocument,
   InstitutionStatus,
   institutionIdAsString,
-  isInstitutionVerified,
-  tokenizeSearchKeywords,
+  tokenizeInstitutionSearchKeywords,
 } from "@eduatlas/domain";
 import { resolveGeoLabels } from "../seeds/geo-catalog";
 import type { FirestoreInstitutionDocument } from "./firestore-institution-document";
@@ -28,8 +31,6 @@ export function searchInstitutionsInStore(
   query: InstitutionSearchQuery,
 ): InstitutionSearchResult {
   const text = query.text.trim();
-  const foldedQuery = foldTurkishText(text);
-  const queryTokens = foldedQuery ? tokenizeSearchKeywords(foldedQuery) : [];
   const filters = query.filters;
 
   const hits: RankedSearchHit[] = [];
@@ -61,7 +62,20 @@ export function searchInstitutionsInStore(
       continue;
     }
 
-    const score = scoreSearchHit(searchDoc, foldedQuery, queryTokens);
+    const score = text
+      ? scoreInstitutionNameSearch(
+          text,
+          {
+            name: searchDoc.name,
+            nameFolded: searchDoc.nameFolded,
+            searchKeywords: searchDoc.searchKeywords,
+            qualityScore: searchDoc.qualityScore,
+            verification: searchDoc.verification,
+            isPremium: searchDoc.isPremium,
+          },
+          { cityId: filters.cityId, districtId: filters.districtId },
+        )
+      : searchDoc.qualityScore;
 
     if (text && score <= 0) {
       continue;
@@ -136,56 +150,12 @@ function toSearchDocument(
     qualityScore: institution.qualityScore,
     searchKeywords: data.searchKeywords?.length
       ? data.searchKeywords
-      : tokenizeSearchKeywords(`${institution.name} ${cityName} ${districtName}`),
+      : tokenizeInstitutionSearchKeywords(institution.name),
     geohash: institution.location.geohash,
     coverImageUrl: institution.coverImageUrl ?? data.coverImageUrl,
     updatedAt: institution.updatedAt,
     nameFolded: data.nameFolded || foldTurkishText(institution.name),
   });
-}
-
-function scoreSearchHit(
-  document: InstitutionSearchDocument,
-  foldedQuery: string,
-  queryTokens: readonly string[],
-): number {
-  if (!foldedQuery) {
-    return document.qualityScore;
-  }
-
-  let score = 0;
-  const nameFolded = document.nameFolded;
-
-  if (nameFolded === foldedQuery) {
-    score += 1000;
-  } else if (nameFolded.startsWith(foldedQuery)) {
-    score += 800;
-  } else if (nameFolded.includes(foldedQuery)) {
-    score += 600;
-  }
-
-  const keywords = document.searchKeywords.map((token) => foldTurkishText(token));
-  for (const token of queryTokens) {
-    if (keywords.includes(token)) {
-      score += 400;
-    } else if (keywords.some((keyword) => keyword.includes(token) || token.includes(keyword))) {
-      score += 200;
-    } else if (nameFolded.includes(token)) {
-      score += 150;
-    }
-  }
-
-  if (score > 0) {
-    score += document.qualityScore;
-    if (isInstitutionVerified(document.verification)) {
-      score += 10;
-    }
-    if (document.isPremium) {
-      score += 5;
-    }
-  }
-
-  return score;
 }
 
 function compareHits(left: RankedSearchHit, right: RankedSearchHit, sort: InstitutionSort): number {
@@ -209,5 +179,7 @@ function compareHits(left: RankedSearchHit, right: RankedSearchHit, sort: Instit
     return right.document.qualityScore - left.document.qualityScore;
   }
 
+  const byName = left.document.name.localeCompare(right.document.name, "tr");
+  if (byName !== 0) return byName;
   return left.document.id.localeCompare(right.document.id);
 }

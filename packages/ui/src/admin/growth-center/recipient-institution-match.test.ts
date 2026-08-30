@@ -33,6 +33,16 @@ describe("GROWTH-007 FIX institution match UI helpers", () => {
     expect(matchSrc.includes("startTransition")).toBe(false);
   });
 
+  it("search results do not auto-assign; Ara is a button and Seç is the only mutation", () => {
+    const matchSrc = readFileSync(join(here, "recipient-institution-match.tsx"), "utf8");
+    expect(matchSrc).toContain("void runSearch(query)");
+    expect(matchSrc).toContain("onClick={() => void runSearch(query)}");
+    expect(matchSrc).toContain('type="button"');
+    expect(matchSrc).toContain("Ara");
+    expect(matchSrc).toContain("MatchSelectSubmitButton");
+    expect(matchSrc).toContain("action={assignAction}");
+  });
+
   it("builds bounded search URL from recipient institutionName", () => {
     const url = buildOutreachInstitutionSearchUrl({
       query: "Kadro Kurs",
