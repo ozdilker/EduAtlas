@@ -526,7 +526,8 @@ export class OutreachService {
   }
 
   /**
-   * Promotes persisted external-import Pending recipients to Queued + DeliveryJobs.
+   * Promotes persisted external/manual Pending (matched) recipients to Queued + DeliveryJobs.
+   * GROWTH-008: catalog-free path — not gated by OUTREACH_PREPARE (segment Prepare still is).
    */
   async prepareImportedCampaign(
     campaignId: string,

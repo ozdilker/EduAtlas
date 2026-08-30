@@ -10,7 +10,7 @@ import {
   institutionIdAsString,
   type CampaignRecipientInstitutionMatch,
 } from "@eduatlas/domain";
-import { assertOperationAllowed, type BillingProtectionRepository } from "../billing-protection";
+import type { BillingProtectionRepository } from "../billing-protection";
 import { parseCsvTable } from "../institution-import/parsers/csv-table-parser";
 import { decodeImportTextBytes } from "../institution-import/parsers/decode-import-text";
 import { parseExcelTable } from "../institution-import/parsers/excel-table-parser";
@@ -29,6 +29,30 @@ import type { PrepareCampaignDependencies, PrepareCampaignResult } from "./prepa
 export const OUTREACH_IMPORT_MAX_BYTES = 5 * 1024 * 1024;
 /** Max data rows (excluding header). */
 export const OUTREACH_IMPORT_MAX_ROWS = 5_000;
+
+/**
+ * GROWTH-008: persisted external/manual Prepare must stay bounded and catalog-free.
+ * Does not call assertOperationAllowed("OUTREACH_PREPARE") — that gate remains for
+ * segment catalog Prepare / preview only.
+ */
+export function assertBoundedPersistedRecipientPrepare(input: {
+  readonly recipientSource: string | undefined;
+  readonly recipientCount: number;
+}): void {
+  if (
+    input.recipientSource !== "external_import" &&
+    input.recipientSource !== "manual"
+  ) {
+    throw new OutreachValidationError(
+      "Bu kampanya Excel/CSV veya tekil alıcı kaynağı kullanmıyor. Segment Prepare kullanın.",
+    );
+  }
+  if (input.recipientCount > OUTREACH_IMPORT_MAX_ROWS) {
+    throw new OutreachValidationError(
+      `Prepare için en fazla ${OUTREACH_IMPORT_MAX_ROWS} alıcı destekleniyor (kampanyada ${input.recipientCount}).`,
+    );
+  }
+}
 
 const EMAIL_COLUMN_ALIASES = Object.freeze([
   "email",
@@ -450,8 +474,15 @@ export async function importExternalRecipients(
 }
 
 /**
- * Prepare for external_import: promotes persisted Pending (matched) recipients to
- * Queued + DeliveryJobs. Does not parse a file. Leaves status draft.
+ * Prepare for external_import / manual: promotes persisted Pending (matched)
+ * recipients to Queued + DeliveryJobs.
+ *
+ * GROWTH-008: intentionally does **not** call assertOperationAllowed("OUTREACH_PREPARE").
+ * Recipients are already persisted and bounded; this path must not scan the institution
+ * catalog (no list / listAll / listPublishedCandidates / segment preview).
+ * Segment Prepare remains gated by OUTREACH_PREPARE.
+ *
+ * `billingProtectionRepository` is accepted for API compatibility but unused here.
  */
 export async function prepareImportedCampaign(
   input: { campaignId: string; now: string },
@@ -464,21 +495,13 @@ export async function prepareImportedCampaign(
   if (campaign.status !== CampaignStatus.Draft) {
     throw new OutreachValidationError("Only draft campaigns can be prepared.");
   }
-  if (
-    campaign.recipientSource !== "external_import" &&
-    campaign.recipientSource !== "manual"
-  ) {
-    throw new OutreachValidationError(
-      "Bu kampanya Excel/CSV veya tekil alıcı kaynağı kullanmıyor. Segment Prepare kullanın.",
-    );
-  }
-
-  await assertOperationAllowed("OUTREACH_PREPARE", {
-    billingProtectionRepository: deps.billingProtectionRepository,
-  });
 
   const campaignId = campaignIdAsString(campaign.id);
   const recipients = await deps.recipientRepository.listByCampaignId(campaignId);
+  assertBoundedPersistedRecipientPrepare({
+    recipientSource: campaign.recipientSource,
+    recipientCount: recipients.length,
+  });
   if (recipients.length === 0) {
     throw new OutreachValidationError(
       "Önce alıcı ekleyin (Excel import veya tekil alıcı).",
@@ -486,8 +509,18 @@ export async function prepareImportedCampaign(
   }
 
   const isClaimCampaign = campaign.templateId === CLAIM_INVITATION_TEMPLATE_ID;
-  const preparablePending = recipients.filter((r) => {
-    if (r.status !== CampaignRecipientStatus.Pending) return false;
+  const pending = recipients.filter((r) => r.status === CampaignRecipientStatus.Pending);
+  if (pending.length === 0) {
+    // Idempotent re-prepare: recipients already Queued/sent — no new jobs.
+    return Object.freeze({
+      recipientCount: 0,
+      skippedDuplicates: 0,
+      totalRecipients: recipients.length,
+      targetLimit: Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize),
+    });
+  }
+
+  const preparablePending = pending.filter((r) => {
     if (!isClaimCampaign) return true;
     return (
       r.institutionMatch !== "unmatched" && r.institutionMatch !== "ambiguous"
@@ -501,16 +534,8 @@ export async function prepareImportedCampaign(
     );
   }
 
-  const pending = recipients.filter((r) => r.status === CampaignRecipientStatus.Pending);
-  if (pending.length === 0) {
-    return Object.freeze({
-      recipientCount: 0,
-      skippedDuplicates: 0,
-      totalRecipients: recipients.length,
-      targetLimit: Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize),
-    });
-  }
-
+  // Catalog-free promote: only CampaignRecipient rows + DeliveryJob writes.
+  // Warm-up bound applied inside promotePendingRecipientsToJobs.
   const targetLimit = Math.max(1, deps.targetLimit ?? deps.config.warmupBatchSize);
   const result = await promotePendingRecipientsToJobs(
     {

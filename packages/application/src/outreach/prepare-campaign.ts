@@ -55,9 +55,12 @@ export async function prepareCampaign(
   if (campaign.status !== CampaignStatus.Draft) {
     throw new OutreachValidationError("Only draft campaigns can be prepared.");
   }
-  if (campaign.recipientSource === "external_import") {
+  if (
+    campaign.recipientSource === "external_import" ||
+    campaign.recipientSource === "manual"
+  ) {
     throw new OutreachValidationError(
-      "Bu kampanya Excel/CSV alıcı kaynağı kullanıyor. Segment Prepare yerine Import Prepare kullanın.",
+      "Bu kampanya Excel/CSV veya tekil alıcı kaynağı kullanıyor. Segment Prepare yerine Import Prepare kullanın.",
     );
   }
 
@@ -78,6 +81,7 @@ export async function prepareCampaign(
     throw new OutreachValidationError("Campaign segment is missing.");
   }
 
+  // Segment path: catalog scan — remains under OUTREACH_PREPARE emergency/protection gate.
   await assertOperationAllowed("OUTREACH_PREPARE", {
     billingProtectionRepository: deps.billingProtectionRepository,
   });

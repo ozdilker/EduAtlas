@@ -108,6 +108,7 @@ export {
 export {
   OUTREACH_IMPORT_MAX_BYTES,
   OUTREACH_IMPORT_MAX_ROWS,
+  assertBoundedPersistedRecipientPrepare,
   importExternalRecipients,
   parseOutreachRecipientImport,
   prepareCampaignFromImport,
