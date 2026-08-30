@@ -67,7 +67,11 @@ export class FirestoreCampaignRepository implements CampaignRepository {
 
   async update(campaign: Campaign): Promise<Campaign> {
     const id = campaignIdAsString(campaign.id);
-    await this.db.collection(OUTREACH_CAMPAIGNS).doc(id).set(toCampaignDoc(campaign), {
+    const doc = toCampaignDoc(campaign);
+    if (!campaign.recipientMatchScope) {
+      doc.recipientMatchScope = FieldValue.delete();
+    }
+    await this.db.collection(OUTREACH_CAMPAIGNS).doc(id).set(doc, {
       merge: true,
     });
     return campaign;

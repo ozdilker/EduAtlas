@@ -151,6 +151,36 @@ describe("createCampaign recipientSource", () => {
     expect(c.recipientSource).toBe("external_import");
     expect(c.importMeta?.acceptedCount).toBe(8);
   });
+
+  it("stores recipientMatchScope and normalizes district id", () => {
+    const c = createCampaign({
+      id: "camp_scope",
+      name: "Bakırköy import",
+      templateId: "tpl_1",
+      segmentId: "seg_1",
+      recipientSource: "external_import",
+      recipientMatchScope: { cityId: "istanbul", districtId: "bakirkoy" },
+      createdAt: "2026-08-02T00:00:00.000Z",
+      createdBy: "admin_1",
+    });
+    expect(c.recipientMatchScope).toEqual({
+      cityId: "istanbul",
+      districtId: "istanbul-bakirkoy",
+    });
+  });
+
+  it("omits empty recipientMatchScope", () => {
+    const c = createCampaign({
+      id: "camp_scope_empty",
+      name: "Import camp",
+      templateId: "tpl_1",
+      segmentId: "seg_1",
+      recipientMatchScope: { cityId: "  ", districtId: "" },
+      createdAt: "2026-08-02T00:00:00.000Z",
+      createdBy: "admin_1",
+    });
+    expect(c.recipientMatchScope).toBeUndefined();
+  });
 });
 
 describe("buildExternalInstitutionId", () => {

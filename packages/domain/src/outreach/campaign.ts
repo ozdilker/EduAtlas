@@ -29,6 +29,12 @@ export type CampaignImportMeta = Readonly<{
   readonly importedAt: string;
 }>;
 
+/** Optional city/district scope for external/manual recipient institution matching. */
+export type CampaignRecipientMatchScope = Readonly<{
+  readonly cityId?: string;
+  readonly districtId?: string;
+}>;
+
 export type Campaign = Readonly<{
   readonly id: CampaignId;
   readonly name: string;
@@ -41,6 +47,8 @@ export type Campaign = Readonly<{
   readonly recipientSource?: CampaignRecipientSource;
   /** Metadata from the last successful external import prepare (file not stored). */
   readonly importMeta?: CampaignImportMeta;
+  /** External/manual matching geography. Does not change segment audience filters. */
+  readonly recipientMatchScope?: CampaignRecipientMatchScope;
   /** When set, overrides the linked template subject at preview/send time. */
   readonly subjectOverride?: string;
   /** Inbox preview text (preheader). */
@@ -65,6 +73,7 @@ export type CreateCampaignInput = {
   segmentId: string;
   recipientSource?: CampaignRecipientSource;
   importMeta?: CampaignImportMeta;
+  recipientMatchScope?: CampaignRecipientMatchScope;
   subjectOverride?: string;
   preheader?: string;
   createdAt: string;
@@ -111,6 +120,7 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
   const execution = normalizeExecution(input.execution);
   const postSummary = normalizePostSummary(input.postSummary);
   const learnings = normalizeLearnings(input.learnings);
+  const recipientMatchScope = normalizeRecipientMatchScope(input.recipientMatchScope);
 
   return Object.freeze({
     id: createCampaignId(input.id),
@@ -122,6 +132,7 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
     segmentId,
     ...(input.recipientSource ? { recipientSource: input.recipientSource } : {}),
     ...(input.importMeta ? { importMeta: normalizeImportMeta(input.importMeta) } : {}),
+    ...(recipientMatchScope ? { recipientMatchScope } : {}),
     ...(subjectOverride ? { subjectOverride } : {}),
     ...(preheader ? { preheader } : {}),
     createdAt: input.createdAt,
@@ -137,6 +148,26 @@ export function createCampaign(input: CreateCampaignInput): Campaign {
 
 export function campaignKey(campaign: Campaign): string {
   return campaignIdAsString(campaign.id);
+}
+
+export function normalizeRecipientMatchScope(
+  scope: CampaignRecipientMatchScope | undefined,
+): CampaignRecipientMatchScope | undefined {
+  if (!scope) return undefined;
+  const cityId = scope.cityId?.trim() || undefined;
+  let districtId = scope.districtId?.trim() || undefined;
+  if (cityId && districtId) {
+    if (districtId === cityId) {
+      districtId = undefined;
+    } else if (!districtId.includes("-") && !districtId.startsWith(`${cityId}-`)) {
+      districtId = `${cityId}-${districtId}`;
+    }
+  }
+  if (!cityId && !districtId) return undefined;
+  return Object.freeze({
+    ...(cityId ? { cityId } : {}),
+    ...(districtId ? { districtId } : {}),
+  });
 }
 
 function normalizeImportMeta(meta: CampaignImportMeta): CampaignImportMeta {

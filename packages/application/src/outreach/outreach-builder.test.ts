@@ -226,4 +226,68 @@ describe("OutreachService builder flows", () => {
       }),
     ).rejects.toThrow(/subject/i);
   });
+
+  it("persists recipientMatchScope on external campaigns and ignores it for segment", async () => {
+    const stores = createInMemoryOutreachStores();
+    const queue = createInMemoryOutreachQueue();
+    const service = createOutreachService({ ...stores, queue });
+    await stores.templateRepository.save(
+      createCampaignTemplate({
+        id: "tpl_x",
+        name: "X",
+        subject: "S",
+        preview: "P",
+        bodyLines: ["B"],
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    await stores.segmentRepository.save(
+      createCampaignSegment({
+        id: "seg_x",
+        name: "X",
+        filters: { cityId: "istanbul" },
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    await service.createCampaign({
+      id: "camp_scope",
+      name: "Bakırköy import",
+      templateId: "tpl_x",
+      segmentId: "seg_x",
+      recipientSource: "external_import",
+      subjectOverride: "Konu",
+      preheader: "Pre",
+      createdAt: NOW,
+      createdBy: "admin_1",
+    });
+    const updated = await service.updateCampaign({
+      campaignId: "camp_scope",
+      name: "Bakırköy import",
+      templateId: "tpl_x",
+      segmentId: "seg_x",
+      subjectOverride: "Konu",
+      preheader: "Pre",
+      recipientSource: "external_import",
+      recipientMatchScope: { cityId: "istanbul", districtId: "bakirkoy" },
+      now: NOW,
+    });
+    expect(updated.recipientMatchScope).toEqual({
+      cityId: "istanbul",
+      districtId: "istanbul-bakirkoy",
+    });
+    const asSegment = await service.updateCampaign({
+      campaignId: "camp_scope",
+      name: "Bakırköy import",
+      templateId: "tpl_x",
+      segmentId: "seg_x",
+      subjectOverride: "Konu",
+      preheader: "Pre",
+      recipientSource: "segment",
+      recipientMatchScope: { cityId: "istanbul", districtId: "istanbul-bakirkoy" },
+      now: NOW,
+    });
+    expect(asSegment.recipientMatchScope).toBeUndefined();
+  });
 });

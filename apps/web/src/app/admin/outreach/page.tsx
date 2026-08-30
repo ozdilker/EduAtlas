@@ -54,6 +54,8 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         recipientSource: data.selected.recipientSource,
         subjectOverride: data.selected.subjectOverride,
         preheader: data.selected.preheader,
+        matchCityId: data.selected.matchCityId ?? "",
+        matchDistrictId: data.selected.matchDistrictId ?? "",
       }
     : {
         id: "",
@@ -64,6 +66,8 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
         recipientSource: "segment" as const,
         subjectOverride: CLAIM_INVITATION_DEFAULT_SUBJECT,
         preheader: CLAIM_INVITATION_DEFAULT_PREHEADER,
+        matchCityId: "",
+        matchDistrictId: "",
       };
 
   return (
@@ -98,6 +102,8 @@ export default async function AdminOutreachRoute({ searchParams }: AdminOutreach
       segmentPreview={data.segmentPreview}
       summary={data.summary}
       matchSearchScope={data.matchSearchScope ?? undefined}
+      matchScopeCities={data.matchScopeCities}
+      matchScopeDistricts={data.matchScopeDistricts}
       warmup={data.warmup}
       preSendChecklist={data.preSendChecklist}
       preSendComplete={data.preSendComplete}

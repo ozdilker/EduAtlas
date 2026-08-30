@@ -21,6 +21,8 @@ export type GrowthFormValues = Readonly<{
   recipientSource: "segment" | "external_import" | "manual";
   subjectOverride: string;
   preheader: string;
+  matchCityId: string;
+  matchDistrictId: string;
 }>;
 
 export type GrowthProgressView = Readonly<{
@@ -155,11 +157,17 @@ export type GrowthCenterPageProps = {
   recipients?: readonly GrowthRecipientView[];
   segmentPreview?: readonly GrowthSegmentPreviewRow[];
   summary?: GrowthSummaryView | null;
-  /** Optional city/district scope for institution search (from campaign segment). */
+  /** Optional city/district scope for institution search (campaign match scope or segment). */
   matchSearchScope?: {
     cityId?: string;
     districtId?: string;
   };
+  matchScopeCities?: readonly GrowthSelectOption[];
+  matchScopeDistricts?: readonly {
+    id: string;
+    cityId: string;
+    name: string;
+  }[];
   warmup?: GrowthWarmupView;
   preSendChecklist?: GrowthPreSendChecklist;
   preSendComplete?: boolean;

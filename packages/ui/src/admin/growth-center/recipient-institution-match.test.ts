@@ -20,6 +20,9 @@ describe("GROWTH-007 FIX institution match UI helpers", () => {
     expect(pageSrc.includes("EduAtlas kurum ID")).toBe(false);
     expect(pageSrc.includes("RecipientInstitutionMatchPanel")).toBe(true);
     expect(pageSrc.includes("ManualInstitutionPicker")).toBe(true);
+    expect(pageSrc.includes("Eşleştirme kapsamı")).toBe(true);
+    expect(pageSrc.includes('name="matchCityId"')).toBe(true);
+    expect(pageSrc.includes('name="matchDistrictId"')).toBe(true);
   });
 
   it("Seç form binds assignAction directly with campaign + recipient + institution ids", () => {

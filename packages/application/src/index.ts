@@ -552,6 +552,8 @@ export {
   resolveCampaignListBucket,
   sanitizeOutreachImportCell,
   searchOutreachInstitutions,
+  pickOutreachMatchingProbeToken,
+  resolveOutreachMatchSearchScope,
   SEED_CLAIM_INVITATION_CAMPAIGN_ID,
   type SegmentInstitutionPreview,
   WARMUP_STAGE,

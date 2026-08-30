@@ -115,6 +115,7 @@ function toCreateInput(
     segmentId: campaign.segmentId,
     recipientSource: campaign.recipientSource,
     importMeta: campaign.importMeta,
+    recipientMatchScope: campaign.recipientMatchScope,
     subjectOverride: campaign.subjectOverride,
     preheader: campaign.preheader,
     createdAt: campaign.createdAt,
@@ -155,6 +156,7 @@ export class OutreachService {
     subjectOverride: string;
     preheader: string;
     recipientSource?: "segment" | "external_import" | "manual";
+    recipientMatchScope?: { cityId?: string; districtId?: string };
     now: string;
   }): Promise<Campaign> {
     const campaign = await this.requireCampaign(input.campaignId);
@@ -181,6 +183,10 @@ export class OutreachService {
     }
 
     const recipientSource = input.recipientSource ?? campaign.recipientSource ?? "segment";
+    const recipientMatchScope =
+      recipientSource === "external_import" || recipientSource === "manual"
+        ? input.recipientMatchScope
+        : undefined;
 
     const updated = createCampaign(
       toCreateInput(campaign, {
@@ -191,6 +197,7 @@ export class OutreachService {
         subjectOverride,
         preheader,
         recipientSource,
+        recipientMatchScope,
       }),
     );
     await this.deps.campaignRepository.update(updated);

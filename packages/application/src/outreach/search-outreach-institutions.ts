@@ -56,6 +56,63 @@ export function distinctiveOutreachSearchTokens(
   return distinctiveSearchTokens(query, { cityId, districtId });
 }
 
+/**
+ * Growth Center matching-only generic tokens. Not shared stopwords —
+ * public search and the shared ranker do not use this list.
+ */
+export const OUTREACH_MATCHING_GENERIC_TOKENS: ReadonlySet<string> = Object.freeze(
+  new Set([
+    "egitim",
+    "kurumlari",
+    "kurs",
+    "kursu",
+    "ogretim",
+    "ozel",
+    "akademi",
+    "merkezi",
+    "merkez",
+    "anaokulu",
+  ]),
+);
+
+export function matchingOutreachSearchTokens(
+  query: string,
+  scope?: { cityId?: string; districtId?: string },
+): readonly string[] {
+  return Object.freeze(
+    distinctiveOutreachSearchTokens(query, scope).filter(
+      (token) => !OUTREACH_MATCHING_GENERIC_TOKENS.has(token),
+    ),
+  );
+}
+
+export function pickOutreachMatchingProbeToken(
+  query: string,
+  scope?: { cityId?: string; districtId?: string },
+): string | undefined {
+  return pickInstitutionSearchProbeToken(matchingOutreachSearchTokens(query, scope));
+}
+
+export function resolveOutreachMatchSearchScope(input: {
+  readonly recipientSource?: string;
+  readonly recipientMatchScope?: { cityId?: string; districtId?: string };
+  readonly segmentFilters?: { cityId?: string; districtId?: string };
+}): { cityId?: string; districtId?: string } | null {
+  const useCampaignScope =
+    (input.recipientSource === "external_import" || input.recipientSource === "manual") &&
+    Boolean(
+      input.recipientMatchScope?.cityId?.trim() || input.recipientMatchScope?.districtId?.trim(),
+    );
+  const raw = useCampaignScope ? input.recipientMatchScope : input.segmentFilters;
+  const cityId = raw?.cityId?.trim() || undefined;
+  const districtId = normalizeOutreachDistrictId(cityId, raw?.districtId);
+  if (!cityId && !districtId) return null;
+  return {
+    ...(cityId ? { cityId } : {}),
+    ...(districtId ? { districtId } : {}),
+  };
+}
+
 export function scoreOutreachInstitutionHit(
   query: string,
   institution: Pick<Institution, "name">,
@@ -131,14 +188,7 @@ export async function searchOutreachInstitutions(
       ...(districtId ? { districtId } : {}),
     });
     addAll(exactScoped);
-    if (exactScoped.length === 0 && districtId && cityId) {
-      const exactCityOnly = await institutionRepository.findByExactName(query, {
-        limit: OUTREACH_SEARCH_QUERY_CAP,
-        cityId,
-      });
-      addAll(exactCityOnly);
-    }
-    if (byId.size === 0 && !cityId) {
+    if (byId.size === 0 && !cityId && !districtId) {
       const exactAny = await institutionRepository.findByExactName(query, {
         limit: OUTREACH_SEARCH_QUERY_CAP,
       });
@@ -146,9 +196,7 @@ export async function searchOutreachInstitutions(
     }
   }
 
-  const probe = pickInstitutionSearchProbeToken(
-    distinctiveOutreachSearchTokens(query, { cityId, districtId }),
-  );
+  const probe = pickOutreachMatchingProbeToken(query, { cityId, districtId });
   if (probe && institutionRepository.findBySearchKeyword && (cityId || districtId)) {
     if (districtId) {
       const keywordDistrict = await institutionRepository.findBySearchKeyword(probe, {
@@ -156,13 +204,6 @@ export async function searchOutreachInstitutions(
         districtId,
       });
       addAll(keywordDistrict);
-      if (keywordDistrict.length === 0 && cityId) {
-        const keywordCity = await institutionRepository.findBySearchKeyword(probe, {
-          limit: OUTREACH_SEARCH_QUERY_CAP,
-          cityId,
-        });
-        addAll(keywordCity);
-      }
     } else if (cityId) {
       const keywordCity = await institutionRepository.findBySearchKeyword(probe, {
         limit: OUTREACH_SEARCH_QUERY_CAP,

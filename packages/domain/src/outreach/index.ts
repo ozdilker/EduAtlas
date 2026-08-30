@@ -11,8 +11,10 @@ export {
 export {
   campaignKey,
   createCampaign,
+  normalizeRecipientMatchScope,
   type Campaign,
   type CampaignImportMeta,
+  type CampaignRecipientMatchScope,
   type CampaignRecipientSource,
   type CreateCampaignInput,
 } from "./campaign";

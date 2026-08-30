@@ -7,7 +7,7 @@ import {
   ISTANBUL_UNCLAIMED_SEGMENT_ID,
   isOutreachValidationError,
 } from "@eduatlas/application";
-import { campaignIdAsString } from "@eduatlas/domain";
+import { campaignIdAsString, normalizeRecipientMatchScope } from "@eduatlas/domain";
 import { randomBytes } from "node:crypto";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -49,6 +49,19 @@ function outreachRedirect(params: {
   redirect(qs ? `/admin/outreach?${qs}` : "/admin/outreach");
 }
 
+function formMatchScope(
+  formData: FormData,
+  recipientSource: "segment" | "external_import" | "manual",
+) {
+  if (recipientSource !== "external_import" && recipientSource !== "manual") {
+    return undefined;
+  }
+  return normalizeRecipientMatchScope({
+    cityId: formString(formData, "matchCityId"),
+    districtId: formString(formData, "matchDistrictId"),
+  });
+}
+
 export async function saveOutreachCampaignAction(formData: FormData): Promise<void> {
   const session = await requireAdminSession();
   const service = await getOutreachService();
@@ -66,6 +79,7 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
       : recipientSourceRaw === "manual"
         ? "manual"
         : "segment";
+  const recipientMatchScope = formMatchScope(formData, recipientSource);
   const subjectOverride =
     formString(formData, "subjectOverride") || CLAIM_INVITATION_DEFAULT_SUBJECT;
   const preheader =
@@ -82,6 +96,7 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
         subjectOverride,
         preheader,
         recipientSource,
+        recipientMatchScope,
         now,
       });
       outreachRedirect({
@@ -97,6 +112,7 @@ export async function saveOutreachCampaignAction(formData: FormData): Promise<vo
       templateId,
       segmentId,
       recipientSource,
+      recipientMatchScope,
       subjectOverride,
       preheader,
       createdAt: now,

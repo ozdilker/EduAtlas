@@ -93,9 +93,13 @@ export {
 } from "./match-outreach-recipients";
 export {
   distinctiveOutreachSearchTokens,
+  matchingOutreachSearchTokens,
   normalizeOutreachDistrictId,
+  pickOutreachMatchingProbeToken,
+  resolveOutreachMatchSearchScope,
   scoreOutreachInstitutionHit,
   searchOutreachInstitutions,
+  OUTREACH_MATCHING_GENERIC_TOKENS,
   OUTREACH_SEARCH_LIMIT,
   OUTREACH_SEARCH_QUERY_CAP,
   type OutreachInstitutionSearchHit,

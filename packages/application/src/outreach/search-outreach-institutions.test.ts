@@ -10,7 +10,10 @@ import {
 import type { InstitutionRepository } from "../institutions/institution-repository";
 import {
   distinctiveOutreachSearchTokens,
+  matchingOutreachSearchTokens,
   normalizeOutreachDistrictId,
+  pickOutreachMatchingProbeToken,
+  resolveOutreachMatchSearchScope,
   scoreOutreachInstitutionHit,
   searchOutreachInstitutions,
 } from "./search-outreach-institutions";
@@ -151,6 +154,42 @@ describe("GROWTH-007 search debug helpers", () => {
     })).toContain("aci");
     expect([...distinctiveOutreachSearchTokens("Özel Öğretim Kursu")]).toEqual([]);
     expect([...distinctiveOutreachSearchTokens("Kadro Kurs")]).toEqual(["kadro"]);
+    expect(
+      pickOutreachMatchingProbeToken("Bakırköy Tasarı Eğitim Kurumları", {
+        cityId: "istanbul",
+        districtId: "istanbul-bakirkoy",
+      }),
+    ).toBe("tasari");
+    expect(
+      pickOutreachMatchingProbeToken("Bilgi Özel Öğretim Kursu", {
+        cityId: "istanbul",
+        districtId: "istanbul-bakirkoy",
+      }),
+    ).toBe("bilgi");
+    expect(
+      pickOutreachMatchingProbeToken("Kadro Kurs", {
+        cityId: "istanbul",
+        districtId: "istanbul-bakirkoy",
+      }),
+    ).toBe("kadro");
+    expect(
+      pickOutreachMatchingProbeToken("Sezon Özel Öğretim Kursu", {
+        cityId: "istanbul",
+        districtId: "istanbul-bakirkoy",
+      }),
+    ).toBe("sezon");
+    expect(
+      pickOutreachMatchingProbeToken("Özel Öğretim Kursu", {
+        cityId: "istanbul",
+        districtId: "istanbul-bakirkoy",
+      }),
+    ).toBeUndefined();
+    expect(
+      matchingOutreachSearchTokens("Bakırköy Tasarı Eğitim Kurumları", {
+        cityId: "istanbul",
+        districtId: "istanbul-bakirkoy",
+      }),
+    ).toEqual(["tasari"]);
   });
 
   it("contactEmail exact match returns the real institutionId", async () => {
@@ -293,5 +332,167 @@ describe("GROWTH-007 search debug helpers", () => {
       name: "GENÇ KADRO ÖZEL ÖĞRETİM KURSU",
     });
     expect(exact).toBeGreaterThan(partial);
+  });
+});
+
+const bakirkoyMatchingCatalog = [
+  inst({
+    id: "inst_bakirkoy_tasari_ozel_ogretim_kursu",
+    name: "BAKIRKÖY TASARI ÖZEL ÖĞRETİM KURSU",
+  }),
+  inst({
+    id: "inst_ozel_bakirkoy_tasari_sosyal_etkinlik_ve_gelisim_merkezi",
+    name: "ÖZEL BAKIRKÖY TASARI SOSYAL ETKİNLİK VE GELİŞİM MERKEZİ",
+  }),
+  inst({
+    id: "inst_avcilar_tasari_ozel_ogretim_kursu",
+    name: "AVCILAR TASARI ÖZEL ÖĞRETİM KURSU",
+    districtId: "istanbul-avcilar",
+  }),
+  inst({
+    id: "inst_ozel_eko_egitim_kurumlari_anaokulu",
+    name: "ÖZEL EKO EĞİTİM KURUMLARI ANAOKULU",
+    districtId: "istanbul-basaksehir",
+  }),
+  inst({
+    id: "inst_genc_kadro_ozel_ogretim_kursu",
+    name: "GENÇ KADRO ÖZEL ÖĞRETİM KURSU",
+  }),
+  inst({
+    id: "inst_ozel_farkli_kadro_ozel_ogretim_kursu",
+    name: "ÖZEL FARKLI KADRO ÖZEL ÖĞRETİM KURSU",
+    districtId: "istanbul-fatih",
+  }),
+  inst({
+    id: "inst_bakirkoy_ilgideki_cagdas_bilgi_ozel_ogretim_kursu",
+    name: "BAKIRKÖY İLGİDEKİ ÇAĞDAŞ BİLGİ ÖZEL ÖĞRETİM KURSU",
+  }),
+  inst({
+    id: "inst_ozel_atasehir_bilgi_koleji_anadolu_lisesi",
+    name: "ÖZEL ATAŞEHİR BİLGİ KOLEJİ ANADOLU LİSESİ",
+    districtId: "istanbul-atasehir",
+  }),
+  inst({
+    id: "inst_sezon_akademi_ozel_ogretim_kursu",
+    name: "SEZON AKADEMİ ÖZEL ÖĞRETİM KURSU",
+  }),
+];
+
+const bakirkoyScope = {
+  queryCity: { cityId: "istanbul", districtId: "istanbul-bakirkoy" },
+} as const;
+
+describe("GROWTH-007 matching scope and distinctive probe", () => {
+  it("resolves campaign match scope over segment filters for external campaigns", () => {
+    expect(
+      resolveOutreachMatchSearchScope({
+        recipientSource: "external_import",
+        recipientMatchScope: { cityId: "istanbul", districtId: "istanbul-bakirkoy" },
+        segmentFilters: { cityId: "istanbul" },
+      }),
+    ).toEqual({ cityId: "istanbul", districtId: "istanbul-bakirkoy" });
+    expect(
+      resolveOutreachMatchSearchScope({
+        recipientSource: "segment",
+        recipientMatchScope: { cityId: "istanbul", districtId: "istanbul-bakirkoy" },
+        segmentFilters: { cityId: "istanbul" },
+      }),
+    ).toEqual({ cityId: "istanbul" });
+  });
+
+  it("finds BAKIRKÖY TASARI in bakirkoy scope and excludes other districts", async () => {
+    const repo = stubRepo(bakirkoyMatchingCatalog);
+    const keyword = vi.fn(repo.findBySearchKeyword!);
+    repo.findBySearchKeyword = keyword;
+    const result = await searchOutreachInstitutions(
+      {
+        query: "Bakırköy Tasarı Eğitim Kurumları",
+        ...bakirkoyScope.queryCity,
+      },
+      repo,
+    );
+    expect(keyword.mock.calls.every((call) => call[0] === "tasari")).toBe(true);
+    expect(keyword.mock.calls.every((call) => call[1]?.districtId === "istanbul-bakirkoy")).toBe(
+      true,
+    );
+    expect(keyword.mock.calls.some((call) => call[1]?.cityId && !call[1]?.districtId)).toBe(false);
+    expect(result.items[0]?.id).toBe("inst_bakirkoy_tasari_ozel_ogretim_kursu");
+    expect(result.items.every((row) => row.districtId === "istanbul-bakirkoy")).toBe(true);
+    expect(result.items.some((row) => row.id === "inst_avcilar_tasari_ozel_ogretim_kursu")).toBe(
+      false,
+    );
+    expect(result.items.some((row) => row.id === "inst_ozel_eko_egitim_kurumlari_anaokulu")).toBe(
+      false,
+    );
+    expect(repo.listCalls).toBe(0);
+    expect(result.documentsRead).toBeLessThanOrEqual(40);
+  });
+
+  it("keeps Bilgi candidates inside bakirkoy", async () => {
+    const repo = stubRepo(bakirkoyMatchingCatalog);
+    const result = await searchOutreachInstitutions(
+      { query: "Bilgi Özel Öğretim Kursu", ...bakirkoyScope.queryCity },
+      repo,
+    );
+    expect(result.items.length).toBeGreaterThan(0);
+    expect(result.items.every((row) => row.districtId === "istanbul-bakirkoy")).toBe(true);
+    expect(
+      result.items.some((row) => row.id === "inst_ozel_atasehir_bilgi_koleji_anadolu_lisesi"),
+    ).toBe(false);
+  });
+
+  it("ranks GENÇ KADRO first and excludes Fatih FARKLI KADRO", async () => {
+    const repo = stubRepo(bakirkoyMatchingCatalog);
+    const result = await searchOutreachInstitutions(
+      { query: "Kadro Kurs", ...bakirkoyScope.queryCity },
+      repo,
+    );
+    expect(result.items[0]?.id).toBe("inst_genc_kadro_ozel_ogretim_kursu");
+    expect(result.items.some((row) => row.id === "inst_ozel_farkli_kadro_ozel_ogretim_kursu")).toBe(
+      false,
+    );
+  });
+
+  it("finds SEZON AKADEMİ in bakirkoy scope", async () => {
+    const repo = stubRepo(bakirkoyMatchingCatalog);
+    const result = await searchOutreachInstitutions(
+      { query: "Sezon Özel Öğretim Kursu", ...bakirkoyScope.queryCity },
+      repo,
+    );
+    expect(result.items[0]?.id).toBe("inst_sezon_akademi_ozel_ogretim_kursu");
+    expect(result.items[0]?.districtId).toBe("istanbul-bakirkoy");
+  });
+
+  it("does not dump generic Özel Öğretim Kursu candidates", async () => {
+    const repo = stubRepo(bakirkoyMatchingCatalog);
+    const keyword = vi.fn(repo.findBySearchKeyword!);
+    repo.findBySearchKeyword = keyword;
+    const result = await searchOutreachInstitutions(
+      { query: "Özel Öğretim Kursu", ...bakirkoyScope.queryCity },
+      repo,
+    );
+    expect(result.items).toEqual([]);
+    expect(keyword).not.toHaveBeenCalled();
+    expect(repo.listCalls).toBe(0);
+  });
+
+  it("does not city-retry when explicit district returns 0", async () => {
+    const repo = stubRepo(bakirkoyMatchingCatalog);
+    const keyword = vi.fn(repo.findBySearchKeyword!);
+    const exact = vi.fn(repo.findByExactName!);
+    repo.findBySearchKeyword = keyword;
+    repo.findByExactName = exact;
+    const result = await searchOutreachInstitutions(
+      { query: "Avcılar Tasarı", cityId: "istanbul", districtId: "istanbul-bakirkoy" },
+      repo,
+    );
+    expect(result.items).toEqual([]);
+    expect(keyword.mock.calls.length).toBeGreaterThan(0);
+    expect(keyword.mock.calls.every((call) => call[1]?.districtId === "istanbul-bakirkoy")).toBe(
+      true,
+    );
+    expect(keyword.mock.calls.some((call) => call[1]?.cityId && !call[1]?.districtId)).toBe(false);
+    expect(exact.mock.calls.some((call) => call[1]?.cityId && !call[1]?.districtId)).toBe(false);
+    expect(repo.listCalls).toBe(0);
   });
 });

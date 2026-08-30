@@ -38,6 +38,8 @@ type DraftForm = {
   recipientSource: "segment" | "external_import" | "manual";
   subjectOverride: string;
   preheader: string;
+  matchCityId: string;
+  matchDistrictId: string;
 };
 
 type ImportPreviewState = Readonly<{
@@ -64,6 +66,8 @@ function toDraft(form: GrowthFormValues): DraftForm {
     recipientSource: form.recipientSource ?? "segment",
     subjectOverride: form.subjectOverride,
     preheader: form.preheader,
+    matchCityId: form.matchCityId ?? "",
+    matchDistrictId: form.matchDistrictId ?? "",
   };
 }
 
@@ -96,6 +100,8 @@ export function GrowthCenterPage({
   segmentPreview = [],
   summary = null,
   matchSearchScope,
+  matchScopeCities = [],
+  matchScopeDistricts = [],
   warmup,
   preSendChecklist = {
     subjectOk: false,
@@ -140,8 +146,6 @@ export function GrowthCenterPage({
   const hasPreparedRecipients = recipients.some((r) => r.status !== "pending");
   const hasPendingImport = recipients.some((r) => r.status === "pending");
   const stageLimit = warmup?.limit ?? summary?.warmupLimit ?? 20;
-  const matchCityId = matchSearchScope?.cityId;
-  const matchDistrictId = matchSearchScope?.districtId;
   const canExpand =
     status === "draft" && hasPreparedRecipients && recipients.filter((r) => r.status !== "pending").length < stageLimit;
   const canEditChecklist =
@@ -164,6 +168,20 @@ export function GrowthCenterPage({
   const [importPreviewBusy, setImportPreviewBusy] = useState(false);
   const [selectedPreviewRecipientId, setSelectedPreviewRecipientId] = useState<string>("");
 
+  const searchCityId =
+    draft.recipientSource !== "segment" && draft.matchCityId
+      ? draft.matchCityId
+      : matchSearchScope?.cityId;
+  const searchDistrictId =
+    draft.recipientSource !== "segment" && draft.matchDistrictId
+      ? draft.matchDistrictId
+      : matchSearchScope?.districtId;
+  const matchCityId = searchCityId;
+  const matchDistrictId = searchDistrictId;
+  const districtsForMatchCity = matchScopeDistricts.filter(
+    (district) => district.cityId === draft.matchCityId,
+  );
+
   const formSyncKey = [
     form.id,
     form.name,
@@ -173,6 +191,8 @@ export function GrowthCenterPage({
     form.recipientSource,
     form.subjectOverride,
     form.preheader,
+    form.matchCityId,
+    form.matchDistrictId,
     defaultTestEmail,
     checklistSyncKey(preSendChecklist),
     learnings?.notes ?? "",
@@ -463,6 +483,8 @@ export function GrowthCenterPage({
                     <input type="hidden" name="templateId" value={draft.templateId} />
                     <input type="hidden" name="segmentId" value={draft.segmentId} />
                     <input type="hidden" name="recipientSource" value={draft.recipientSource} />
+                    <input type="hidden" name="matchCityId" value={draft.matchCityId} />
+                    <input type="hidden" name="matchDistrictId" value={draft.matchDistrictId} />
                   </>
                 ) : null}
                 {step === 2 ? (
@@ -473,6 +495,8 @@ export function GrowthCenterPage({
                     <input type="hidden" name="preheader" value={draft.preheader} />
                     <input type="hidden" name="segmentId" value={draft.segmentId} />
                     <input type="hidden" name="recipientSource" value={draft.recipientSource} />
+                    <input type="hidden" name="matchCityId" value={draft.matchCityId} />
+                    <input type="hidden" name="matchDistrictId" value={draft.matchDistrictId} />
                     <div className="ea-admin-field">
                       <label htmlFor="outreach-template">Şablon</label>
                       <select
@@ -550,6 +574,74 @@ export function GrowthCenterPage({
                         Tekil alıcı
                       </label>
                     </fieldset>
+                    {draft.recipientSource === "external_import" ||
+                    draft.recipientSource === "manual" ? (
+                      <fieldset className="ea-admin-field">
+                        <legend>Eşleştirme kapsamı</legend>
+                        <p className="ea-admin-muted">
+                          Kurum araması bu il / ilçe ile sınırlanır. Sonuç yoksa diğer ilçeler
+                          önerilmez.
+                        </p>
+                        <div className="ea-admin-field">
+                          <label htmlFor="outreach-match-city">İl</label>
+                          <select
+                            id="outreach-match-city"
+                            className="ea-admin-select"
+                            name="matchCityId"
+                            value={draft.matchCityId}
+                            onChange={(event) => {
+                              const cityId = event.target.value;
+                              setDraft((current) => ({
+                                ...current,
+                                matchCityId: cityId,
+                                matchDistrictId: matchScopeDistricts.some(
+                                  (district) =>
+                                    district.cityId === cityId &&
+                                    district.id === current.matchDistrictId,
+                                )
+                                  ? current.matchDistrictId
+                                  : "",
+                              }));
+                            }}
+                          >
+                            <option value="">İl seçin</option>
+                            {matchScopeCities.map((city) => (
+                              <option key={city.id} value={city.id}>
+                                {city.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="ea-admin-field">
+                          <label htmlFor="outreach-match-district">İlçe</label>
+                          <select
+                            id="outreach-match-district"
+                            className="ea-admin-select"
+                            name="matchDistrictId"
+                            value={draft.matchDistrictId}
+                            disabled={!draft.matchCityId}
+                            onChange={(event) =>
+                              setDraft((current) => ({
+                                ...current,
+                                matchDistrictId: event.target.value,
+                              }))
+                            }
+                          >
+                            <option value="">İlçe seçin</option>
+                            {districtsForMatchCity.map((district) => (
+                              <option key={district.id} value={district.id}>
+                                {district.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </fieldset>
+                    ) : (
+                      <>
+                        <input type="hidden" name="matchCityId" value="" />
+                        <input type="hidden" name="matchDistrictId" value="" />
+                      </>
+                    )}
                     {draft.recipientSource === "segment" ? (
                       <div className="ea-admin-field">
                         <label htmlFor="outreach-segment">Segment</label>

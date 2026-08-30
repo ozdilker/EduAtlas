@@ -11,6 +11,7 @@ import {
   remainingDeliveryJobs,
   resolveCampaignBodyLines,
   resolveCampaignListBucket,
+  resolveOutreachMatchSearchScope,
   type SegmentInstitutionPreview,
 } from "@eduatlas/application";
 import {
@@ -18,16 +19,38 @@ import {
   type CampaignPostSummary,
   type CampaignPreSendChecklist,
   campaignIdAsString,
+  cityIdAsString,
   createInstitutionId,
+  districtIdAsString,
   emptyPreSendChecklist,
   institutionIdAsString,
   isExternalInstitutionId,
   isPreSendChecklistComplete,
 } from "@eduatlas/domain";
+import { buildTurkeyGeographySeedCatalog } from "@eduatlas/firebase/server";
 import { getSeoSiteConfig } from "@/lib/seo-site";
 import { getBillingProtectionDeps } from "@/server/billing-protection/repository";
 import { getInstitutionRepository } from "@/server/institutions/repository";
 import { getOutreachService, getOutreachStores } from "@/server/outreach/store";
+
+const MATCH_SCOPE_GEOGRAPHY = buildTurkeyGeographySeedCatalog();
+const MATCH_SCOPE_CITIES = Object.freeze(
+  MATCH_SCOPE_GEOGRAPHY.cities.map((city) =>
+    Object.freeze({
+      id: cityIdAsString(city.id),
+      name: city.nameTr,
+    }),
+  ),
+);
+const MATCH_SCOPE_DISTRICTS = Object.freeze(
+  MATCH_SCOPE_GEOGRAPHY.districts.map((district) =>
+    Object.freeze({
+      id: districtIdAsString(district.id),
+      cityId: cityIdAsString(district.cityId),
+      name: district.nameTr,
+    }),
+  ),
+);
 
 export type AdminOutreachCampaignRow = Readonly<{
   id: string;
@@ -36,6 +59,8 @@ export type AdminOutreachCampaignRow = Readonly<{
   templateId: string;
   segmentId: string;
   recipientSource: "segment" | "external_import" | "manual";
+  matchCityId?: string;
+  matchDistrictId?: string;
   subjectOverride: string;
   preheader: string;
   description: string;
@@ -137,6 +162,8 @@ export type AdminOutreachPageData = Readonly<{
   segmentPreview: readonly SegmentInstitutionPreview[];
   summary: AdminOutreachSummary | null;
   matchSearchScope: { cityId?: string; districtId?: string } | null;
+  matchScopeCities: readonly { id: string; name: string }[];
+  matchScopeDistricts: readonly { id: string; cityId: string; name: string }[];
   warmup: AdminOutreachWarmupView;
   preSendChecklist: CampaignPreSendChecklist;
   preSendComplete: boolean;
@@ -226,6 +253,10 @@ export async function getAdminOutreachPageData(searchParams: {
           : c.recipientSource === "manual"
             ? "manual"
             : "segment",
+      ...(c.recipientMatchScope?.cityId ? { matchCityId: c.recipientMatchScope.cityId } : {}),
+      ...(c.recipientMatchScope?.districtId
+        ? { matchDistrictId: c.recipientMatchScope.districtId }
+        : {}),
       subjectOverride: c.subjectOverride?.trim() || templateSubjectById.get(c.templateId) || "",
       preheader: c.preheader?.trim() || templatePreviewById.get(c.templateId) || "",
       description: c.description ?? "",
@@ -328,16 +359,11 @@ export async function getAdminOutreachPageData(searchParams: {
     );
 
     const selectedSegment = await stores.segmentRepository.getById(selected.segmentId);
-    if (selectedSegment?.filters.cityId || selectedSegment?.filters.districtId) {
-      matchSearchScope = {
-        ...(selectedSegment.filters.cityId
-          ? { cityId: selectedSegment.filters.cityId }
-          : {}),
-        ...(selectedSegment.filters.districtId
-          ? { districtId: selectedSegment.filters.districtId }
-          : {}),
-      };
-    }
+    matchSearchScope = resolveOutreachMatchSearchScope({
+      recipientSource: selectedDomain?.recipientSource,
+      recipientMatchScope: selectedDomain?.recipientMatchScope,
+      segmentFilters: selectedSegment?.filters,
+    });
 
     recipients = recipientRows.map((r) => ({
       id: r.id,
@@ -494,6 +520,8 @@ export async function getAdminOutreachPageData(searchParams: {
     learnings,
     growthLearnings: Object.freeze(growthLearnings),
     logs: Object.freeze(logs),
+    matchScopeCities: MATCH_SCOPE_CITIES,
+    matchScopeDistricts: MATCH_SCOPE_DISTRICTS,
     notice: firstParam(searchParams.notice)?.trim() || undefined,
     error: firstParam(searchParams.error)?.trim() || undefined,
   });
