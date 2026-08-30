@@ -19,6 +19,7 @@ import type { OutreachDeliveryConfig } from "../delivery/delivery-config";
 import { createInMemoryDeliveryJobRepository } from "../delivery/in-memory-delivery-job-repository";
 import type { InstitutionRepository } from "../institutions/institution-repository";
 import { createInMemoryOutreachStores } from "./in-memory-outreach-stores";
+import type { CampaignRecipientRepository } from "./campaign-recipient-repository";
 import {
   importExternalRecipients,
   prepareImportedCampaign,
@@ -30,6 +31,7 @@ import {
   OUTREACH_MATCH_MAX_DOCS_PER_RECIPIENT,
   resolveBoundedOutreachInstitutionMatch,
 } from "./match-outreach-recipients";
+import { searchOutreachInstitutions } from "./search-outreach-institutions";
 import {
   CLAIM_INVITATION_DEFAULT_SUBJECT,
   CLAIM_INVITATION_TEMPLATE_ID,
@@ -112,6 +114,22 @@ function stubRepo(institutions: readonly Institution[]): InstitutionRepository {
         institutions
           .filter((i) => {
             if (i.name.trim().toLocaleLowerCase("tr-TR") !== needle) return false;
+            if (options?.cityId && i.location.cityId !== options.cityId) return false;
+            if (options?.districtId && i.location.districtId !== options.districtId) {
+              return false;
+            }
+            return true;
+          })
+          .slice(0, limit),
+      );
+    },
+    findBySearchKeyword: async (keyword, options) => {
+      const needle = keyword.trim().toLocaleLowerCase("tr-TR");
+      const limit = options?.limit ?? 20;
+      return Object.freeze(
+        institutions
+          .filter((i) => {
+            if (!i.name.toLocaleLowerCase("tr-TR").includes(needle)) return false;
             if (options?.cityId && i.location.cityId !== options.cityId) return false;
             if (options?.districtId && i.location.districtId !== options.districtId) {
               return false;
@@ -611,5 +629,149 @@ describe("GROWTH-007 cost guard regression", () => {
     // Import must not call assertOperationAllowed — covered by growth-006 + above.
     // Matching must not call list — covered above.
     expect(OUTREACH_MATCH_MAX_DOCS_PER_RECIPIENT).toBeLessThanOrEqual(15);
+  });
+});
+
+describe("GROWTH-007 FIX assign mutation persistence", () => {
+  it("import 20 → search → select persists matched on recipient[0]", async () => {
+    const stores = createInMemoryOutreachStores();
+    const queue = createInMemoryOutreachQueue();
+    const gencKadro = inst({
+      id: "inst_genc_kadro",
+      name: "GENÇ KADRO ÖZEL ÖĞRETİM KURSU",
+      email: "info@genckadro.com",
+      cityId: "istanbul",
+      districtId: "istanbul-bakirkoy",
+    });
+    const repo = stubRepo([gencKadro]);
+    await seedCampaign(stores, { source: "external_import" });
+    const rows = [
+      "Kadro Kurs,info@kadrokurs.com",
+      ...Array.from({ length: 19 }, (_, i) => `Kurum ${i + 1},mail${i + 1}@example.com`),
+    ].join("\n");
+    const csv = new TextEncoder().encode(`institutionName,email\n${rows}\n`);
+    const imported = await importExternalRecipients(
+      { campaignId: "camp_g7", fileName: "20.csv", content: csv, now: NOW },
+      {
+        campaignRepository: stores.campaignRepository,
+        recipientRepository: stores.recipientRepository,
+        institutionRepository: repo,
+      },
+    );
+    expect(imported.recipientCount).toBe(20);
+    const listed = await stores.recipientRepository.listByCampaignId("camp_g7");
+    expect(listed).toHaveLength(20);
+    expect(listed.every((row) => row.campaignId === "camp_g7")).toBe(true);
+    const first = listed.find((row) => row.email === "info@kadrokurs.com");
+    expect(first?.id).toMatch(/^crec_imp_/);
+    expect(first?.institutionMatch).not.toBe("matched");
+    expect(await stores.recipientRepository.getById(first!.id)).toEqual(first);
+
+    const hits = await searchOutreachInstitutions(
+      { query: "Kadro Kurs", cityId: "istanbul", districtId: "istanbul-bakirkoy" },
+      repo,
+    );
+    expect(hits.items.some((item) => item.id === "inst_genc_kadro")).toBe(true);
+    expect(hits.usedList).toBe(false);
+    expect((repo as unknown as { __listCalls: () => number }).__listCalls()).toBe(0);
+
+    const service = createOutreachService({
+      ...stores,
+      queue,
+      institutionRepository: repo,
+    });
+    const updated = await service.assignRecipientInstitution({
+      campaignId: "camp_g7",
+      recipientId: first!.id,
+      institutionId: "inst_genc_kadro",
+      now: NOW,
+    });
+    expect(updated.id).toBe(first!.id);
+    expect(updated.institutionId).toBe("inst_genc_kadro");
+    expect(updated.institutionMatch).toBe("matched");
+    expect(updated.matchCandidateIds).toBeUndefined();
+    const persisted = await stores.recipientRepository.getById(first!.id);
+    expect(persisted?.institutionId).toBe("inst_genc_kadro");
+    expect(persisted?.institutionMatch).toBe("matched");
+    expect(isExternalInstitutionId(persisted!.institutionId)).toBe(false);
+    const logs = await stores.logRepository.listByCampaignId("camp_g7");
+    expect(logs.some((log) => log.message.includes("inst_genc_kadro"))).toBe(true);
+  });
+
+  it("rejects wrong campaignId + recipientId pairing", async () => {
+    const stores = createInMemoryOutreachStores();
+    const kadro = inst({ id: "inst_kadro", name: "Kadro Kurs" });
+    const repo = stubRepo([kadro]);
+    await seedCampaign(stores, { source: "external_import" });
+    await stores.recipientRepository.save(
+      createCampaignRecipient({
+        id: "crec_imp_mtfnq7co_1",
+        campaignId: "camp_g7",
+        institutionId: "ext:abc",
+        displayName: "Kadro Kurs",
+        institutionMatch: "unmatched",
+        source: "external_import",
+        email: "info@kadrokurs.com",
+        status: CampaignRecipientStatus.Pending,
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    await expect(
+      assignRecipientInstitution(
+        {
+          campaignId: "camp_other",
+          recipientId: "crec_imp_mtfnq7co_1",
+          institutionId: "inst_kadro",
+          now: NOW,
+        },
+        { recipientRepository: stores.recipientRepository, institutionRepository: repo },
+      ),
+    ).rejects.toThrow(/another campaign|not found/i);
+    const still = await stores.recipientRepository.getById("crec_imp_mtfnq7co_1");
+    expect(still?.institutionMatch).toBe("unmatched");
+    expect(still?.institutionId).toBe("ext:abc");
+  });
+
+  it("still assigns when getById misses but campaign list has the recipient", async () => {
+    const stores = createInMemoryOutreachStores();
+    const kadro = inst({ id: "inst_kadro", name: "Kadro Kurs" });
+    const repo = stubRepo([kadro]);
+    await seedCampaign(stores, { source: "external_import" });
+    await stores.recipientRepository.save(
+      createCampaignRecipient({
+        id: "crec_imp_mtfnq7co_1",
+        campaignId: "camp_g7",
+        institutionId: "ext:abc",
+        displayName: "Kadro Kurs",
+        institutionMatch: "unmatched",
+        matchCandidateIds: ["inst_a", "inst_b"],
+        source: "external_import",
+        email: "info@kadrokurs.com",
+        status: CampaignRecipientStatus.Pending,
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    );
+    const wrapped: CampaignRecipientRepository = {
+      getById: async () => null,
+      save: (row) => stores.recipientRepository.save(row),
+      update: (row) => stores.recipientRepository.update(row),
+      listByCampaignId: (id) => stores.recipientRepository.listByCampaignId(id),
+      listByInstitutionId: (id) => stores.recipientRepository.listByInstitutionId(id),
+      deleteByCampaignId: (id) => stores.recipientRepository.deleteByCampaignId(id),
+    };
+    const updated = await assignRecipientInstitution(
+      {
+        campaignId: "camp_g7",
+        recipientId: "crec_imp_mtfnq7co_1",
+        institutionId: "inst_kadro",
+        now: NOW,
+      },
+      { recipientRepository: wrapped, institutionRepository: repo },
+    );
+    expect(updated.institutionMatch).toBe("matched");
+    expect(updated.institutionId).toBe("inst_kadro");
+    expect(updated.matchCandidateIds).toBeUndefined();
   });
 });

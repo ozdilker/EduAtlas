@@ -8,6 +8,7 @@ export {
   FirestoreCampaignTemplateRepository,
   FirestoreDeliveryJobRepository,
   FirestoreDeliverySendBudget,
+  mapCampaignRecipientDocument,
   OUTREACH_BUDGET,
   OUTREACH_CAMPAIGNS,
   OUTREACH_JOBS,

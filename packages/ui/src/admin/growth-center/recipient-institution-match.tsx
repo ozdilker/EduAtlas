@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState, useTransition } from "react";
+import { useEffect, useId, useState } from "react";
+import { useFormStatus } from "react-dom";
 import { Button } from "../../components/button";
 
 export type OutreachInstitutionSearchItem = Readonly<{
@@ -91,6 +92,15 @@ type RecipientInstitutionMatchPanelProps = Readonly<{
   assignAction: (formData: FormData) => Promise<void>;
 }>;
 
+function MatchSelectSubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" size="sm" variant="primary" disabled={pending}>
+      {pending ? "Kaydediliyor…" : "Seç"}
+    </Button>
+  );
+}
+
 /**
  * Admin match UI: search + select (no raw institutionId typing).
  */
@@ -109,7 +119,6 @@ export function RecipientInstitutionMatchPanel({
   const [items, setItems] = useState<OutreachInstitutionSearchItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     if (!open) return;
@@ -169,17 +178,17 @@ export function RecipientInstitutionMatchPanel({
           }}
           placeholder="Kadro Kurs"
           aria-label="Kurum ara"
-          disabled={busy || pending}
+          disabled={busy}
         />
         <Button
           type="button"
           size="sm"
           onClick={() => void runSearch(query)}
-          disabled={busy || pending || query.trim().length < 2}
+          disabled={busy || query.trim().length < 2}
         >
           Ara
         </Button>
-        <Button type="button" size="sm" onClick={() => setOpen(false)} disabled={pending}>
+        <Button type="button" size="sm" onClick={() => setOpen(false)}>
           Kapat
         </Button>
       </div>
@@ -209,19 +218,11 @@ export function RecipientInstitutionMatchPanel({
                   <strong>{item.name}</strong>
                   <div className="ea-admin-muted">{location}</div>
                 </div>
-                <form
-                  action={(formData) => {
-                    startTransition(() => {
-                      void assignAction(formData);
-                    });
-                  }}
-                >
+                <form action={assignAction}>
                   <input type="hidden" name="campaignId" value={campaignId} />
                   <input type="hidden" name="recipientId" value={recipientId} />
                   <input type="hidden" name="institutionId" value={item.id} />
-                  <Button type="submit" size="sm" variant="primary" disabled={pending}>
-                    Seç
-                  </Button>
+                  <MatchSelectSubmitButton />
                 </form>
               </li>
             );

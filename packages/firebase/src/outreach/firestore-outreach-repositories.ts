@@ -23,7 +23,7 @@ import {
   type CampaignTemplate,
   type DeliveryJob,
 } from "@eduatlas/domain";
-import type { Firestore, QuerySnapshot } from "firebase-admin/firestore";
+import { FieldValue, type Firestore, type QuerySnapshot } from "firebase-admin/firestore";
 
 export const OUTREACH_CAMPAIGNS = "outreach_campaigns";
 export const OUTREACH_RECIPIENTS = "outreach_recipients";
@@ -92,16 +92,29 @@ export class FirestoreCampaignRepository implements CampaignRepository {
   }
 }
 
+/**
+ * CampaignRecipient document path is the primary key.
+ * Payload `id` (if present) must not override the Firestore document id.
+ */
+export function mapCampaignRecipientDocument(
+  docId: string,
+  data: Record<string, unknown> | undefined,
+): CampaignRecipient {
+  const payload = { ...(data ?? {}) };
+  delete payload.id;
+  return createCampaignRecipient({
+    ...(payload as Omit<Parameters<typeof createCampaignRecipient>[0], "id">),
+    id: docId,
+  });
+}
+
 export class FirestoreCampaignRecipientRepository implements CampaignRecipientRepository {
   constructor(private readonly db: Firestore) {}
 
   async getById(id: string): Promise<CampaignRecipient | null> {
     const snap = await this.db.collection(OUTREACH_RECIPIENTS).doc(id.trim()).get();
     if (!snap.exists) return null;
-    return createCampaignRecipient({
-      id: snap.id,
-      ...(snap.data() as Omit<CampaignRecipient, "id">),
-    });
+    return mapCampaignRecipientDocument(snap.id, snap.data() as Record<string, unknown>);
   }
 
   async save(recipient: CampaignRecipient): Promise<CampaignRecipient> {
@@ -113,10 +126,14 @@ export class FirestoreCampaignRecipientRepository implements CampaignRecipientRe
   }
 
   async update(recipient: CampaignRecipient): Promise<CampaignRecipient> {
+    const payload: Record<string, unknown> = { ...recipient };
+    if (!recipient.matchCandidateIds?.length) {
+      payload.matchCandidateIds = FieldValue.delete();
+    }
     await this.db
       .collection(OUTREACH_RECIPIENTS)
       .doc(recipient.id)
-      .set({ ...recipient }, { merge: true });
+      .set(payload, { merge: true });
     return recipient;
   }
 
@@ -127,10 +144,7 @@ export class FirestoreCampaignRecipientRepository implements CampaignRecipientRe
       .get();
     return Object.freeze(
       snap.docs.map((doc) =>
-        createCampaignRecipient({
-          id: doc.id,
-          ...(doc.data() as Omit<CampaignRecipient, "id">),
-        }),
+        mapCampaignRecipientDocument(doc.id, doc.data() as Record<string, unknown>),
       ),
     );
   }
@@ -142,10 +156,7 @@ export class FirestoreCampaignRecipientRepository implements CampaignRecipientRe
       .get();
     return Object.freeze(
       snap.docs.map((doc) =>
-        createCampaignRecipient({
-          id: doc.id,
-          ...(doc.data() as Omit<CampaignRecipient, "id">),
-        }),
+        mapCampaignRecipientDocument(doc.id, doc.data() as Record<string, unknown>),
       ),
     );
   }

@@ -17,7 +17,12 @@ import { getEmailService } from "@/server/notifications/repository";
 import { getOutreachService, tickOutreachDelivery } from "@/server/outreach/store";
 
 function formString(formData: FormData, key: string): string {
-  return String(formData.get(key) ?? "").trim();
+  if (formData && typeof formData.get === "function") {
+    return String(formData.get(key) ?? "").trim();
+  }
+  const record = formData as unknown as Record<string, unknown>;
+  const value = record?.[key];
+  return String(value ?? "").trim();
 }
 
 /** Next.js `redirect()` throws; must not be treated as a business error. */

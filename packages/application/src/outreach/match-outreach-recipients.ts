@@ -256,17 +256,38 @@ export async function assignRecipientInstitution(
     institutionRepository: InstitutionRepository;
   },
 ): Promise<CampaignRecipient> {
-  const recipient = await deps.recipientRepository.getById(input.recipientId.trim());
-  if (!recipient || recipient.campaignId !== input.campaignId.trim()) {
-    throw new OutreachValidationError("Recipient not found for this campaign.");
+  const campaignId = input.campaignId.trim();
+  const recipientId = input.recipientId.trim();
+  const institutionId = input.institutionId.trim();
+  if (!campaignId || !recipientId || !institutionId) {
+    throw new OutreachValidationError("Kampanya, alıcı ve kurum gerekli.");
+  }
+
+  let recipient = await deps.recipientRepository.getById(recipientId);
+  // Fallback: list projection / doc-path mismatches should not block admin match.
+  if (!recipient || recipient.campaignId !== campaignId) {
+    const rows = await deps.recipientRepository.listByCampaignId(campaignId);
+    const fromCampaign = rows.find((row) => row.id === recipientId) ?? null;
+    if (fromCampaign) {
+      recipient = fromCampaign;
+    }
+  }
+
+  if (!recipient) {
+    throw new OutreachValidationError(
+      `Recipient not found for this campaign (${recipientId}).`,
+    );
+  }
+  if (recipient.campaignId !== campaignId) {
+    throw new OutreachValidationError(
+      `Recipient ${recipientId} belongs to another campaign.`,
+    );
   }
   if (recipient.status !== CampaignRecipientStatus.Pending) {
     throw new OutreachValidationError("Only pending recipients can be rematched.");
   }
 
-  const inst = await deps.institutionRepository.getById(
-    createInstitutionId(input.institutionId.trim()),
-  );
+  const inst = await deps.institutionRepository.getById(createInstitutionId(institutionId));
   if (!inst) {
     throw new OutreachValidationError("Institution not found.");
   }

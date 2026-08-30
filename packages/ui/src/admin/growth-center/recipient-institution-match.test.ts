@@ -22,6 +22,17 @@ describe("GROWTH-007 FIX institution match UI helpers", () => {
     expect(pageSrc.includes("ManualInstitutionPicker")).toBe(true);
   });
 
+  it("Seç form binds assignAction directly with campaign + recipient + institution ids", () => {
+    const matchSrc = readFileSync(join(here, "recipient-institution-match.tsx"), "utf8");
+    expect(matchSrc).toContain("action={assignAction}");
+    expect(matchSrc).toContain('name="campaignId"');
+    expect(matchSrc).toContain('name="recipientId"');
+    expect(matchSrc).toContain('name="institutionId"');
+    expect(matchSrc).toContain("value={recipientId}");
+    expect(matchSrc).toContain("value={item.id}");
+    expect(matchSrc.includes("startTransition")).toBe(false);
+  });
+
   it("builds bounded search URL from recipient institutionName", () => {
     const url = buildOutreachInstitutionSearchUrl({
       query: "Kadro Kurs",
