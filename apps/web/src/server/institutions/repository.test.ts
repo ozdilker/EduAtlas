@@ -134,4 +134,36 @@ describe("createFallbackInstitutionDataAccess admin forwarding", () => {
     expect(primary.listAdminPage).toHaveBeenCalled();
     expect(primary.countAdmin).toHaveBeenCalled();
   });
+
+  it("forwards outreach match lookups (email / exact name / keyword)", async () => {
+    const primary = createStubPrimary();
+    const findByContactEmail = vi.fn(async () => Object.freeze([]));
+    const findByExactName = vi.fn(async () => Object.freeze([]));
+    const findBySearchKeyword = vi.fn(async () => Object.freeze([]));
+    const withLookups = {
+      ...primary,
+      findByContactEmail,
+      findByExactName,
+      findBySearchKeyword,
+    };
+    const wrapped = createFallbackInstitutionDataAccess(withLookups, async () => withLookups);
+
+    expect(typeof wrapped.findByContactEmail).toBe("function");
+    expect(typeof wrapped.findByExactName).toBe("function");
+    expect(typeof wrapped.findBySearchKeyword).toBe("function");
+
+    await wrapped.findByContactEmail?.("info@kadrokurs.com", { limit: 5 });
+    await wrapped.findByExactName?.("Kadro Kurs", { cityId: "istanbul", limit: 8 });
+    await wrapped.findBySearchKeyword?.("kadro", { cityId: "istanbul", limit: 8 });
+
+    expect(findByContactEmail).toHaveBeenCalledWith("info@kadrokurs.com", { limit: 5 });
+    expect(findByExactName).toHaveBeenCalledWith("Kadro Kurs", {
+      cityId: "istanbul",
+      limit: 8,
+    });
+    expect(findBySearchKeyword).toHaveBeenCalledWith("kadro", {
+      cityId: "istanbul",
+      limit: 8,
+    });
+  });
 });

@@ -545,6 +545,7 @@ export {
   renderClaimInvitationMail,
   resolveCampaignListBucket,
   sanitizeOutreachImportCell,
+  searchOutreachInstitutions,
   SEED_CLAIM_INVITATION_CAMPAIGN_ID,
   type SegmentInstitutionPreview,
   WARMUP_STAGE,

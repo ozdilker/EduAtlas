@@ -274,6 +274,28 @@ export class FirestoreInstitutionRepository
     );
   }
 
+  async findBySearchKeyword(
+    keyword: string,
+    options?: {
+      readonly cityId?: string;
+      readonly districtId?: string;
+      readonly limit?: number;
+    },
+  ): Promise<readonly Institution[]> {
+    const limit = Math.max(1, Math.min(20, options?.limit ?? 10));
+    const token = keyword.trim();
+    if (!token || !this.store.findBySearchKeyword) return Object.freeze([]);
+    const records = await this.store.findBySearchKeyword({
+      keyword: token,
+      ...(options?.cityId ? { cityId: options.cityId } : {}),
+      ...(options?.districtId ? { districtId: options.districtId } : {}),
+      limit,
+    });
+    return Object.freeze(
+      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
+    );
+  }
+
   /**
    * Published institutions in a city with a Firestore-level limit (related cards).
    * Does not use unbounded listByCityId.

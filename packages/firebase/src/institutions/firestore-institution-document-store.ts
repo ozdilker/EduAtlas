@@ -406,6 +406,28 @@ export class FirestoreInstitutionDocumentStore implements InstitutionDocumentSto
     }));
   }
 
+  async findBySearchKeyword(input: {
+    keyword: string;
+    cityId?: string;
+    districtId?: string;
+    limit: number;
+  }): Promise<InstitutionDocumentRecord[]> {
+    const keyword = foldTurkishText(input.keyword.trim());
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    if (!keyword || capped === 0) return [];
+    countFirestoreRead();
+    let query: Query = this.collection().where("searchKeywords", "array-contains", keyword);
+    const cityId = input.cityId?.trim();
+    const districtId = input.districtId?.trim();
+    if (cityId) query = query.where("cityId", "==", cityId);
+    if (districtId) query = query.where("districtId", "==", districtId);
+    const snapshot = await query.limit(capped).get();
+    return snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+  }
+
   private buildAdminFilteredQuery(filters?: AdminListFilters): Query {
     let query: Query = this.collection();
     const lifecycleStatus = filters?.lifecycleStatus?.trim();

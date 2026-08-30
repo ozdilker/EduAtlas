@@ -128,6 +128,15 @@ export interface InstitutionDocumentStore {
     districtId?: string;
     limit: number;
   }): Promise<InstitutionDocumentRecord[]>;
+  /**
+   * searchKeywords array-contains (+ optional city/district) + hard limit.
+   */
+  findBySearchKeyword?(input: {
+    keyword: string;
+    cityId?: string;
+    districtId?: string;
+    limit: number;
+  }): Promise<InstitutionDocumentRecord[]>;
   create(id: string, data: FirestoreInstitutionDocument): Promise<void>;
   /**
    * Creates many docs in as few round-trips as possible (Firestore WriteBatch).

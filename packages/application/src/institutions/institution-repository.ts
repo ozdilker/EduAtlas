@@ -117,6 +117,19 @@ export interface InstitutionRepository {
   ): Promise<readonly Institution[]>;
 
   /**
+   * Optional: bounded searchKeywords array-contains lookup (+ city/district).
+   * Never listAll — equality/array-contains + hard limit only.
+   */
+  findBySearchKeyword?(
+    keyword: string,
+    options?: {
+      readonly cityId?: string;
+      readonly districtId?: string;
+      readonly limit?: number;
+    },
+  ): Promise<readonly Institution[]>;
+
+  /**
    * Persists a new institution.
    * @throws {DuplicateInstitutionError} when id or slug already exists
    */

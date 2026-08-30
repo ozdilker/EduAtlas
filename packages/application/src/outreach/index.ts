@@ -92,6 +92,16 @@ export {
   type OutreachMatchScope,
 } from "./match-outreach-recipients";
 export {
+  distinctiveOutreachSearchTokens,
+  normalizeOutreachDistrictId,
+  scoreOutreachInstitutionHit,
+  searchOutreachInstitutions,
+  OUTREACH_SEARCH_LIMIT,
+  OUTREACH_SEARCH_QUERY_CAP,
+  type OutreachInstitutionSearchHit,
+  type OutreachInstitutionSearchResult,
+} from "./search-outreach-institutions";
+export {
   OUTREACH_IMPORT_MAX_BYTES,
   OUTREACH_IMPORT_MAX_ROWS,
   importExternalRecipients,

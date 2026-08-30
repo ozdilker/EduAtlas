@@ -195,6 +195,43 @@ export function createFallbackInstitutionDataAccess(
     update: wrapWrite("update", (repo, institution: Institution) => repo.update(institution)),
     delete: wrapWrite("delete", (repo, id: InstitutionId) => repo.delete(id)),
     search: wrapRead("search", (repo, query: InstitutionSearchQuery) => repo.search(query)),
+    findByContactEmail: wrapRead(
+      "findByContactEmail",
+      (repo, email: string, options?: { readonly limit?: number }) =>
+        repo.findByContactEmail
+          ? repo.findByContactEmail(email, options)
+          : Promise.resolve(Object.freeze([])),
+    ),
+    findByExactName: wrapRead(
+      "findByExactName",
+      (
+        repo,
+        name: string,
+        options?: {
+          readonly cityId?: string;
+          readonly districtId?: string;
+          readonly limit?: number;
+        },
+      ) =>
+        repo.findByExactName
+          ? repo.findByExactName(name, options)
+          : Promise.resolve(Object.freeze([])),
+    ),
+    findBySearchKeyword: wrapRead(
+      "findBySearchKeyword",
+      (
+        repo,
+        keyword: string,
+        options?: {
+          readonly cityId?: string;
+          readonly districtId?: string;
+          readonly limit?: number;
+        },
+      ) =>
+        repo.findBySearchKeyword
+          ? repo.findBySearchKeyword(keyword, options)
+          : Promise.resolve(Object.freeze([])),
+    ),
   };
 }
 

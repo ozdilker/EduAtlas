@@ -286,6 +286,29 @@ export class InMemoryInstitutionDocumentStore implements InstitutionDocumentStor
     return hits;
   }
 
+  async findBySearchKeyword(input: {
+    keyword: string;
+    cityId?: string;
+    districtId?: string;
+    limit: number;
+  }): Promise<InstitutionDocumentRecord[]> {
+    const keyword = foldTurkishText(input.keyword.trim());
+    const capped = Math.max(0, Math.min(Math.floor(input.limit), 20));
+    const cityId = input.cityId?.trim();
+    const districtId = input.districtId?.trim();
+    if (!keyword || capped === 0) return [];
+    const hits: InstitutionDocumentRecord[] = [];
+    for (const [id, data] of this.documents.entries()) {
+      const keywords = (data.searchKeywords ?? []).map((token) => foldTurkishText(token));
+      if (!keywords.includes(keyword)) continue;
+      if (cityId && data.cityId !== cityId) continue;
+      if (districtId && data.districtId !== districtId) continue;
+      hits.push({ id, data: structuredClone(data) });
+      if (hits.length >= capped) break;
+    }
+    return hits;
+  }
+
   async exists(id: string): Promise<boolean> {
     return this.documents.has(id);
   }

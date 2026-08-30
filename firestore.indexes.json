@@ -4,6 +4,22 @@
       "collectionGroup": "institutions",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "cityId", "order": "ASCENDING" },
+        { "fieldPath": "searchKeywords", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "districtId", "order": "ASCENDING" },
+        { "fieldPath": "searchKeywords", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "institutions",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "nameFolded", "order": "ASCENDING" },
         { "fieldPath": "cityId", "order": "ASCENDING" }
       ]
