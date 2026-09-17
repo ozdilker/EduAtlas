@@ -5,6 +5,8 @@ import {
 } from "@/server/seo/load-sitemap-snapshot";
 
 export const revalidate = 3600;
+/** Cold snapshot rebuild pages ~37k published docs — allow enough time on Pro. */
+export const maxDuration = 60;
 
 /**
  * Public sitemap index — Search Console entry point.

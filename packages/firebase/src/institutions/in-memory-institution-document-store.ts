@@ -123,6 +123,40 @@ export class InMemoryInstitutionDocumentStore implements InstitutionDocumentStor
     return { records, nextCursor };
   }
 
+  async listPublishedByDocumentIdPage(input: {
+    limit: number;
+    startAfterId?: string | null;
+  }): Promise<{
+    records: InstitutionDocumentRecord[];
+    nextCursorId: string | null;
+  }> {
+    const capped = Math.max(0, Math.min(1000, Math.floor(input.limit)));
+    if (capped === 0) {
+      return { records: [], nextCursorId: null };
+    }
+
+    const sorted = [...this.documents.entries()]
+      .filter(([, data]) => data.lifecycleStatus === "published")
+      .sort((left, right) => left[0].localeCompare(right[0]));
+
+    let start = 0;
+    const startAfterId = input.startAfterId?.trim();
+    if (startAfterId) {
+      const index = sorted.findIndex(([id]) => id === startAfterId);
+      start = index >= 0 ? index + 1 : sorted.length;
+    }
+
+    const slice = sorted.slice(start, start + capped);
+    const records = slice.map(([id, data]) => ({
+      id,
+      data: structuredClone(data),
+    }));
+    const last = records[records.length - 1];
+    const nextCursorId = records.length === capped && last ? last.id : null;
+
+    return { records, nextCursorId };
+  }
+
   async countPublished(filters?: PublishedBrowseFilters): Promise<number> {
     let count = 0;
     for (const data of this.documents.values()) {

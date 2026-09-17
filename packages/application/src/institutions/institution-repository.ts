@@ -76,6 +76,18 @@ export interface InstitutionRepository {
   }): Promise<InstitutionPublishedBrowsePage>;
 
   /**
+   * Optional: sitemap snapshot paging by documentId (published only).
+   * Must not call listAll. Prefer pageSize ≤ 1000 and iterate cursors.
+   */
+  listPublishedSitemapPage?(input: {
+    pageSize: number;
+    cursorId?: string | null;
+  }): Promise<{
+    items: readonly Institution[];
+    nextCursorId: string | null;
+  }>;
+
+  /**
    * Optional: admin UI listing with Firestore limit + startAfter cursor.
    * Must not call listAll / unbounded collection gets.
    * Free-text query is not supported — callers must use list() or a search path.

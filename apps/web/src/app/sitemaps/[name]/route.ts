@@ -5,6 +5,7 @@ import {
 } from "@/server/seo/load-sitemap-snapshot";
 
 export const revalidate = 3600;
+export const maxDuration = 60;
 
 type SitemapChildRouteProps = {
   params: Promise<{ name: string }>;

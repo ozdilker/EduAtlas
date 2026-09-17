@@ -614,6 +614,36 @@ describe("FirestoreInstitutionRepository contract", () => {
     expect(listAllSpy).not.toHaveBeenCalled();
   });
 
+  it("listPublishedSitemapPage pages by documentId and never listAll", async () => {
+    const store = new InMemoryInstitutionDocumentStore();
+    const listAllSpy = vi.spyOn(store, "listAll");
+    const pageSpy = vi.spyOn(store, "listPublishedByDocumentIdPage");
+    const repo = new FirestoreInstitutionRepository({ store });
+
+    await repo.save(
+      buildInstitution({ id: "a", slug: "a-okul", name: "A Okul", qualityScore: 50 }),
+    );
+    await repo.save(
+      buildInstitution({ id: "b", slug: "b-okul", name: "B Okul", qualityScore: 90 }),
+    );
+    await repo.save(
+      buildInstitution({ id: "c", slug: "c-okul", name: "C Okul", qualityScore: 70 }),
+    );
+
+    const first = await repo.listPublishedSitemapPage({ pageSize: 2 });
+    expect(first.items).toHaveLength(2);
+    expect(first.nextCursorId).toBeTruthy();
+    expect(pageSpy).toHaveBeenCalledWith({ limit: 2, startAfterId: null });
+    expect(listAllSpy).not.toHaveBeenCalled();
+
+    const second = await repo.listPublishedSitemapPage({
+      pageSize: 2,
+      cursorId: first.nextCursorId,
+    });
+    expect(second.items.length).toBeGreaterThan(0);
+    expect(listAllSpy).not.toHaveBeenCalled();
+  });
+
   it("listRelatedPublishedByCity returns at most limit published rows ordered by quality", async () => {
     const store = new InMemoryInstitutionDocumentStore();
     const listSpy = vi.spyOn(store, "listByCityId");

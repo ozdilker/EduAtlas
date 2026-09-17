@@ -127,6 +127,36 @@ export class FirestoreInstitutionRepository
   }
 
   /**
+   * Sitemap snapshot pages — published + documentId cursor (never listAll).
+   */
+  async listPublishedSitemapPage(input: {
+    pageSize: number;
+    cursorId?: string | null;
+  }): Promise<{
+    items: readonly Institution[];
+    nextCursorId: string | null;
+  }> {
+    const pageSize = Math.max(1, Math.min(1000, Math.floor(input.pageSize)));
+    if (!this.store.listPublishedByDocumentIdPage) {
+      throw new Error(
+        "InstitutionDocumentStore.listPublishedByDocumentIdPage required for sitemap paging.",
+      );
+    }
+
+    const page = await this.store.listPublishedByDocumentIdPage({
+      limit: pageSize,
+      startAfterId: input.cursorId ?? null,
+    });
+
+    return Object.freeze({
+      items: Object.freeze(
+        page.records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
+      ),
+      nextCursorId: page.nextCursorId,
+    });
+  }
+
+  /**
    * Empty-text / structured-filter search — bounded Firestore query (no listAll).
    * Free-text search must not call this path.
    */

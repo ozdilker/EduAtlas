@@ -82,6 +82,17 @@ export interface InstitutionDocumentStore {
     nextCursor: { qualityScore: number; id: string } | null;
   }>;
   /**
+   * Sitemap snapshot paging — published docs ordered by documentId (no listAll).
+   * Callers should use limit ≤ 1000 and iterate until nextCursorId is null.
+   */
+  listPublishedByDocumentIdPage?(input: {
+    limit: number;
+    startAfterId?: string | null;
+  }): Promise<{
+    records: InstitutionDocumentRecord[];
+    nextCursorId: string | null;
+  }>;
+  /**
    * Aggregation count of published institutions (optional structured filters).
    */
   countPublished?(filters?: PublishedBrowseFilters): Promise<number>;

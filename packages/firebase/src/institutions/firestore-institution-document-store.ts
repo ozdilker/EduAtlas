@@ -235,6 +235,44 @@ export class FirestoreInstitutionDocumentStore implements InstitutionDocumentSto
     return { records, nextCursor };
   }
 
+  /**
+   * Sitemap-oriented published page — documentId order, hard limit, no listAll.
+   */
+  async listPublishedByDocumentIdPage(input: {
+    limit: number;
+    startAfterId?: string | null;
+  }): Promise<{
+    records: InstitutionDocumentRecord[];
+    nextCursorId: string | null;
+  }> {
+    const capped = Math.max(0, Math.min(1000, Math.floor(input.limit)));
+    if (capped === 0) {
+      return { records: [], nextCursorId: null };
+    }
+
+    countFirestoreRead();
+    let query = this.collection()
+      .where("lifecycleStatus", "==", "published")
+      .orderBy(FieldPath.documentId(), "asc")
+      .limit(capped);
+
+    const startAfterId = input.startAfterId?.trim();
+    if (startAfterId) {
+      query = query.startAfter(startAfterId);
+    }
+
+    const snapshot = await query.get();
+    const records: InstitutionDocumentRecord[] = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      data: FirestoreInstitutionMapper.parseDocument(doc.data()),
+    }));
+
+    const last = records[records.length - 1];
+    const nextCursorId = records.length === capped && last ? last.id : null;
+
+    return { records, nextCursorId };
+  }
+
   async countPublished(filters?: PublishedBrowseFilters): Promise<number> {
     countFirestoreRead();
     const snapshot = await this.buildPublishedStructuredQuery(filters).count().get();
