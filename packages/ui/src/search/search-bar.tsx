@@ -1,6 +1,10 @@
 "use client";
 
 import { type FormEvent, type ReactNode, useId, useRef, useState } from "react";
+import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
 import { SearchButton } from "./search-button";
 import { getSearchBarClassName, type SearchBarVariant } from "./search-classes";
 import { SearchInput } from "./search-input";
@@ -54,6 +58,9 @@ export function SearchBar({
   const currentQuery = isControlled ? query : uncontrolledQuery;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    trackProductEvent(PRODUCT_ANALYTICS_EVENTS.Search, {
+      has_query: Boolean(currentQuery.trim()),
+    });
     if (onSubmitQuery) {
       event.preventDefault();
       onSubmitQuery(currentQuery.trim());

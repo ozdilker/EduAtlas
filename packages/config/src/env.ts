@@ -6,6 +6,7 @@ const appEnvironmentSchema = z.enum(["development", "test", "production"]);
 const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_NAME: z.string().min(1).default("EduAtlas"),
   NEXT_PUBLIC_APP_URL: z.string().url().optional(),
+  NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: z.string().optional(),
 });
 
 const serverEnvSchema = publicEnvSchema.extend({
@@ -25,6 +26,7 @@ function readPublicEnvFromProcess(): Record<string, string | undefined> {
   return {
     NEXT_PUBLIC_APP_NAME: process.env.NEXT_PUBLIC_APP_NAME,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
   };
 }
 

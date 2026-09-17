@@ -5,6 +5,10 @@ import { getButtonClassName } from "../components/button-classes";
 import { Container } from "../components/container";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
+import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
 import { getHomePopularCities, getHomePopularSearches, getHomeTrustBar } from "./home-content";
 import { getLastSearchCityId, setLastSearchCityId } from "../parent/parent-search-location-storage";
 
@@ -169,6 +173,9 @@ export function HomeHero({
   function onCityChange(cityId: string) {
     setSelectedCityId(cityId);
     setLastSearchCityId(cityId);
+    if (cityId) {
+      trackProductEvent(PRODUCT_ANALYTICS_EVENTS.CitySelected, { city_id: cityId });
+    }
     const nextUrl = resolveUrlForCityId(cityId);
     startTransition(() => {
       void preloadImage(nextUrl).then(() => {
@@ -209,6 +216,11 @@ export function HomeHero({
                   typeof cityRaw === "string" && cityRaw.trim()
                     ? cityRaw.trim()
                     : getLastSearchCityId() || "";
+
+                trackProductEvent(PRODUCT_ANALYTICS_EVENTS.Search, {
+                  ...(city ? { city_id: city } : {}),
+                  has_query: Boolean(q),
+                });
 
                 if (q && !city) {
                   // Free-text without city → location gate on /search (no nationwide scan).

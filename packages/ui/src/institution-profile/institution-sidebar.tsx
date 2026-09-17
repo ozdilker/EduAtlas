@@ -7,6 +7,10 @@ import { getButtonClassName } from "../components/button-classes";
 import type { InstitutionCardViewData } from "../institution/institution-card-content";
 import { cn } from "../lib/cn";
 import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
+import {
   isFavoriteInstitution,
   toggleFavoriteInstitution,
 } from "../parent/parent-favorites-storage";
@@ -176,6 +180,9 @@ export function InstitutionSidebar({
             <a
               href={phoneHref}
               className={cn(getButtonClassName({ variant: "secondary", size: "md" }))}
+              onClick={() =>
+                trackProductEvent(PRODUCT_ANALYTICS_EVENTS.PhoneClick)
+              }
             >
               Ara
             </a>

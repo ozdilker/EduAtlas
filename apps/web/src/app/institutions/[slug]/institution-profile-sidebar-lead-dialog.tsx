@@ -12,6 +12,7 @@ import {
   InstitutionProfileDialog,
   InstitutionSidebar,
 } from "@eduatlas/ui";
+import { ANALYTICS_EVENTS, trackEvent } from "@/lib/analytics/track-event";
 
 export type InstitutionProfileSidebarLeadDialogProps = {
   profile: InstitutionProfileViewData;
@@ -37,8 +38,26 @@ export function InstitutionProfileSidebarLeadDialog({
     <aside className="ea-profile-page__aside">
       <InstitutionSidebar
         profile={profile}
-        onLeadClick={leadAction ? () => setLeadOpen(true) : undefined}
-        onClaimClick={claimAction ? () => setClaimOpen(true) : undefined}
+        onLeadClick={
+          leadAction
+            ? () => {
+                setLeadOpen(true);
+                trackEvent(ANALYTICS_EVENTS.LeadFormOpen, {
+                  institution_id: institutionId,
+                });
+              }
+            : undefined
+        }
+        onClaimClick={
+          claimAction
+            ? () => {
+                setClaimOpen(true);
+                trackEvent(ANALYTICS_EVENTS.ClaimProfileStarted, {
+                  institution_id: institutionId,
+                });
+              }
+            : undefined
+        }
       />
 
       {leadAction ? (

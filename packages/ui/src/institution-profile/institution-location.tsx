@@ -1,4 +1,8 @@
 import { cn } from "../lib/cn";
+import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
 
 export type InstitutionLocationProps = {
   address: string;
@@ -121,6 +125,7 @@ export function InstitutionLocation({
               href={mapsHref}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => trackProductEvent(PRODUCT_ANALYTICS_EVENTS.MapClick)}
             >
               Google Maps’te Gör
             </a>
@@ -134,6 +139,7 @@ export function InstitutionLocation({
             href={mapsHref}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackProductEvent(PRODUCT_ANALYTICS_EVENTS.MapClick)}
           >
             Google Maps’te Gör
           </a>

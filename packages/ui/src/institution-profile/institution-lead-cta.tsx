@@ -1,7 +1,11 @@
 "use client";
 
-import { useActionState, useState, type FormEvent } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
 import { useFormStatus } from "react-dom";
+import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
 import { Button } from "../components/button";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
@@ -77,6 +81,16 @@ export function InstitutionLeadCTA({
 }: InstitutionLeadCTAProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [clientMessage, setClientMessage] = useState("");
+  const submittedTracked = useRef(false);
+
+  useEffect(() => {
+    if (state.ok && !submittedTracked.current) {
+      submittedTracked.current = true;
+      trackProductEvent(PRODUCT_ANALYTICS_EVENTS.LeadSubmitted, {
+        institution_id: institutionId,
+      });
+    }
+  }, [state.ok, institutionId]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     const missing = getMissingRequiredFields(event.currentTarget);

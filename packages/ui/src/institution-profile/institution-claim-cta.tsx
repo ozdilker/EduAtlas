@@ -1,7 +1,11 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
+import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
 import { Button } from "../components/button";
 import { Input } from "../components/input";
 import { cn } from "../lib/cn";
@@ -47,6 +51,17 @@ export function InstitutionClaimCTA({
   const isPanel = variant === "panel";
   const [open, setOpen] = useState(isPanel);
   const [state, formAction] = useActionState(action, initialState);
+  const completedTracked = useRef(false);
+  const startedTracked = useRef(false);
+
+  useEffect(() => {
+    if (state.ok && !completedTracked.current) {
+      completedTracked.current = true;
+      trackProductEvent(PRODUCT_ANALYTICS_EVENTS.ClaimProfileCompleted, {
+        institution_id: institutionId,
+      });
+    }
+  }, [state.ok, institutionId]);
 
   return (
     <section
@@ -74,7 +89,20 @@ export function InstitutionClaimCTA({
           <p className="ea-profile-claim__note ea-profile-claim__note--success">{state.message}</p>
         </div>
       ) : !open ? (
-        <Button type="button" variant="secondary" size="lg" onClick={() => setOpen(true)}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="lg"
+          onClick={() => {
+            setOpen(true);
+            if (!startedTracked.current) {
+              startedTracked.current = true;
+              trackProductEvent(PRODUCT_ANALYTICS_EVENTS.ClaimProfileStarted, {
+                institution_id: institutionId,
+              });
+            }
+          }}
+        >
           Bu kurum size mi ait?
         </Button>
       ) : (

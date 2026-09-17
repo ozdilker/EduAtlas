@@ -21,6 +21,7 @@ import {
 import type { InstitutionCardViewData, InstitutionProfileViewData } from "@eduatlas/ui";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
+import { InstitutionViewTracker } from "@/lib/analytics/institution-view-tracker";
 import { getSeoSiteConfig } from "@/lib/seo-site";
 import {
   getPublicInstitutionProfileAboveFoldBySlug,
@@ -105,6 +106,12 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
     return (
       <>
         <JsonLd data={pageSeo.jsonLd} />
+        <InstitutionViewTracker
+          institutionId={institutionIdAsString(institution.id)}
+          cityId={institution.location.cityId}
+          districtId={institution.location.districtId}
+          institutionType={getInstitutionTypeSlug(institution.primaryType)}
+        />
 
         <div className="ea-profile-page">
           <Container size="xl" className="ea-profile-page__top">

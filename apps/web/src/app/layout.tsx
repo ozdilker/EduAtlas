@@ -1,4 +1,5 @@
 import { AppRole } from "@eduatlas/domain";
+import { getPublicEnv } from "@eduatlas/config";
 import type { Metadata } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
@@ -24,6 +25,7 @@ const fraunces = Fraunces({
 });
 
 const site = getSeoSiteConfig();
+const googleSiteVerification = getPublicEnv().NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.siteUrl),
@@ -33,6 +35,13 @@ export const metadata: Metadata = {
   },
   description: site.defaultDescription,
   applicationName: site.siteName,
+  ...(googleSiteVerification
+    ? {
+        verification: {
+          google: googleSiteVerification,
+        },
+      }
+    : {}),
 };
 
 function accountLabel(

@@ -4,6 +4,10 @@ import { useEffect, useState, useTransition } from "react";
 import { Button } from "../components/button";
 import { getButtonClassName } from "../components/button-classes";
 import { cn } from "../lib/cn";
+import {
+  PRODUCT_ANALYTICS_EVENTS,
+  trackProductEvent,
+} from "../analytics/track-product-event";
 import { setLastSearchCityId } from "../parent/parent-search-location-storage";
 import {
   buildSearchHref,
@@ -148,7 +152,17 @@ export function SearchResultsSidebar({ filters, className }: SearchResultsSideba
         Şehir, ilçe, kurum türü ve güven işaretleriyle sonuçları daraltın.
       </p>
 
-      <form className="ea-search-results__filter-form" action="/search" method="get">
+      <form
+        className="ea-search-results__filter-form"
+        action="/search"
+        method="get"
+        onSubmit={() => {
+          trackProductEvent(PRODUCT_ANALYTICS_EVENTS.Search, {
+            ...(selectedCityId ? { city_id: selectedCityId } : {}),
+            ...(selectedDistrictId ? { district_id: selectedDistrictId } : {}),
+          });
+        }}
+      >
         {query ? <input type="hidden" name="q" value={query} /> : null}
         {sort && sort !== "relevance" ? <input type="hidden" name="sort" value={sort} /> : null}
 
@@ -164,6 +178,11 @@ export function SearchResultsSidebar({ filters, className }: SearchResultsSideba
               setSelectedCityId(nextCity);
               setSelectedDistrictId("");
               setLastSearchCityId(nextCity);
+              if (nextCity) {
+                trackProductEvent(PRODUCT_ANALYTICS_EVENTS.CitySelected, {
+                  city_id: nextCity,
+                });
+              }
               if (!nextCity) {
                 setDistrictOptions([]);
               }
@@ -187,7 +206,16 @@ export function SearchResultsSidebar({ filters, className }: SearchResultsSideba
             disabled={!selectedCityId || districtsLoading}
             aria-label="İlçe filtresi"
             aria-busy={districtsLoading || undefined}
-            onChange={(event) => setSelectedDistrictId(event.target.value)}
+            onChange={(event) => {
+              const nextDistrict = event.target.value;
+              setSelectedDistrictId(nextDistrict);
+              if (nextDistrict) {
+                trackProductEvent(PRODUCT_ANALYTICS_EVENTS.DistrictSelected, {
+                  city_id: selectedCityId,
+                  district_id: nextDistrict,
+                });
+              }
+            }}
           >
             <option value="">
               {!selectedCityId
