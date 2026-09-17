@@ -133,10 +133,10 @@ async function buildSitemapSnapshotUncached(): Promise<SitemapSnapshot> {
 
 /**
  * Cached sitemap snapshot — shared by index and all child sitemap routes.
- * Cache key v2: paginated published load (no listAll) + safer chunking.
+ * Cache key v3: paginated published load via wrapped listPublishedSitemapPage.
  */
 export async function loadSitemapSnapshot(): Promise<SitemapSnapshot> {
-  return unstable_cache(buildSitemapSnapshotUncached, ["eduatlas-sitemap-snapshot-v2"], {
+  return unstable_cache(buildSitemapSnapshotUncached, ["eduatlas-sitemap-snapshot-v3"], {
     revalidate: SITEMAP_REVALIDATE_SECONDS,
     tags: ["sitemap"],
   })();

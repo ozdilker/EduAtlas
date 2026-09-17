@@ -158,6 +158,23 @@ export function createFallbackInstitutionDataAccess(
         return repo.listPublishedBrowsePage(input);
       },
     ),
+    listPublishedSitemapPage: wrapRead(
+      "listPublishedSitemapPage",
+      (
+        repo,
+        input: {
+          pageSize: number;
+          cursorId?: string | null;
+        },
+      ) => {
+        if (!repo.listPublishedSitemapPage) {
+          throw new Error(
+            "InstitutionRepository.listPublishedSitemapPage is not available on this adapter.",
+          );
+        }
+        return repo.listPublishedSitemapPage(input);
+      },
+    ),
     listAdminPage: wrapRead("listAdminPage", (repo, input: InstitutionAdminListPageInput) => {
       if (!repo.listAdminPage) {
         throw new Error("InstitutionRepository.listAdminPage is not available on this adapter.");
