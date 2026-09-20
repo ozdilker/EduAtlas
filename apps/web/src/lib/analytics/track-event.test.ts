@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getGaMeasurementId,
   isAnalyticsEnabled,
@@ -7,39 +7,33 @@ import {
 } from "./track-event";
 
 describe("analytics track-event", () => {
-  const originalEnv = process.env;
-
   beforeEach(() => {
     vi.restoreAllMocks();
-    process.env = { ...originalEnv };
+    vi.unstubAllEnvs();
     // @ts-expect-error test cleanup
     delete globalThis.window;
   });
 
   afterEach(() => {
-    process.env = originalEnv;
+    vi.unstubAllEnvs();
   });
 
   it("reads G- measurement id from Firebase env convention", () => {
-    expect(
-      getGaMeasurementId({ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: "G-ABC123XYZ" }),
-    ).toBe("G-ABC123XYZ");
-    expect(getGaMeasurementId({ NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: "not-a-ga-id" })).toBeNull();
+    vi.stubEnv("NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID", "G-ABC123XYZ");
+    expect(getGaMeasurementId()).toBe("G-ABC123XYZ");
+
+    vi.stubEnv("NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID", "not-a-ga-id");
+    expect(getGaMeasurementId()).toBeNull();
   });
 
   it("enables analytics only in production with valid measurement id", () => {
-    expect(
-      isAnalyticsEnabled({
-        NODE_ENV: "development",
-        NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: "G-ABC123XYZ",
-      }),
-    ).toBe(false);
-    expect(
-      isAnalyticsEnabled({
-        NODE_ENV: "production",
-        NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: "G-ABC123XYZ",
-      }),
-    ).toBe(true);
+    vi.stubEnv("NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID", "G-ABC123XYZ");
+
+    vi.stubEnv("NODE_ENV", "development");
+    expect(isAnalyticsEnabled()).toBe(false);
+
+    vi.stubEnv("NODE_ENV", "production");
+    expect(isAnalyticsEnabled()).toBe(true);
   });
 
   it("strips PII keys and email-like values", () => {

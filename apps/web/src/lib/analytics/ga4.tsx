@@ -2,11 +2,7 @@
 
 import Script from "next/script";
 import { useEffect } from "react";
-import {
-  getGaMeasurementId,
-  installAnalyticsBridge,
-  isAnalyticsEnabled,
-} from "./track-event";
+import { getGaMeasurementId, installAnalyticsBridge, isAnalyticsEnabled } from "./track-event";
 
 /**
  * Single GA4 gtag bootstrap. Production-only. No GTM.
