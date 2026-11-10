@@ -37,6 +37,7 @@ export async function scheduleGoogleBusinessSyncIfNeeded(
         {
           institutionId,
           cityName: geo.cityName,
+          districtName: geo.districtName,
         },
         { institutionRepository, placesProvider },
       );

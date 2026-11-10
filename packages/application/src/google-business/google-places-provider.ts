@@ -2,6 +2,7 @@ import type { Institution } from "@eduatlas/domain";
 
 /**
  * Minimal Place fields used by EduAtlas (Field Mask only — never review text).
+ * Phone / opening hours are optional enrichment-only fields (separate Field Mask).
  */
 export type GooglePlaceDetails = Readonly<{
   readonly placeId: string;
@@ -12,6 +13,12 @@ export type GooglePlaceDetails = Readonly<{
   readonly mapsUrl?: string;
   readonly businessUrl?: string;
   readonly photoReferences?: readonly string[];
+  /** Places nationalPhoneNumber — enrichment field mask only. */
+  readonly nationalPhoneNumber?: string;
+  /** Places internationalPhoneNumber — enrichment field mask only. */
+  readonly internationalPhoneNumber?: string;
+  /** Places regularOpeningHours.weekdayDescriptions — enrichment field mask only. */
+  readonly weekdayDescriptions?: readonly string[];
 }>;
 
 export type GooglePlaceSearchQuery = Readonly<{
@@ -20,6 +27,12 @@ export type GooglePlaceSearchQuery = Readonly<{
   readonly regionCode?: string;
   /** Soft cap; provider may return fewer. */
   readonly maxResultCount?: number;
+}>;
+
+/** Optional geo display labels for Text Search (not the full street address). */
+export type GooglePlaceSearchLocation = Readonly<{
+  readonly cityName?: string;
+  readonly districtName?: string;
 }>;
 
 /**
@@ -31,13 +44,67 @@ export interface GooglePlacesProvider {
 }
 
 /**
- * Builds a Text Search query from institution identity + location.
+ * Builds a Text Search query from institution identity + district/city labels.
+ * Omits the full street address (door/iç kapı/mahalle noise harms match quality).
+ *
+ * @param location - Display labels, or a city name string (legacy callers).
  */
-export function buildGooglePlaceSearchQuery(institution: Institution, cityName?: string): string {
-  const parts = [
-    institution.name.trim(),
-    institution.location.address.trim(),
-    cityName?.trim(),
-  ].filter(Boolean);
-  return parts.join(", ");
+export function buildGooglePlaceSearchQuery(
+  institution: Institution,
+  location?: GooglePlaceSearchLocation | string,
+): string {
+  const labels = normalizeSearchLocation(location);
+  const parts: string[] = [];
+
+  const name = institution.name.trim();
+  if (name) {
+    parts.push(name);
+  }
+
+  appendUniqueLocationPart(parts, labels.districtName);
+  appendUniqueLocationPart(parts, labels.cityName);
+
+  return parts.join(" ").replaceAll(/\s+/g, " ").trim();
+}
+
+function normalizeSearchLocation(
+  location: GooglePlaceSearchLocation | string | undefined,
+): GooglePlaceSearchLocation {
+  if (typeof location === "string") {
+    return { cityName: location.trim() || undefined };
+  }
+  return {
+    cityName: location?.cityName?.trim() || undefined,
+    districtName: location?.districtName?.trim() || undefined,
+  };
+}
+
+function appendUniqueLocationPart(parts: string[], value: string | undefined): void {
+  const next = value?.trim();
+  if (!next) {
+    return;
+  }
+  const foldedNext = foldForCompare(next);
+  if (!foldedNext) {
+    return;
+  }
+  const alreadyPresent = parts.some((part) => foldForCompare(part).includes(foldedNext));
+  if (!alreadyPresent) {
+    parts.push(next);
+  }
+}
+
+function foldForCompare(value: string): string {
+  return value
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replaceAll("ı", "i")
+    .replaceAll("ğ", "g")
+    .replaceAll("ü", "u")
+    .replaceAll("ş", "s")
+    .replaceAll("ö", "o")
+    .replaceAll("ç", "c")
+    .replaceAll(/[^a-z0-9\s]/g, " ")
+    .replaceAll(/\s+/g, " ")
+    .trim();
 }

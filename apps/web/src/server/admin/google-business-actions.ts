@@ -67,6 +67,7 @@ async function runAdminGoogleSync(
         force: options.force,
         rematch: options.rematch,
         cityName: geo.cityName,
+        districtName: geo.districtName,
       },
       { institutionRepository, placesProvider },
     );

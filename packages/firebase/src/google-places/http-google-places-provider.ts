@@ -6,10 +6,17 @@ import type {
 
 /** Places API (New) field masks — only fields we persist / score. Never reviews. */
 export const GOOGLE_PLACES_SEARCH_FIELD_MASK =
-  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.websiteUri,places.photos";
+  "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.websiteUri,places.photos,places.nationalPhoneNumber,places.internationalPhoneNumber";
 
 export const GOOGLE_PLACES_DETAILS_FIELD_MASK =
   "id,displayName,formattedAddress,rating,userRatingCount,googleMapsUri,websiteUri,photos";
+
+/**
+ * Enrichment-only Details mask: phone + opening hours (higher SKU surface).
+ * Opt-in via getPlaceDetailsForEnrichment — not used by canonical googleBusiness sync.
+ */
+export const GOOGLE_PLACES_ENRICHMENT_DETAILS_FIELD_MASK =
+  "id,displayName,formattedAddress,rating,userRatingCount,googleMapsUri,websiteUri,photos,nationalPhoneNumber,internationalPhoneNumber,regularOpeningHours";
 
 export type HttpGooglePlacesProviderOptions = Readonly<{
   readonly apiKey: string;
@@ -62,6 +69,21 @@ export class HttpGooglePlacesProvider implements GooglePlacesProvider {
   }
 
   async getPlaceDetails(placeId: string): Promise<GooglePlaceDetails | null> {
+    return this.fetchPlaceDetails(placeId, GOOGLE_PLACES_DETAILS_FIELD_MASK);
+  }
+
+  /**
+   * Details with phone + hours. Higher cost — Places enrichment pilot only.
+   * Does not write institutions; callers decide candidate persistence.
+   */
+  async getPlaceDetailsForEnrichment(placeId: string): Promise<GooglePlaceDetails | null> {
+    return this.fetchPlaceDetails(placeId, GOOGLE_PLACES_ENRICHMENT_DETAILS_FIELD_MASK);
+  }
+
+  private async fetchPlaceDetails(
+    placeId: string,
+    fieldMask: string,
+  ): Promise<GooglePlaceDetails | null> {
     const resource = normalizePlaceResourceName(placeId);
     const response = await this.fetchImpl(
       `https://places.googleapis.com/v1/${encodeURI(resource)}`,
@@ -69,7 +91,7 @@ export class HttpGooglePlacesProvider implements GooglePlacesProvider {
         method: "GET",
         headers: {
           "X-Goog-Api-Key": this.apiKey,
-          "X-Goog-FieldMask": GOOGLE_PLACES_DETAILS_FIELD_MASK,
+          "X-Goog-FieldMask": fieldMask,
         },
       },
     );
@@ -97,6 +119,10 @@ export class NoopGooglePlacesProvider implements GooglePlacesProvider {
   }
 
   async getPlaceDetails(): Promise<GooglePlaceDetails | null> {
+    return null;
+  }
+
+  async getPlaceDetailsForEnrichment(): Promise<GooglePlaceDetails | null> {
     return null;
   }
 }
@@ -142,6 +168,13 @@ function mapPlace(raw: unknown): GooglePlaceDetails | null {
   const mapsUrl = typeof row.googleMapsUri === "string" ? row.googleMapsUri.trim() : undefined;
   const businessUrl = typeof row.websiteUri === "string" ? row.websiteUri.trim() : undefined;
   const photoReferences = extractPhotoReferences(row.photos);
+  const nationalPhoneNumber =
+    typeof row.nationalPhoneNumber === "string" ? row.nationalPhoneNumber.trim() : undefined;
+  const internationalPhoneNumber =
+    typeof row.internationalPhoneNumber === "string"
+      ? row.internationalPhoneNumber.trim()
+      : undefined;
+  const weekdayDescriptions = extractWeekdayDescriptions(row.regularOpeningHours);
 
   return Object.freeze({
     placeId: stripPlacesPrefix(idRaw),
@@ -152,7 +185,28 @@ function mapPlace(raw: unknown): GooglePlaceDetails | null {
     ...(mapsUrl ? { mapsUrl } : {}),
     ...(businessUrl ? { businessUrl } : {}),
     ...(photoReferences.length > 0 ? { photoReferences: Object.freeze(photoReferences) } : {}),
+    ...(nationalPhoneNumber ? { nationalPhoneNumber } : {}),
+    ...(internationalPhoneNumber ? { internationalPhoneNumber } : {}),
+    ...(weekdayDescriptions.length > 0
+      ? { weekdayDescriptions: Object.freeze(weekdayDescriptions) }
+      : {}),
   });
+}
+
+function extractWeekdayDescriptions(regularOpeningHours: unknown): string[] {
+  if (
+    !regularOpeningHours ||
+    typeof regularOpeningHours !== "object" ||
+    Array.isArray(regularOpeningHours)
+  ) {
+    return [];
+  }
+  const raw = (regularOpeningHours as Record<string, unknown>).weekdayDescriptions;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim()))
+    .map((entry) => entry.trim())
+    .slice(0, 7);
 }
 
 function extractPhotoReferences(photos: unknown): string[] {

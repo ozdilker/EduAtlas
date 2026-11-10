@@ -25,6 +25,7 @@ export type SyncGoogleBusinessInput = Readonly<{
   /** Clear placeId and re-run Text Search match. */
   readonly rematch?: boolean;
   readonly cityName?: string;
+  readonly districtName?: string;
   readonly now?: Date;
 }>;
 
@@ -78,7 +79,10 @@ export async function syncGoogleBusiness(
     let confidenceScore = previous?.confidenceScore;
 
     if (!placeId || rematch) {
-      const textQuery = buildGooglePlaceSearchQuery(loaded, input.cityName);
+      const textQuery = buildGooglePlaceSearchQuery(loaded, {
+        cityName: input.cityName,
+        districtName: input.districtName,
+      });
       const candidates = await deps.placesProvider.searchText({
         textQuery,
         languageCode: "tr",
@@ -90,6 +94,12 @@ export async function syncGoogleBusiness(
         loaded.name,
         loaded.location.address,
         candidates,
+        {
+          cityName: input.cityName,
+          districtName: input.districtName,
+          contactPhone: loaded.contact.phone,
+          whatsappNumber: loaded.contact.whatsappNumber,
+        },
       );
 
       if (!picked) {
