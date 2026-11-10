@@ -47,11 +47,11 @@ export function buildSeoSiteConfigFromContact(contact: OrganizationContact): Seo
   });
 }
 
+/** Footer contact: email/address only — phone is contact-page only. */
 export function toFooterContact(contact: OrganizationContact) {
   const addressLine = formatOrganizationAddressLine(contact);
   return {
     email: contact.email,
-    ...(contact.phone ? { phone: contact.phone } : {}),
     ...(addressLine ? { addressLine } : {}),
   };
 }
