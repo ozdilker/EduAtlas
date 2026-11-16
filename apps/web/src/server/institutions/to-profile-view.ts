@@ -38,13 +38,20 @@ export function getInstitutionTypeLabel(type: InstitutionType): string {
   return TYPE_LABELS[type];
 }
 
+export type ToInstitutionProfileViewOptions = {
+  /** When true, include phone / WhatsApp / email from private contact channels. */
+  readonly includePrivateContact?: boolean;
+};
+
 /**
  * Maps a domain Institution (+ geo labels / related cards) to UI profile view data.
+ * Private contact channels are omitted unless `includePrivateContact` is true.
  */
 export function toInstitutionProfileView(
   institution: Institution,
   geo: InstitutionSearchGeoLabels,
   related: readonly InstitutionCardViewData[] = [],
+  options: ToInstitutionProfileViewOptions = {},
 ): InstitutionProfileViewData {
   const typeSlug = getInstitutionTypeSlug(institution.primaryType);
   const typeLabel = getInstitutionTypeLabel(institution.primaryType);
@@ -115,7 +122,7 @@ export function toInstitutionProfileView(
       : institution.coverImageUrl,
     brochurePdfUrl: institution.brochurePdfUrl,
     gallery: buildGallery(institution),
-    contact: buildContact(institution),
+    contact: buildContact(institution, options.includePrivateContact === true),
     socialLinks: buildSocialLinks(institution),
     related: [...related],
   };
@@ -245,10 +252,10 @@ function buildGallery(institution: Institution): InstitutionProfileViewData["gal
   }));
 }
 
-function buildContact(institution: Institution) {
+function buildContact(institution: Institution, includePrivateContact: boolean) {
   const items: InstitutionProfileViewData["contact"] = [];
 
-  if (institution.contact.phone) {
+  if (includePrivateContact && institution.contact.phone) {
     const phone = institution.contact.phone;
     items.push({
       id: "phone",
@@ -258,7 +265,7 @@ function buildContact(institution: Institution) {
     });
   }
 
-  if (institution.contact.whatsappNumber) {
+  if (includePrivateContact && institution.contact.whatsappNumber) {
     const digits = institution.contact.whatsappNumber.replaceAll(/\D/g, "");
     items.push({
       id: "whatsapp",
@@ -268,7 +275,7 @@ function buildContact(institution: Institution) {
     });
   }
 
-  if (institution.contact.email) {
+  if (includePrivateContact && institution.contact.email) {
     items.push({
       id: "email",
       label: "E-posta",

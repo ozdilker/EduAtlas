@@ -357,6 +357,23 @@ export {
   updateLeadStatus,
 } from "./leads";
 export {
+  CONTACT_UNLOCK_TTL_MS,
+  ContactUnlockTokenError,
+  createContactUnlockPayload,
+  createInstitutionPrivateContact,
+  isInstitutionContactUnlocked,
+  publicContactChannels,
+  resolveInstitutionContactSource,
+  signContactUnlockToken,
+  upsertInstitutionContactGrant,
+  verifyContactUnlockToken,
+  type ContactUnlockGrantMap,
+  type ContactUnlockPayload,
+  type InstitutionPrivateContact,
+  type InstitutionPrivateContactRepository,
+  type UpsertInstitutionPrivateContactInput,
+} from "./contact-access";
+export {
   escapeAttribute,
   escapeHtml,
   MAIL_LOGO_PATH,

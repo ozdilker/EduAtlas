@@ -135,10 +135,15 @@ export function InstitutionSidebar({
           {profile.district}, {profile.city}
         </p>
         <div className="ea-profile-sidebar__actions">
-          {onLeadClick ? (
+          {onLeadClick && !phoneHref ? (
             <Button type="button" variant="primary" size="md" onClick={onLeadClick}>
               Bilgi Al
             </Button>
+          ) : null}
+          {onLeadClick && phoneHref ? (
+            <p className="ea-profile-sidebar__unlock-note">
+              Bilgi talebiniz alındı. İletişim bilgileri açık.
+            </p>
           ) : null}
           {profile.brochurePdfUrl ? (
             <a

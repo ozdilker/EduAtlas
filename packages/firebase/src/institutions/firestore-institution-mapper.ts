@@ -154,14 +154,11 @@ export class FirestoreInstitutionMapper {
     if (institution.location.geohash) {
       document.geohash = institution.location.geohash;
     }
-    if (institution.contact.phone) {
-      document.contactPhone = institution.contact.phone;
-    }
+    // Phone / WhatsApp live in `institution_private_contacts` only.
+    // contactEmail remains on the institution doc for Admin dedupe/enrichment lookups;
+    // public profile HTML/JSON-LD still omit email unless contact-unlock is granted.
     if (institution.contact.email) {
       document.contactEmail = institution.contact.email.trim().toLowerCase();
-    }
-    if (institution.contact.whatsappNumber) {
-      document.whatsappNumber = institution.contact.whatsappNumber;
     }
     if (institution.socialLinks.websiteUrl) {
       document.websiteUrl = institution.socialLinks.websiteUrl;

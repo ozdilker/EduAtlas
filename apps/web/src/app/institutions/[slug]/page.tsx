@@ -30,6 +30,7 @@ import {
 import { getInstitutionTypeLabel } from "@/server/institutions/to-profile-view";
 import { getInstitutionRepository } from "@/server/institutions/repository";
 import { submitInstitutionClaimAction } from "@/server/claims/submit-institution-claim-action";
+import { hasInstitutionContactUnlock } from "@/server/leads/contact-unlock-cookie";
 import { submitInstitutionLeadAction } from "@/server/leads/submit-institution-lead-action";
 import { scheduleGoogleBusinessSyncIfNeeded } from "@/server/google-business/schedule-google-business-sync";
 import { InstitutionProfileSidebarLeadDialog } from "./institution-profile-sidebar-lead-dialog";
@@ -46,7 +47,10 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: InstitutionProfileRouteProps) {
   const { slug } = await params;
-  const result = await getPublicInstitutionProfileAboveFoldBySlug(slug);
+  // Metadata and JSON-LD stay locked. The preview fixture route is not involved.
+  const result = await getPublicInstitutionProfileAboveFoldBySlug(slug, {
+    includePrivateContact: false,
+  });
 
   if (!result) {
     return {
@@ -76,7 +80,24 @@ export default async function InstitutionProfileRoute({ params }: InstitutionPro
   return runWithFirestoreCounters(async () => {
     const { slug } = await params;
     const repo = await getInstitutionRepository();
-    const result = await getPublicInstitutionProfileAboveFoldBySlug(slug);
+    const preview = await getPublicInstitutionProfileAboveFoldBySlug(slug, {
+      repository: repo,
+      includePrivateContact: false,
+    });
+
+    if (!preview) {
+      notFound();
+    }
+
+    const includePrivateContact = await hasInstitutionContactUnlock(
+      institutionIdAsString(preview.institution.id),
+    );
+    const result = includePrivateContact
+      ? await getPublicInstitutionProfileAboveFoldBySlug(slug, {
+          repository: repo,
+          includePrivateContact: true,
+        })
+      : preview;
 
     if (!result) {
       notFound();

@@ -13,6 +13,8 @@ import { cn } from "../lib/cn";
 export type LeadFormActionState = {
   ok: boolean;
   message: string;
+  /** Set when server granted institution contact unlock after a successful lead. */
+  contactUnlocked?: boolean;
 };
 
 export type InstitutionLeadCTAProps = {
@@ -20,6 +22,8 @@ export type InstitutionLeadCTAProps = {
   institutionId: string;
   action: (prevState: LeadFormActionState, formData: FormData) => Promise<LeadFormActionState>;
   initialState?: LeadFormActionState;
+  /** Called after a successful lead when the server granted contact unlock. */
+  onContactUnlocked?: () => void;
   /** `panel` omits page-section chrome for modal use. */
   variant?: "section" | "panel";
   className?: string;
@@ -76,12 +80,14 @@ export function InstitutionLeadCTA({
   institutionId,
   action,
   initialState = { ok: false, message: "" },
+  onContactUnlocked,
   variant = "section",
   className,
 }: InstitutionLeadCTAProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [clientMessage, setClientMessage] = useState("");
   const submittedTracked = useRef(false);
+  const unlockNotified = useRef(false);
 
   useEffect(() => {
     if (state.ok && !submittedTracked.current) {
@@ -91,6 +97,13 @@ export function InstitutionLeadCTA({
       });
     }
   }, [state.ok, institutionId]);
+
+  useEffect(() => {
+    if (state.ok && state.contactUnlocked && !unlockNotified.current) {
+      unlockNotified.current = true;
+      onContactUnlocked?.();
+    }
+  }, [state.ok, state.contactUnlocked, onContactUnlocked]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     const missing = getMissingRequiredFields(event.currentTarget);
