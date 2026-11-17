@@ -1,9 +1,15 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Institutions — Admin SDK / trusted server only.
+    // Private contact channels must not be client-readable via this collection.
     match /institutions/{institutionId} {
-      allow read: if resource.data.lifecycleStatus == 'published';
-      allow write: if false;
+      allow read, write: if false;
+    }
+
+    // Private institution contact (phone / WhatsApp / email) — Admin SDK only.
+    match /institution_private_contacts/{institutionId} {
+      allow read, write: if false;
     }
 
     // Public geography reference — published cities/districts only.

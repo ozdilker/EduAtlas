@@ -17,6 +17,13 @@ export {
   FirestoreInstitutionRepository,
   type FirestoreInstitutionRepositoryOptions,
 } from "./firestore-institution-repository";
+export {
+  INSTITUTION_PRIVATE_CONTACTS_COLLECTION,
+  FirestoreInstitutionPrivateContactRepository,
+  InMemoryInstitutionPrivateContactRepository,
+  createFirestoreInstitutionPrivateContactRepository,
+  createInMemoryInstitutionPrivateContactRepository,
+} from "./firestore-institution-private-contact-repository";
 export { InMemoryInstitutionDocumentStore } from "./in-memory-institution-document-store";
 export type {
   AdminListCursor,

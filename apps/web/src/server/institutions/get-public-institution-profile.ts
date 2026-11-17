@@ -23,16 +23,29 @@ export type PublicInstitutionProfile = {
   readonly profile: InstitutionProfileViewData;
 };
 
+export type GetPublicInstitutionProfileOptions = {
+  readonly repository?: InstitutionRepository;
+  /** Server-verified contact unlock for this visitor + institution. */
+  readonly includePrivateContact?: boolean;
+};
+
 /**
  * Loads a published institution profile by slug through InstitutionRepository.
  * Returns null when missing or not publicly visible (caller should 404).
  */
 export async function getPublicInstitutionProfileBySlug(
   slug: string,
-  repository?: InstitutionRepository,
+  options: GetPublicInstitutionProfileOptions | InstitutionRepository = {},
 ): Promise<PublicInstitutionProfile | null> {
-  const repo = repository ?? (await getInstitutionRepository());
-  const aboveFold = await getPublicInstitutionProfileAboveFoldBySlug(slug, repo);
+  const normalized =
+    typeof (options as InstitutionRepository).getBySlug === "function"
+      ? { repository: options as InstitutionRepository }
+      : (options as GetPublicInstitutionProfileOptions);
+  const repo = normalized.repository ?? (await getInstitutionRepository());
+  const aboveFold = await getPublicInstitutionProfileAboveFoldBySlug(slug, {
+    repository: repo,
+    includePrivateContact: normalized.includePrivateContact,
+  });
   if (!aboveFold) {
     return null;
   }
@@ -45,16 +58,22 @@ export async function getPublicInstitutionProfileBySlug(
 
   return {
     institution: aboveFold.institution,
-    profile: toInstitutionProfileView(aboveFold.institution, geo, related),
+    profile: toInstitutionProfileView(aboveFold.institution, geo, related, {
+      includePrivateContact: normalized.includePrivateContact === true,
+    }),
   };
 }
 
 export const getPublicInstitutionProfileAboveFoldBySlug = cache(
   async function getPublicInstitutionProfileAboveFoldBySlug(
     slug: string,
-    repository?: InstitutionRepository,
+    options: GetPublicInstitutionProfileOptions | InstitutionRepository = {},
   ): Promise<PublicInstitutionProfile | null> {
-  const repo = repository ?? (await getInstitutionRepository());
+  const normalized =
+    typeof (options as InstitutionRepository).getBySlug === "function"
+      ? { repository: options as InstitutionRepository }
+      : (options as GetPublicInstitutionProfileOptions);
+  const repo = normalized.repository ?? (await getInstitutionRepository());
   const institution = await repo.getBySlug(slug);
 
   if (!institution || !isPublicInstitution(institution)) {
@@ -64,7 +83,9 @@ export const getPublicInstitutionProfileAboveFoldBySlug = cache(
   const geo = resolveGeoLabels(institution.location.cityId, institution.location.districtId);
   return {
     institution,
-    profile: toInstitutionProfileView(institution, geo),
+    profile: toInstitutionProfileView(institution, geo, [], {
+      includePrivateContact: normalized.includePrivateContact === true,
+    }),
   };
 },
 );

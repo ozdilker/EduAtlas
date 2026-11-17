@@ -16,7 +16,27 @@ describe("getPublicInstitutionProfileBySlug", () => {
     expect(result?.profile.name).toBe("Kadıköy Marmara Koleji");
     expect(result?.profile.city).toBe("İstanbul");
     expect(result?.profile.district).toBe("Kadıköy");
-    expect(result?.profile.contact.length).toBeGreaterThan(0);
+    // Public profile must not expose private phone/WhatsApp/email without unlock.
+    expect(result?.profile.contact.some((item) => item.id === "phone")).toBe(false);
+    expect(result?.profile.contact.some((item) => item.id === "whatsapp")).toBe(false);
+    expect(result?.profile.contact.some((item) => item.id === "email")).toBe(false);
+  });
+
+  it("includes private contact channels when unlock option is set", async () => {
+    const repository = await createSeededInstitutionRepository();
+    const locked = await getPublicInstitutionProfileBySlug("kadikoy-marmara-koleji", {
+      repository,
+      includePrivateContact: false,
+    });
+    const unlocked = await getPublicInstitutionProfileBySlug("kadikoy-marmara-koleji", {
+      repository,
+      includePrivateContact: true,
+    });
+    expect(locked?.profile.contact.some((item) => item.id === "phone")).toBe(false);
+    // Seed institutions typically have phone; unlocked view may include it when present.
+    if (unlocked?.institution.contact.phone) {
+      expect(unlocked.profile.contact.some((item) => item.id === "phone")).toBe(true);
+    }
   });
 
   it("returns null for missing or unpublished institutions", async () => {

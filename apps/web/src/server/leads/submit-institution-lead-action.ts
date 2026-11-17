@@ -13,9 +13,12 @@ import { getNotificationService } from "@/server/notifications/repository";
 import { resolveLeadNotificationRecipient } from "@/server/notifications/resolve-lead-recipient";
 import { sendClaimInviteEmailAfterLead } from "@/server/notifications/send-claim-invite-email";
 import { getLeadRepository } from "@/server/owner/lead-repository";
+import { grantInstitutionContactUnlock } from "./contact-unlock-cookie";
+import { leadSubmitFailureState, leadSubmitSuccessState } from "./lead-submit-result";
 
 /**
  * Server action: institution page lead form → application service → repository.
+ * Contact unlock cookie is set only after a successful lead persist.
  */
 export async function submitInstitutionLeadAction(
   _prevState: LeadFormActionState,
@@ -53,27 +56,22 @@ export async function submitInstitutionLeadAction(
       },
     );
 
-    return {
-      ok: true,
-      message: "Talebiniz alındı. Kurum en kısa sürede sizinle iletişime geçebilir.",
-    };
+    const contactUnlocked = await grantInstitutionContactUnlock(institutionId);
+    return leadSubmitSuccessState(contactUnlocked);
   } catch (error) {
     if (isLeadSpamRejectedError(error)) {
-      return { ok: false, message: "Gönderim reddedildi." };
+      return leadSubmitFailureState("Gönderim reddedildi.");
     }
     if (isLeadRateLimitedError(error)) {
-      return { ok: false, message: "Çok fazla deneme yaptınız. Lütfen sonra tekrar deneyin." };
+      return leadSubmitFailureState("Çok fazla deneme yaptınız. Lütfen sonra tekrar deneyin.");
     }
     if (isLeadValidationError(error)) {
-      return { ok: false, message: error.message };
+      return leadSubmitFailureState(error.message);
     }
     if (error instanceof LeadInstitutionNotFoundError) {
-      return { ok: false, message: "Kurum bulunamadı." };
+      return leadSubmitFailureState("Kurum bulunamadı.");
     }
 
-    return {
-      ok: false,
-      message: "Talebiniz kaydedilemedi. Lütfen daha sonra tekrar deneyin.",
-    };
+    return leadSubmitFailureState("Talebiniz kaydedilemedi. Lütfen daha sonra tekrar deneyin.");
   }
 }

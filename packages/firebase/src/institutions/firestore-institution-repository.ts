@@ -22,6 +22,11 @@ import {
   PUBLIC_SEARCH_KEYWORD_CAP,
 } from "@eduatlas/application/institutions";
 import {
+  createInstitutionPrivateContact,
+  resolveInstitutionContactSource,
+  type InstitutionPrivateContactRepository,
+} from "@eduatlas/application";
+import {
   createInstitution,
   type Institution,
   type InstitutionId,
@@ -41,9 +46,13 @@ import {
   FirestoreInstitutionMapper,
   googleBusinessFromDocument,
 } from "./firestore-institution-mapper";
+import {
+  createFirestoreInstitutionPrivateContactRepository,
+} from "./firestore-institution-private-contact-repository";
 import type {
   AdminListFilters,
   AdminListSort,
+  InstitutionDocumentRecord,
   InstitutionDocumentStore,
 } from "./institution-document-store";
 import {
@@ -58,6 +67,7 @@ import {
 export type FirestoreInstitutionRepositoryOptions = {
   firestore?: Firestore;
   store?: InstitutionDocumentStore;
+  privateContactRepository?: InstitutionPrivateContactRepository;
 };
 
 /**
@@ -68,6 +78,7 @@ export class FirestoreInstitutionRepository
   implements InstitutionRepository, InstitutionSearchRepository
 {
   private readonly store: InstitutionDocumentStore;
+  private readonly privateContacts: InstitutionPrivateContactRepository | null;
 
   constructor(options: FirestoreInstitutionRepositoryOptions) {
     if (options.store) {
@@ -77,17 +88,24 @@ export class FirestoreInstitutionRepository
     } else {
       throw new Error("FirestoreInstitutionRepository requires firestore or store.");
     }
+    this.privateContacts =
+      options.privateContactRepository ??
+      (options.firestore
+        ? createFirestoreInstitutionPrivateContactRepository(options.firestore)
+        : null);
   }
 
   async getById(id: InstitutionId): Promise<Institution | null> {
     const record = await this.store.getById(institutionIdAsString(id));
-    return record ? FirestoreInstitutionMapper.toDomain(record.id, record.data) : null;
+    if (!record) return null;
+    return this.hydrateOne(FirestoreInstitutionMapper.toDomain(record.id, record.data));
   }
 
   async getBySlug(slug: string): Promise<Institution | null> {
     const normalized = slug.trim().toLowerCase();
     const record = await this.store.findBySlug(normalized);
-    return record ? FirestoreInstitutionMapper.toDomain(record.id, record.data) : null;
+    if (!record) return null;
+    return this.hydrateOne(FirestoreInstitutionMapper.toDomain(record.id, record.data));
   }
 
   /**
@@ -113,9 +131,7 @@ export class FirestoreInstitutionRepository
       this.store.countPublished(),
     ]);
 
-    const items = page.records.map((record) =>
-      FirestoreInstitutionMapper.toDomain(record.id, record.data),
-    );
+    const items = await this.mapRecords(page.records);
     const nextCursor = page.nextCursor ? encodePublishedBrowseCursor(page.nextCursor) : null;
 
     return Object.freeze({
@@ -149,9 +165,7 @@ export class FirestoreInstitutionRepository
     });
 
     return Object.freeze({
-      items: Object.freeze(
-        page.records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
-      ),
+      items: Object.freeze(await this.mapRecords(page.records)),
       nextCursorId: page.nextCursorId,
     });
   }
@@ -237,9 +251,7 @@ export class FirestoreInstitutionRepository
       this.store.countAdmin(storeFilters),
     ]);
 
-    const items = page.records.map((record) =>
-      FirestoreInstitutionMapper.toDomain(record.id, record.data),
-    );
+    const items = await this.mapRecords(page.records);
     const nextCursor = page.nextCursor ? encodeAdminInstitutionListCursor(page.nextCursor) : null;
 
     return Object.freeze({
@@ -282,9 +294,7 @@ export class FirestoreInstitutionRepository
     const limit = Math.max(1, Math.min(20, options?.limit ?? 5));
     if (!this.store.findByContactEmail) return Object.freeze([]);
     const records = await this.store.findByContactEmail(email, limit);
-    return Object.freeze(
-      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
-    );
+    return Object.freeze(await this.mapRecords(records));
   }
 
   async findByExactName(
@@ -303,9 +313,7 @@ export class FirestoreInstitutionRepository
       ...(options?.districtId ? { districtId: options.districtId } : {}),
       limit,
     });
-    return Object.freeze(
-      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
-    );
+    return Object.freeze(await this.mapRecords(records));
   }
 
   async findBySearchKeyword(
@@ -325,9 +333,7 @@ export class FirestoreInstitutionRepository
       ...(options?.districtId ? { districtId: options.districtId } : {}),
       limit,
     });
-    return Object.freeze(
-      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
-    );
+    return Object.freeze(await this.mapRecords(records));
   }
 
   /**
@@ -347,9 +353,7 @@ export class FirestoreInstitutionRepository
     }
 
     const records = await this.store.listPublishedByCityIdLimited(cityId.trim(), capped);
-    return Object.freeze(
-      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
-    );
+    return Object.freeze(await this.mapRecords(records));
   }
 
   async list(options: InstitutionListOptions = {}): Promise<InstitutionPage<Institution>> {
@@ -382,9 +386,7 @@ export class FirestoreInstitutionRepository
     } else {
       records = await this.store.listAll();
     }
-    let institutions = records.map((record) =>
-      FirestoreInstitutionMapper.toDomain(record.id, record.data),
-    );
+    let institutions = [...(await this.mapRecords(records))];
 
     if (filters?.cityId) {
       institutions = institutions.filter((item) => item.location.cityId === filters.cityId);
@@ -439,7 +441,7 @@ export class FirestoreInstitutionRepository
       }
       throw error;
     }
-
+    await this.persistPrivateContact(institution);
     return institution;
   }
 
@@ -459,6 +461,9 @@ export class FirestoreInstitutionRepository
     if (this.store.createMany) {
       try {
         await this.store.createMany(entries);
+        for (const institution of institutions) {
+          await this.persistPrivateContact(institution);
+        }
         return Object.freeze([...institutions]);
       } catch (error) {
         if (error instanceof Error && error.message.startsWith("INSTITUTION_DOC_EXISTS:")) {
@@ -506,6 +511,7 @@ export class FirestoreInstitutionRepository
         googleBusiness: institution.googleBusiness ?? googleBusinessFromDocument(existing.data),
       }),
     );
+    await this.persistPrivateContact(institution);
     return institution;
   }
 
@@ -652,6 +658,49 @@ export class FirestoreInstitutionRepository
     }
 
     return [...byId.values()];
+  }
+
+  private async mapRecords(
+    records: readonly InstitutionDocumentRecord[],
+  ): Promise<Institution[]> {
+    return this.hydrateMany(
+      records.map((record) => FirestoreInstitutionMapper.toDomain(record.id, record.data)),
+    );
+  }
+
+  private async hydrateOne(institution: Institution): Promise<Institution> {
+    const [hydrated] = await this.hydrateMany([institution]);
+    return hydrated ?? institution;
+  }
+
+  private async hydrateMany(
+    institutions: readonly Institution[],
+  ): Promise<Institution[]> {
+    if (!this.privateContacts || institutions.length === 0) {
+      return [...institutions];
+    }
+    const ids = institutions.map((item) => institutionIdAsString(item.id));
+    const privateMap = await this.privateContacts.getByInstitutionIds(ids);
+    return institutions.map((institution) => {
+      const priv = privateMap.get(institutionIdAsString(institution.id)) ?? null;
+      return Object.freeze({
+        ...institution,
+        contact: resolveInstitutionContactSource(institution.contact, priv),
+      });
+    });
+  }
+
+  private async persistPrivateContact(institution: Institution): Promise<void> {
+    if (!this.privateContacts) return;
+    await this.privateContacts.upsert(
+      createInstitutionPrivateContact({
+        institutionId: institutionIdAsString(institution.id),
+        phone: institution.contact.phone ?? null,
+        email: institution.contact.email ?? null,
+        whatsappNumber: institution.contact.whatsappNumber ?? null,
+        updatedAt: new Date().toISOString(),
+      }),
+    );
   }
 }
 

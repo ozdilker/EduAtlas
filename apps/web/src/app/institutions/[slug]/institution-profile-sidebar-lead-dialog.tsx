@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type {
   InstitutionClaimCTAProps,
@@ -31,6 +32,7 @@ export function InstitutionProfileSidebarLeadDialog({
   leadAction,
   claimAction,
 }: InstitutionProfileSidebarLeadDialogProps) {
+  const router = useRouter();
   const [leadOpen, setLeadOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
 
@@ -71,6 +73,10 @@ export function InstitutionProfileSidebarLeadDialog({
             institutionId={institutionId}
             action={leadAction}
             variant="panel"
+            onContactUnlocked={() => {
+              setLeadOpen(false);
+              router.refresh();
+            }}
           />
         </InstitutionProfileDialog>
       ) : null}
