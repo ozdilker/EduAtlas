@@ -72,6 +72,7 @@ function mapInstitution(
     ownershipLabel: ownershipLabel(institution.verification),
     adminHref: institution.adminHref,
     profileHref: institution.profileHref,
+    email: institution.email,
   };
 }
 
@@ -86,6 +87,7 @@ function mapSearchedInstitution(
     districtLabel: institution.districtLabel,
     profileHref: institution.profileHref,
     adminHref: institution.adminHref,
+    email: institution.email,
     ownershipLabel: institution.ownershipLabel,
     clicks: row.clicks,
     impressions: row.impressions,

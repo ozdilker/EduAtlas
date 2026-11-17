@@ -1625,3 +1625,36 @@
   background: #f8fafc;
 }
 
+.ea-admin-seo-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.ea-admin-seo-pager__status {
+  margin: 0;
+}
+
+.ea-admin-seo-pager__size {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.ea-admin-seo-pager select,
+.ea-admin-seo-pager button {
+  font: inherit;
+}
+
+.ea-admin-seo-pager__nav {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.ea-admin-seo-pager button:disabled {
+  opacity: 0.45;
+}
+

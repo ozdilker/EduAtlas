@@ -49,6 +49,8 @@ export type SeoMatchedInstitution = Readonly<{
   readonly verification: InstitutionVerification;
   readonly adminHref: string;
   readonly profileHref: string;
+  /** Present when the institution already has a contact email; otherwise null. */
+  readonly email: string | null;
 }>;
 
 export type SeoDashboardPageRow = Readonly<{
@@ -138,6 +140,7 @@ function toMatchedInstitution(institution: Institution): SeoMatchedInstitution {
     verification: institution.verification,
     adminHref: `/admin/acquisition?q=${encodeURIComponent(institution.slug)}`,
     profileHref: `/institutions/${encodeURIComponent(institution.slug)}`,
+    email: institution.contact.email ?? null,
   });
 }
 

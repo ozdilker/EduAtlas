@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { buildAdminNavItems } from "./admin-nav";
 import { AdminShell } from "./admin-shell";
 import { AdminSeoTaskSubmitButton } from "./admin-seo-task-submit-button";
@@ -19,6 +22,7 @@ export type AdminSeoMatchedInstitution = Readonly<{
   readonly ownershipLabel: string;
   readonly adminHref: string;
   readonly profileHref: string;
+  readonly email: string | null;
 }>;
 
 export type AdminSeoPageRow = Readonly<{
@@ -38,6 +42,7 @@ export type AdminSeoSearchedInstitutionRow = Readonly<{
   readonly districtLabel: string;
   readonly profileHref: string;
   readonly adminHref: string;
+  readonly email: string | null;
   readonly ownershipLabel: string;
   readonly clicks: number;
   readonly impressions: number;
@@ -167,7 +172,128 @@ function formatInt(value: number): string {
   return new Intl.NumberFormat("tr-TR").format(value);
 }
 
+const SEO_PAGE_SIZES = [10, 20, 50] as const;
+type SeoPageSize = (typeof SEO_PAGE_SIZES)[number];
+const INSTITUTION_MAIL_SUBJECT = "EduAtlas - Kurum İş Birliği";
+
+function useSeoPagination<T>(rows: readonly T[], resetKey: string) {
+  const [pageSize, setPageSize] = useState<SeoPageSize>(10);
+  const [page, setPage] = useState(1);
+  const [seenKey, setSeenKey] = useState(resetKey);
+  const resetPending = seenKey !== resetKey;
+  if (resetPending) {
+    setSeenKey(resetKey);
+    setPage(1);
+  }
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = total === 0 || resetPending ? 1 : Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  return {
+    pageRows: rows.slice(start, start + pageSize),
+    pageSize,
+    currentPage,
+    total,
+    totalPages,
+    setPageSize(next: SeoPageSize) {
+      setPageSize(next);
+      setPage(1);
+    },
+    setPage(next: number) {
+      setPage(Math.min(Math.max(1, next), totalPages));
+    },
+  };
+}
+
+function SeoPager({
+  total,
+  currentPage,
+  totalPages,
+  pageSize,
+  onPageSize,
+  onPage,
+}: {
+  total: number;
+  currentPage: number;
+  totalPages: number;
+  pageSize: SeoPageSize;
+  onPageSize: (next: SeoPageSize) => void;
+  onPage: (next: number) => void;
+}) {
+  if (total === 0) return null;
+  return (
+    <div className="ea-admin-seo-pager">
+      <p className="ea-admin-seo-pager__status">
+        Sayfa {currentPage} / {totalPages} · {formatInt(total)} kayıt
+      </p>
+      <label className="ea-admin-seo-pager__size">
+        Sayfa başına
+        <select
+          value={pageSize}
+          onChange={(event) => onPageSize(Number(event.target.value) as SeoPageSize)}
+        >
+          {SEO_PAGE_SIZES.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="ea-admin-seo-pager__nav">
+        <button type="button" onClick={() => onPage(currentPage - 1)} disabled={currentPage <= 1}>
+          Önceki
+        </button>
+        <button
+          type="button"
+          onClick={() => onPage(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+        >
+          Sonraki
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function institutionPageUrl(profileHref: string): string {
+  if (profileHref.startsWith("http://") || profileHref.startsWith("https://")) {
+    return profileHref;
+  }
+  const path = profileHref.startsWith("/") ? profileHref : `/${profileHref}`;
+  return `https://eduatlas.com.tr${path}`;
+}
+
+function institutionOutreachMailto(input: {
+  email?: string | null;
+  name: string;
+  profileHref: string;
+}): string {
+  const to = input.email?.trim() ?? "";
+  const body = `Kurum: ${input.name}\nEduAtlas sayfası: ${institutionPageUrl(input.profileHref)}`;
+  const query = new URLSearchParams({
+    subject: INSTITUTION_MAIL_SUBJECT,
+    body,
+  });
+  return `mailto:${encodeURIComponent(to)}?${query.toString().replaceAll("+", "%20")}`;
+}
+
+function InstitutionMailLink({
+  email,
+  name,
+  profileHref,
+}: {
+  email?: string | null;
+  name: string;
+  profileHref: string;
+}) {
+  return <a href={institutionOutreachMailto({ email, name, profileHref })}>E-posta Gönder</a>;
+}
+
 function SearchedInstitutionsSection({ data }: { data: AdminSeoDashboardViewData }) {
+  const paging = useSeoPagination(
+    data.topSearchedInstitutions,
+    data.topSearchedInstitutions.map((row) => row.institutionId).join("\n"),
+  );
   return (
     <section aria-labelledby="admin-seo-searched-heading">
       <h2 id="admin-seo-searched-heading" className="ea-admin-section-title">
@@ -182,6 +308,7 @@ function SearchedInstitutionsSection({ data }: { data: AdminSeoDashboardViewData
       {!data.hasSnapshot ? (
         <p className="ea-admin-muted">{data.emptyStateMessage}</p>
       ) : (
+        <>
         <div className="ea-admin-table-wrap">
           <table className="ea-admin-table">
             <thead>
@@ -193,18 +320,18 @@ function SearchedInstitutionsSection({ data }: { data: AdminSeoDashboardViewData
                 <th>CTR</th>
                 <th>Ortalama konum</th>
                 <th>Sahiplenme</th>
-                <th>Admin</th>
+                <th>E-posta</th>
               </tr>
             </thead>
             <tbody>
-              {data.topSearchedInstitutions.length === 0 ? (
+              {paging.total === 0 ? (
                 <tr>
                   <td className="ea-admin-table__empty" colSpan={8}>
                     Eşleşen kurum yok.
                   </td>
                 </tr>
               ) : (
-                data.topSearchedInstitutions.map((row) => (
+                paging.pageRows.map((row) => (
                   <tr key={row.institutionId}>
                     <td className="ea-admin-table__name">
                       <a href={row.profileHref}>{row.name}</a>
@@ -218,7 +345,11 @@ function SearchedInstitutionsSection({ data }: { data: AdminSeoDashboardViewData
                     <td>{row.positionLabel}</td>
                     <td>{row.ownershipLabel}</td>
                     <td>
-                      <a href={row.adminHref}>Düzenle</a>
+                      <InstitutionMailLink
+                        email={row.email}
+                        name={row.name}
+                        profileHref={row.profileHref}
+                      />
                     </td>
                   </tr>
                 ))
@@ -226,6 +357,15 @@ function SearchedInstitutionsSection({ data }: { data: AdminSeoDashboardViewData
             </tbody>
           </table>
         </div>
+          <SeoPager
+            total={paging.total}
+            currentPage={paging.currentPage}
+            totalPages={paging.totalPages}
+            pageSize={paging.pageSize}
+            onPageSize={paging.setPageSize}
+            onPage={paging.setPage}
+          />
+        </>
       )}
       <h3 className="ea-admin-subsection-title">İç site araması</h3>
       <p className="ea-admin-muted">{data.siteSearch.message}</p>
@@ -321,100 +461,14 @@ export function AdminSeoDashboard({
             <p className="ea-admin-muted">
               Aynı Search Console snapshot’ının sayfa satırları. Kurum sıralaması yukarıdaki listededir.
             </p>
-            <div className="ea-admin-table-wrap">
-              <table className="ea-admin-table">
-                <thead>
-                  <tr>
-                    <th>Kurum</th>
-                    <th>İl / ilçe</th>
-                    <th>Tıklama</th>
-                    <th>Gösterim</th>
-                    <th>CTR</th>
-                    <th>Konum</th>
-                    <th>Sahiplik</th>
-                    <th>Admin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.topInstitutionPages.length === 0 ? (
-                    <tr>
-                      <td className="ea-admin-table__empty" colSpan={8}>
-                        Eşleşen kurum sayfası yok.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.topInstitutionPages.map((row) => (
-                      <tr key={row.url}>
-                        <td className="ea-admin-table__name">
-                          {row.institution ? (
-                            <a href={row.institution.profileHref}>{row.institution.name}</a>
-                          ) : (
-                            row.url
-                          )}
-                        </td>
-                        <td>
-                          {row.institution
-                            ? `${row.institution.cityLabel} / ${row.institution.districtLabel}`
-                            : "—"}
-                        </td>
-                        <td>{formatInt(row.clicks)}</td>
-                        <td>{formatInt(row.impressions)}</td>
-                        <td>{row.ctrLabel}</td>
-                        <td>{row.positionLabel}</td>
-                        <td>{row.institution?.ownershipLabel ?? "—"}</td>
-                        <td>
-                          {row.institution ? (
-                            <a href={row.institution.adminHref}>Kurum edinimi</a>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <InstitutionPagesTable rows={data.topInstitutionPages} />
           </section>
 
           <section aria-labelledby="admin-seo-queries-heading">
             <h2 id="admin-seo-queries-heading" className="ea-admin-section-title">
               Google arama sorguları
             </h2>
-            <div className="ea-admin-table-wrap">
-              <table className="ea-admin-table">
-                <thead>
-                  <tr>
-                    <th>Sorgu</th>
-                    <th>Tıklama</th>
-                    <th>Gösterim</th>
-                    <th>CTR</th>
-                    <th>Konum</th>
-                    <th>Eşleşen kurum</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.topQueries.length === 0 ? (
-                    <tr>
-                      <td className="ea-admin-table__empty" colSpan={6}>
-                        Sorgu satırı yok.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.topQueries.map((row) => (
-                      <tr key={row.query}>
-                        <td>{row.query}</td>
-                        <td>{formatInt(row.clicks)}</td>
-                        <td>{formatInt(row.impressions)}</td>
-                        <td>{row.ctrLabel}</td>
-                        <td>{row.positionLabel}</td>
-                        <td>{row.matchedInstitutionName ?? "—"}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <QueryTable rows={data.topQueries} />
           </section>
 
           <section aria-labelledby="admin-seo-actions-heading">
@@ -593,51 +647,7 @@ export function AdminSeoDashboard({
             </ul>
 
             <h3 className="ea-admin-subsection-title">En çok görüntülenen kurumlar</h3>
-            <div className="ea-admin-table-wrap">
-              <table className="ea-admin-table">
-                <thead>
-                  <tr>
-                    <th>Kurum</th>
-                    <th>Görüntülenme</th>
-                    <th>Sahiplik</th>
-                    <th>Admin</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.ga4.topInstitutionViews.length === 0 ? (
-                    <tr>
-                      <td className="ea-admin-table__empty" colSpan={4}>
-                        Görüntülenme satırı yok.
-                      </td>
-                    </tr>
-                  ) : (
-                    data.ga4.topInstitutionViews.map((row) => (
-                      <tr key={row.institutionId}>
-                        <td className="ea-admin-table__name">
-                          {row.profileHref && row.institutionName ? (
-                            <a href={row.profileHref}>{row.institutionName}</a>
-                          ) : (
-                            <>
-                              Eşleşmeyen ID{" "}
-                              <code>{row.institutionId}</code>
-                            </>
-                          )}
-                        </td>
-                        <td>{formatInt(row.eventCount)}</td>
-                        <td>{row.ownershipLabel}</td>
-                        <td>
-                          {row.adminHref ? (
-                            <a href={row.adminHref}>Kurum edinimi</a>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <Ga4ViewsTable rows={data.ga4.topInstitutionViews} />
           </>
         )}
 
@@ -674,6 +684,186 @@ function priorityClass(priority: AdminSeoActionItem["priority"]): string {
   }
 }
 
+function InstitutionPagesTable({ rows }: { rows: readonly AdminSeoPageRow[] }) {
+  const paging = useSeoPagination(rows, rows.map((row) => row.url).join("\n"));
+  return (
+    <>
+    <div className="ea-admin-table-wrap">
+      <table className="ea-admin-table">
+        <thead>
+          <tr>
+            <th>Kurum</th>
+            <th>İl / ilçe</th>
+            <th>Tıklama</th>
+            <th>Gösterim</th>
+            <th>CTR</th>
+            <th>Konum</th>
+            <th>Sahiplik</th>
+            <th>E-posta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paging.total === 0 ? (
+            <tr>
+              <td className="ea-admin-table__empty" colSpan={8}>
+                Eşleşen kurum sayfası yok.
+              </td>
+            </tr>
+          ) : (
+            paging.pageRows.map((row) => (
+              <tr key={row.url}>
+                <td className="ea-admin-table__name">
+                  {row.institution ? (
+                    <a href={row.institution.profileHref}>{row.institution.name}</a>
+                  ) : (
+                    row.url
+                  )}
+                </td>
+                <td>
+                  {row.institution
+                    ? `${row.institution.cityLabel} / ${row.institution.districtLabel}`
+                    : "—"}
+                </td>
+                <td>{formatInt(row.clicks)}</td>
+                <td>{formatInt(row.impressions)}</td>
+                <td>{row.ctrLabel}</td>
+                <td>{row.positionLabel}</td>
+                <td>{row.institution?.ownershipLabel ?? "—"}</td>
+                <td>
+                  {row.institution ? (
+                    <InstitutionMailLink
+                      email={row.institution.email}
+                      name={row.institution.name}
+                      profileHref={row.institution.profileHref}
+                    />
+                  ) : (
+                    "—"
+                  )}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+      <SeoPager
+        total={paging.total}
+        currentPage={paging.currentPage}
+        totalPages={paging.totalPages}
+        pageSize={paging.pageSize}
+        onPageSize={paging.setPageSize}
+        onPage={paging.setPage}
+      />
+    </>
+  );
+}
+
+function QueryTable({ rows }: { rows: readonly AdminSeoQueryRow[] }) {
+  const paging = useSeoPagination(rows, rows.map((row) => row.query).join("\n"));
+  return (
+    <>
+    <div className="ea-admin-table-wrap">
+      <table className="ea-admin-table">
+        <thead>
+          <tr>
+            <th>Sorgu</th>
+            <th>Tıklama</th>
+            <th>Gösterim</th>
+            <th>CTR</th>
+            <th>Konum</th>
+            <th>Eşleşen kurum</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paging.total === 0 ? (
+            <tr>
+              <td className="ea-admin-table__empty" colSpan={6}>
+                Sorgu satırı yok.
+              </td>
+            </tr>
+          ) : (
+            paging.pageRows.map((row) => (
+              <tr key={row.query}>
+                <td>{row.query}</td>
+                <td>{formatInt(row.clicks)}</td>
+                <td>{formatInt(row.impressions)}</td>
+                <td>{row.ctrLabel}</td>
+                <td>{row.positionLabel}</td>
+                <td>{row.matchedInstitutionName ?? "—"}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+      <SeoPager
+        total={paging.total}
+        currentPage={paging.currentPage}
+        totalPages={paging.totalPages}
+        pageSize={paging.pageSize}
+        onPageSize={paging.setPageSize}
+        onPage={paging.setPage}
+      />
+    </>
+  );
+}
+
+function Ga4ViewsTable({ rows }: { rows: readonly AdminSeoGa4InstitutionViewRow[] }) {
+  const paging = useSeoPagination(rows, rows.map((row) => row.institutionId).join("\n"));
+  return (
+    <>
+    <div className="ea-admin-table-wrap">
+      <table className="ea-admin-table">
+        <thead>
+          <tr>
+            <th>Kurum</th>
+            <th>Görüntülenme</th>
+            <th>Sahiplik</th>
+            <th>Admin</th>
+          </tr>
+        </thead>
+        <tbody>
+          {paging.total === 0 ? (
+            <tr>
+              <td className="ea-admin-table__empty" colSpan={4}>
+                Görüntülenme satırı yok.
+              </td>
+            </tr>
+          ) : (
+            paging.pageRows.map((row) => (
+              <tr key={row.institutionId}>
+                <td className="ea-admin-table__name">
+                  {row.profileHref && row.institutionName ? (
+                    <a href={row.profileHref}>{row.institutionName}</a>
+                  ) : (
+                    <>
+                      Eşleşmeyen ID <code>{row.institutionId}</code>
+                    </>
+                  )}
+                </td>
+                <td>{formatInt(row.eventCount)}</td>
+                <td>{row.ownershipLabel}</td>
+                <td>
+                  {row.adminHref ? <a href={row.adminHref}>Kurum edinimi</a> : "—"}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+      <SeoPager
+        total={paging.total}
+        currentPage={paging.currentPage}
+        totalPages={paging.totalPages}
+        pageSize={paging.pageSize}
+        onPageSize={paging.setPageSize}
+        onPage={paging.setPage}
+      />
+    </>
+  );
+}
+
 function OrphanTaskTable({
   rows,
   empty,
@@ -685,10 +875,12 @@ function OrphanTaskTable({
   taskAction?: (formData: FormData) => Promise<void>;
   currentAdminUid?: string;
 }) {
-  if (rows.length === 0) {
+  const paging = useSeoPagination(rows, rows.map((row) => row.fingerprint).join("\n"));
+  if (paging.total === 0) {
     return <p className="ea-admin-muted">{empty}</p>;
   }
   return (
+    <>
     <div className="ea-admin-table-wrap">
       <table className="ea-admin-table">
         <thead>
@@ -700,7 +892,7 @@ function OrphanTaskTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {paging.pageRows.map((row) => (
             <tr key={row.fingerprint}>
               <td>{row.title}</td>
               <td className="ea-admin-table__name">{row.targetLabel}</td>
@@ -761,6 +953,15 @@ function OrphanTaskTable({
         </tbody>
       </table>
     </div>
+      <SeoPager
+        total={paging.total}
+        currentPage={paging.currentPage}
+        totalPages={paging.totalPages}
+        pageSize={paging.pageSize}
+        onPageSize={paging.setPageSize}
+        onPage={paging.setPage}
+      />
+    </>
   );
 }
 
@@ -779,10 +980,12 @@ function ActionTable({
   taskAction?: (formData: FormData) => Promise<void>;
   currentAdminUid?: string;
 }) {
-  if (rows.length === 0) {
+  const paging = useSeoPagination(rows, rows.map((row) => row.id).join("\n"));
+  if (paging.total === 0) {
     return <p className="ea-admin-muted">{empty}</p>;
   }
   return (
+    <>
     <div className="ea-admin-table-wrap">
       <table className="ea-admin-table">
         <thead>
@@ -799,7 +1002,7 @@ function ActionTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {paging.pageRows.map((row) => (
             <tr key={row.id}>
               {showPriority ? (
                 <td>
@@ -874,6 +1077,15 @@ function ActionTable({
         </tbody>
       </table>
     </div>
+      <SeoPager
+        total={paging.total}
+        currentPage={paging.currentPage}
+        totalPages={paging.totalPages}
+        pageSize={paging.pageSize}
+        onPageSize={paging.setPageSize}
+        onPage={paging.setPage}
+      />
+    </>
   );
 }
 
@@ -884,10 +1096,12 @@ function OpportunityQueries({
   rows: readonly AdminSeoQueryRow[];
   empty: string;
 }) {
-  if (rows.length === 0) {
+  const paging = useSeoPagination(rows, rows.map((row) => row.query).join("\n"));
+  if (paging.total === 0) {
     return <p className="ea-admin-muted">{empty}</p>;
   }
   return (
+    <>
     <div className="ea-admin-table-wrap">
       <table className="ea-admin-table">
         <thead>
@@ -900,7 +1114,7 @@ function OpportunityQueries({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {paging.pageRows.map((row) => (
             <tr key={row.query}>
               <td>{row.query}</td>
               <td>{formatInt(row.clicks)}</td>
@@ -912,5 +1126,14 @@ function OpportunityQueries({
         </tbody>
       </table>
     </div>
+      <SeoPager
+        total={paging.total}
+        currentPage={paging.currentPage}
+        totalPages={paging.totalPages}
+        pageSize={paging.pageSize}
+        onPageSize={paging.setPageSize}
+        onPage={paging.setPage}
+      />
+    </>
   );
 }
