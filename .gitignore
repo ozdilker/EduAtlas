@@ -53,3 +53,5 @@ apps/web/public/media/
 
 .vercel
 .env*
+credentials/gsc-oauth.json
+credentials/gsc-token.json

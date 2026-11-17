@@ -121,6 +121,20 @@ export { AdminReviewPage } from "./admin/admin-review-page";
 export type { AdminShellNavItem, AdminShellProps } from "./admin/admin-shell";
 export { AdminShell } from "./admin/admin-shell";
 export type {
+  AdminSeoActionItem,
+  AdminSeoActionTaskView,
+  AdminSeoDashboardProps,
+  AdminSeoDashboardViewData,
+  AdminSeoGa4InstitutionViewRow,
+  AdminSeoMatchedInstitution,
+  AdminSeoOrphanedActionItem,
+  AdminSeoOwnershipSummary,
+  AdminSeoPageRow,
+  AdminSeoQueryRow,
+  AdminSeoSearchedInstitutionRow,
+} from "./admin/admin-seo-dashboard";
+export { AdminSeoDashboard } from "./admin/admin-seo-dashboard";
+export type {
   AuthFormState,
   AuthPageNotice,
   AuthPageProps,

@@ -63,6 +63,16 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // SEO action task overlay — Admin SDK / trusted server paths only.
+    match /seo_action_tasks/{taskId} {
+      allow read, write: if false;
+    }
+
+    // GSC snapshots — Admin SDK only.
+    match /seo_snapshots/{docId} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

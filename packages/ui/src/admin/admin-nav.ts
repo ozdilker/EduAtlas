@@ -17,6 +17,7 @@ export function buildAdminNavItems(badges: AdminNavBadges = {}): readonly AdminS
       href: "/admin/acquisition",
       ...(typeof badges.acquisition === "number" ? { badge: badges.acquisition } : {}),
     },
+    { id: "seo", label: "SEO ve Kurum Yönetimi", href: "/admin/seo" },
     { id: "import", label: "İçe aktarma", href: "/admin/import" },
     { id: "visuals", label: "Site görselleri", href: "/admin/visuals" },
     { id: "site-contact", label: "İletişim bilgileri", href: "/admin/site-contact" },

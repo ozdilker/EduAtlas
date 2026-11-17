@@ -1581,3 +1581,47 @@
   }
 }
 
+.ea-admin-seo-priority {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.ea-admin-seo-priority--high {
+  color: #9a3412;
+}
+
+.ea-admin-seo-priority--medium {
+  color: #92400e;
+}
+
+.ea-admin-seo-priority--low {
+  color: #334155;
+}
+
+.ea-admin-seo-task-form {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 12rem;
+}
+
+.ea-admin-seo-task-form__label {
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.75rem;
+}
+
+.ea-admin-seo-task-form input,
+.ea-admin-seo-task-form select {
+  font: inherit;
+  max-width: 14rem;
+}
+
+.ea-admin-notice {
+  margin: 0 0 1rem;
+  padding: 0.65rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+

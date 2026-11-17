@@ -18,7 +18,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:demo-auth": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/seed-demo-auth.ts",
-    "verify:demo-auth": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/verify-demo-auth.ts"
+    "verify:demo-auth": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/verify-demo-auth.ts",
+    "seo:write-gsc-snapshot": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/write-seo-gsc-snapshot.ts",
+    "seo:write-gsc-snapshot:dry-run": "tsx --env-file=apps/web/.env.local packages/firebase/scripts/write-seo-gsc-snapshot.ts --dry-run"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
@@ -31,5 +33,8 @@
   },
   "overrides": {
     "jwks-rsa": "3.2.2"
+  },
+  "dependencies": {
+    "googleapis": "^188.0.0"
   }
 }
