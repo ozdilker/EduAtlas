@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { InstitutionContact } from "@eduatlas/domain";
 import { hasInstitutionContactUnlock } from "@/server/leads/contact-unlock-cookie";
-import { PreviewContactUnlockFailureForm, PreviewContactUnlockForm } from "./preview-contact-unlock-form";
+import { PreviewContactUnlockFailureForm } from "./preview-contact-unlock-form";
 import { previewFixtureContact } from "./fixture-channels";
 import {
   isPreviewContactUnlockFixtureEnabled,
@@ -56,7 +56,36 @@ export default async function PreviewContactUnlockPage() {
         institution={PREVIEW_UNLOCK_INSTITUTION}
         contact={previewFixtureContact(PREVIEW_UNLOCK_INSTITUTION, unlockOpen)}
       />
-      <PreviewContactUnlockForm />
+      {unlockOpen ? (
+        <p role="status">
+          Talebiniz alındı. Bu kurumun iletişim bilgileri görüntülenebilir.
+        </p>
+      ) : (
+        <form method="post" action="/preview/contact-unlock/grant">
+          <input type="hidden" name="institutionId" value={PREVIEW_UNLOCK_INSTITUTION.id} />
+          <p>
+            {PREVIEW_UNLOCK_INSTITUTION.name} hakkında bilgi talep edin. Bu önizleme
+            kayıt oluşturmaz.
+          </p>
+          <label>
+            Adınız
+            <input name="parentName" autoComplete="name" required />
+          </label>
+          <label>
+            Telefon
+            <input name="phone" type="tel" autoComplete="tel" required />
+          </label>
+          <label>
+            Mesajınız
+            <textarea name="message" required />
+          </label>
+          <label>
+            <input name="consentAccepted" type="checkbox" value="true" required />
+            Bilgilerimin bu önizleme akışında kullanılmasını kabul ediyorum.
+          </label>
+          <button type="submit">Bilgi Talebi Gönder</button>
+        </form>
+      )}
       <PreviewContactUnlockFailureForm />
       <ContactChannels
         institution={PREVIEW_LOCKED_INSTITUTION}

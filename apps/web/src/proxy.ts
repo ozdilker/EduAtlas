@@ -8,6 +8,16 @@ const SESSION_COOKIE_NAME = "__session";
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (pathname === "/preview/contact-unlock" || pathname.startsWith("/preview/contact-unlock/")) {
+    if (process.env.VERCEL_ENV !== "preview") {
+      return new NextResponse("Sayfa bulunamadı", {
+        status: 404,
+        headers: { "content-type": "text/plain; charset=utf-8" },
+      });
+    }
+    return NextResponse.next();
+  }
+
   const isOwner = pathname.startsWith("/owner");
   const isAdmin = pathname.startsWith("/admin");
 
@@ -29,5 +39,10 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/owner/:path*", "/admin/:path*"],
+  matcher: [
+    "/owner/:path*",
+    "/admin/:path*",
+    "/preview/contact-unlock",
+    "/preview/contact-unlock/:path*",
+  ],
 };

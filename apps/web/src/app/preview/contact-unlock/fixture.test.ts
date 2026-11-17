@@ -86,23 +86,31 @@ describe("preview contact unlock fixture", () => {
 
   it("keeps the fake actions off Firestore and the real lead action", () => {
     const actions = readWorkspace("actions.ts");
+    const grantRoute = readWorkspace("grant/route.ts");
     const failureStart = actions.indexOf("export async function previewContactUnlockFailureAction");
     const failure = actions.slice(failureStart);
     expect(failure).not.toContain("grantInstitutionContactUnlock");
-    expect(actions).not.toContain("submitLead(");
-    expect(actions).not.toContain("submitInstitutionLeadAction");
-    expect(actions).not.toContain("getLeadRepository");
-    expect(actions).not.toContain("getAdminFirestore");
-    expect(actions).not.toContain("getNotificationService");
-    expect(actions).toContain('notFound()');
-    expect(actions).toContain("grantInstitutionContactUnlock(PREVIEW_UNLOCK_INSTITUTION.id)");
+    for (const source of [actions, grantRoute]) {
+      expect(source).not.toContain("submitLead(");
+      expect(source).not.toContain("submitInstitutionLeadAction");
+      expect(source).not.toContain("getLeadRepository");
+      expect(source).not.toContain("getAdminFirestore");
+      expect(source).not.toContain("getNotificationService");
+    }
+    expect(actions).toContain("notFound()");
+    expect(grantRoute).toContain("notFound()");
+    expect(grantRoute).toContain("NextResponse.redirect");
+    expect(grantRoute).toContain(", 303)");
+    expect(grantRoute).toContain("Geçersiz istek gövdesi.");
+    expect(grantRoute).toContain("status: 400");
+    expect(grantRoute).toContain("grantInstitutionContactUnlock(PREVIEW_UNLOCK_INSTITUTION.id)");
   });
 
   it("preserves HttpOnly, Secure, and SameSite on the unlock cookie", () => {
     const cookie = readWorkspace("../../../server/leads/contact-unlock-cookie.ts");
     expect(cookie).toContain("httpOnly: true");
     expect(cookie).toContain('sameSite: "lax"');
-    expect(cookie).toContain("secure: isCookieSecure()");
+    expect(cookie).toContain("secure,");
     expect(cookie).toContain('process.env.NODE_ENV === "production" || process.env.VERCEL === "1"');
     expect(cookie).not.toContain("console.");
     expect(cookie).not.toContain("NEXT_PUBLIC_CONTACT_UNLOCK_SECRET");
@@ -116,7 +124,13 @@ describe("preview contact unlock fixture", () => {
     expect(institutionPage).toContain("includePrivateContact: false");
     expect(fixturePage).toContain('robots: { index: false, follow: false }');
     expect(fixturePage).toContain("notFound()");
+    const proxy = readWorkspace("../../../proxy.ts");
+    expect(proxy).toContain('pathname === "/preview/contact-unlock"');
+    expect(proxy).toContain('process.env.VERCEL_ENV !== "preview"');
+    expect(proxy).toContain("status: 404");
+    expect(fixturePage).toContain('action="/preview/contact-unlock/grant"');
     expect(fixturePage).not.toContain("submitInstitutionLeadAction");
+    expect(fixturePage).not.toContain("previewContactUnlockSuccessAction");
     expect(fixturePage).not.toContain("generateMetadata");
   });
 });
