@@ -129,6 +129,8 @@ describe("preview contact unlock fixture", () => {
     expect(proxy).toContain('process.env.VERCEL_ENV !== "preview"');
     expect(proxy).toContain("status: 404");
     expect(fixturePage).toContain('action="/preview/contact-unlock/grant"');
+    expect(fixturePage).toContain('className="ea-profile-lead__form"');
+    expect(fixturePage).toContain('className="ea-profile-lead__field"');
     expect(fixturePage).not.toContain("submitInstitutionLeadAction");
     expect(fixturePage).not.toContain("previewContactUnlockSuccessAction");
     expect(fixturePage).not.toContain("generateMetadata");

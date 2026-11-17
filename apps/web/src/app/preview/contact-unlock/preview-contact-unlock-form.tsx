@@ -1,6 +1,6 @@
 "use client";
 
-import type { LeadFormActionState } from "@eduatlas/ui";
+import { Button, type LeadFormActionState } from "@eduatlas/ui";
 import { useActionState } from "react";
 import { previewContactUnlockFailureAction } from "./actions";
 
@@ -13,9 +13,17 @@ export function PreviewContactUnlockFailureForm() {
   );
 
   return (
-    <form action={formAction}>
-      <button type="submit">Başarısız akışı dene</button>
-      {state.message ? <p role="alert">{state.message}</p> : null}
-    </form>
+    <section className="ea-profile-section" aria-label="Başarısız önizleme akışı">
+      <form className="ea-profile-lead__form" action={formAction}>
+        <Button type="submit" variant="secondary">
+          Başarısız akışı dene
+        </Button>
+        {state.message ? (
+          <p className="ea-profile-lead__note ea-profile-lead__note--error" role="alert">
+            {state.message}
+          </p>
+        ) : null}
+      </form>
+    </section>
   );
 }
